@@ -2,6 +2,14 @@
 
 > Security-hardened, self-hosted AI workspace. Cerberus guards the gate — every agent action runs inside an isolated sandbox so it can never touch the host directly.
 
+![Cerberus](docs/cerberus.jpg)
+
+| | |
+|---|---|
+|![Chat & Agents](docs/chat.gif)|![Deep Research](docs/research.gif)|
+|![Compare](docs/compare.gif)|![Documents](docs/document.gif)|
+|![Notes & Tasks](docs/notes.gif)||
+
 ```
 ───────────────────────────────────────────────
   Cerberus vers. 1.0 — Guardian of the Gate
