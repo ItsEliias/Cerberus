@@ -815,6 +815,12 @@ app.include_router(setup_cyberapps_terminallink_routes())
 # VaultCore — vault orchestration and scraping engine (CyberOS native migration)
 from routes.cyberapps_vaultcore_routes import setup_cyberapps_vaultcore_routes
 app.include_router(setup_cyberapps_vaultcore_routes())
+# Operations — real-time JARVIS overview panel (Cerberus native)
+from routes.cyberapps_operations_routes import setup_cyberapps_operations_routes
+app.include_router(setup_cyberapps_operations_routes())
+# Cyber Apps Settings — per-user prefs for all cyber apps
+from routes.cyberapps_settings_routes import setup_cyberapps_settings_routes
+app.include_router(setup_cyberapps_settings_routes())
 # ========= ROUTES (kept in app.py) =========
 
 def _serve_html_with_nonce(request: Request, file_path: str) -> HTMLResponse:
