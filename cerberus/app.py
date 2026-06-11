@@ -750,6 +750,12 @@ app.include_router(setup_contacts_routes())
 from companion import setup_companion_routes
 app.include_router(setup_companion_routes())
 
+from routes.cyberapps_dashboard_routes import setup_cyberapps_dashboard_routes
+app.include_router(setup_cyberapps_dashboard_routes())
+
+from routes.cyberapps_signalboard_routes import setup_cyberapps_signalboard_routes
+app.include_router(setup_cyberapps_signalboard_routes())
+
 # ========= ROUTES (kept in app.py) =========
 
 def _serve_html_with_nonce(request: Request, file_path: str) -> HTMLResponse:
