@@ -750,6 +750,9 @@ app.include_router(setup_contacts_routes())
 from companion import setup_companion_routes
 app.include_router(setup_companion_routes())
 
+from routes.cyberapps_ghostvault_routes import setup_cyberapps_ghostvault_routes
+app.include_router(setup_cyberapps_ghostvault_routes())
+
 from routes.cyberapps_reportforge_routes import setup_cyberapps_reportforge_routes
 app.include_router(setup_cyberapps_reportforge_routes())
 
