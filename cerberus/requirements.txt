@@ -45,3 +45,5 @@ pytest
 pytest-asyncio
 # OpenSandbox secure execution SDK (Phase 2)
 opensandbox
+# Telegram Bot API adapter (Phase 3 gateway)
+python-telegram-bot>=20.0

@@ -69,6 +69,42 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # Cerberus Gateway — messaging platform connectivity (Phase 3)
+  #
+  # Routes messages from Telegram (and future platforms) to the Cerberus chat
+  # API and delivers responses back. Runs as a separate process using the same
+  # Docker image as the main cerberus service.
+  #
+  # Security posture:
+  #   - No ports exposed: the gateway is outbound-only (Telegram long-polling).
+  #   - TELEGRAM_BOT_TOKEN must be set by the operator — never hardcoded.
+  #   - CERBERUS_GATEWAY_TOKEN authenticates the gateway to the Cerberus API.
+  #   - Set TELEGRAM_ALLOWED_CHAT_IDS to restrict which Telegram chats the bot
+  #     will respond to (comma-separated chat IDs). Empty = any chat.
+  # ---------------------------------------------------------------------------
+  cerberus-gateway:
+    build: .
+    command: python -m gateway.main
+    volumes:
+      - ./data:/app/data:z
+      - ./logs:/app/logs:z
+    environment:
+      - CERBERUS_API_URL=${CERBERUS_API_URL:-http://cerberus:7000}
+      - CERBERUS_GATEWAY_TOKEN=${CERBERUS_GATEWAY_TOKEN:-}
+      - CERBERUS_GATEWAY_USER=${CERBERUS_GATEWAY_USER:-gateway}
+      - CERBERUS_SESSION_MODEL=${CERBERUS_SESSION_MODEL:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_ALLOWED_CHAT_IDS=${TELEGRAM_ALLOWED_CHAT_IDS:-}
+      - GATEWAY_CRON_ENABLED=${GATEWAY_CRON_ENABLED:-true}
+      - GATEWAY_CRON_INTERVAL=${GATEWAY_CRON_INTERVAL:-60}
+      - GATEWAY_CRON_JOBS_PATH=/app/data/gateway/cron_jobs.json
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+    depends_on:
+      - cerberus
+    restart: unless-stopped
+
   chromadb:
     image: docker.io/chromadb/chroma:latest
     ports:
