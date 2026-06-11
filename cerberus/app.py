@@ -768,6 +768,14 @@ app.include_router(setup_cyberapps_cyberlab_routes())
 from routes.cyberapps_credvault_routes import setup_cyberapps_credvault_routes
 app.include_router(setup_cyberapps_credvault_routes())
 
+# GhostVault — anonymous session vault (CyberOS native migration)
+from routes.cyberapps_ghostvault_routes import setup_cyberapps_ghostvault_routes
+app.include_router(setup_cyberapps_ghostvault_routes())
+
+# Launcher — CyberOS app launcher (CyberOS native migration)
+from routes.cyberapps_launcher_routes import setup_cyberapps_launcher_routes
+app.include_router(setup_cyberapps_launcher_routes())
+
 # NetLab — packet/protocol playground (CyberOS native migration)
 from routes.cyberapps_netlab_routes import setup_cyberapps_netlab_routes
 app.include_router(setup_cyberapps_netlab_routes())
@@ -779,6 +787,10 @@ app.include_router(setup_networkmap_routes())
 # ReconDesk — recon dashboard (CyberOS native migration)
 from routes.cyberapps_recondesk_routes import setup_recondesk_routes
 app.include_router(setup_recondesk_routes())
+
+# SignalBoard — signal intelligence board (CyberOS native migration)
+from routes.cyberapps_signalboard_routes import setup_cyberapps_signalboard_routes
+app.include_router(setup_cyberapps_signalboard_routes())
 
 # TerminalLink — Python PTY WebSocket bridge (CyberOS native migration)
 from routes.cyberapps_terminallink_routes import setup_cyberapps_terminallink_routes
