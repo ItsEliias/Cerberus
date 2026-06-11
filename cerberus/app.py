@@ -792,6 +792,10 @@ app.include_router(setup_networkmap_routes())
 from routes.cyberapps_recondesk_routes import setup_recondesk_routes
 app.include_router(setup_recondesk_routes())
 
+# ReportForge — VAPT report generation (CyberOS native migration)
+from routes.cyberapps_reportforge_routes import setup_cyberapps_reportforge_routes
+app.include_router(setup_cyberapps_reportforge_routes())
+
 # SignalBoard — signal intelligence board (CyberOS native migration)
 from routes.cyberapps_signalboard_routes import setup_cyberapps_signalboard_routes
 app.include_router(setup_cyberapps_signalboard_routes())
