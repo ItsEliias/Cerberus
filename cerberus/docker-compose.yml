@@ -140,6 +140,64 @@ services:
       - NTFY_BASE_URL=${NTFY_BASE_URL:-http://localhost:8091}
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # OpenSandbox secure execution server (Phase 2)
+  #
+  # Provides an isolated Docker-in-Docker execution backend so agent bash/python
+  # commands run in ephemeral containers, not on the host.
+  #
+  # Security posture:
+  #   - Bound to 127.0.0.1 only (no LAN/internet exposure).
+  #   - Sandboxes are deny-by-default on egress; SANDBOX_EGRESS_ALLOWLIST in
+  #     the cerberus service controls which hosts are reachable.
+  #   - Docker socket is mounted read-write; scope this service to a dedicated
+  #     Docker context (or rootless Docker) in production to limit blast radius.
+  #   - no_new_privileges=true and a capability drop list are injected via the
+  #     server config below (mirrors the upstream example compose).
+  # ---------------------------------------------------------------------------
+  opensandbox-server:
+    image: opensandbox/server:latest
+    container_name: cerberus-sandbox
+    # Internal-only: bind to loopback; Cerberus reaches it via service name on
+    # the compose network, external processes cannot connect.
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    configs:
+      - source: opensandbox-config
+        target: /etc/opensandbox/config.toml
+    environment:
+      - SANDBOX_CONFIG_PATH=/etc/opensandbox/config.toml
+    restart: unless-stopped
+
+configs:
+  opensandbox-config:
+    content: |
+      [server]
+      host = "0.0.0.0"
+      port = 8090
+
+      [log]
+      level = "INFO"
+
+      [runtime]
+      type = "docker"
+      execd_image = "opensandbox/execd:v1.0.18"
+
+      [egress]
+      image = "opensandbox/egress:v1.0.12"
+
+      [docker]
+      network_mode = "bridge"
+      host_ip = "host.docker.internal"
+      drop_capabilities = ["AUDIT_WRITE", "MKNOD", "NET_ADMIN", "NET_RAW", "SYS_ADMIN", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
+      no_new_privileges = true
+      pids_limit = 4096
+
+      [ingress]
+      mode = "direct"
+
 volumes:
   searxng-data:
   chromadb-data:

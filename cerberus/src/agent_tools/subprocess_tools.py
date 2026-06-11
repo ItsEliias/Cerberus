@@ -1,12 +1,22 @@
 import asyncio
+import logging
+import os
 import sys
 import time
 import collections
 from typing import Optional, Callable, Awaitable, Tuple, Dict
 from src.constants import MAX_OUTPUT_CHARS
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_BASH_TIMEOUT = 60 * 60     # 1 hour
 DEFAULT_PYTHON_TIMEOUT = 60 * 60
+
+# Set CERBERUS_SANDBOX_ENABLED=false to skip the sandbox and use the host
+# subprocess backend (dev/test override only — not for production use).
+_SANDBOX_ENABLED: bool = (
+    os.environ.get("CERBERUS_SANDBOX_ENABLED", "true").lower() != "false"
+)
 
 PROGRESS_INTERVAL_S = 2.0
 PROGRESS_TAIL_LINES = 12
@@ -103,6 +113,42 @@ async def _run_subprocess_streaming(
 class BashTool:
     async def execute(self, content: str, ctx: dict) -> dict:
         from src.tool_execution import _AGENT_WORKDIR, _truncate
+
+        if _SANDBOX_ENABLED:
+            return await self._execute_sandboxed(content, ctx, _truncate)
+        return await self._execute_host(content, ctx, _AGENT_WORKDIR, _truncate)
+
+    async def _execute_sandboxed(self, content: str, ctx: dict, _truncate) -> dict:
+        from src.agent_tools.sandbox_backend import (
+            run_in_sandbox, SandboxUnavailableError,
+        )
+        try:
+            result = await run_in_sandbox(
+                content,
+                timeout=DEFAULT_BASH_TIMEOUT,
+            )
+        except SandboxUnavailableError as exc:
+            logger.warning("sandbox unavailable, falling back to host: %s", exc)
+            from src.tool_execution import _AGENT_WORKDIR
+            return await self._execute_host(content, ctx, _AGENT_WORKDIR, _truncate)
+
+        if result["timed_out"]:
+            return {
+                "error": f"bash: timed out after {DEFAULT_BASH_TIMEOUT}s — sandbox killed",
+                "exit_code": 124,
+                "stdout": _truncate(result["stdout"], MAX_OUTPUT_CHARS),
+                "stderr": _truncate(result["stderr"], MAX_OUTPUT_CHARS),
+            }
+        output = result["stdout"].rstrip()
+        err = result["stderr"].rstrip()
+        if err:
+            output = (output + "\nSTDERR: " + err).strip() if output else "STDERR: " + err
+        output = _truncate(output, MAX_OUTPUT_CHARS)
+        return {"output": output or "(no output)", "exit_code": result["exit_code"]}
+
+    async def _execute_host(
+        self, content: str, ctx: dict, _AGENT_WORKDIR, _truncate
+    ) -> dict:
         progress_cb = ctx.get("progress_cb")
         workspace = ctx.get("workspace")
         _subproc_env = ctx.get("subproc_env")
@@ -130,6 +176,42 @@ class BashTool:
 class PythonTool:
     async def execute(self, content: str, ctx: dict) -> dict:
         from src.tool_execution import _AGENT_WORKDIR, _truncate
+
+        if _SANDBOX_ENABLED:
+            return await self._execute_sandboxed(content, ctx, _truncate)
+        return await self._execute_host(content, ctx, _AGENT_WORKDIR, _truncate)
+
+    async def _execute_sandboxed(self, content: str, ctx: dict, _truncate) -> dict:
+        from src.agent_tools.sandbox_backend import (
+            run_python_in_sandbox, SandboxUnavailableError,
+        )
+        try:
+            result = await run_python_in_sandbox(
+                content,
+                timeout=DEFAULT_PYTHON_TIMEOUT,
+            )
+        except SandboxUnavailableError as exc:
+            logger.warning("sandbox unavailable, falling back to host: %s", exc)
+            from src.tool_execution import _AGENT_WORKDIR
+            return await self._execute_host(content, ctx, _AGENT_WORKDIR, _truncate)
+
+        if result["timed_out"]:
+            return {
+                "error": f"python: timed out after {DEFAULT_PYTHON_TIMEOUT}s — sandbox killed",
+                "exit_code": 124,
+                "stdout": _truncate(result["stdout"], MAX_OUTPUT_CHARS),
+                "stderr": _truncate(result["stderr"], MAX_OUTPUT_CHARS),
+            }
+        output = result["stdout"].rstrip()
+        err = result["stderr"].rstrip()
+        if err:
+            output = (output + "\nSTDERR: " + err).strip() if output else "STDERR: " + err
+        output = _truncate(output, MAX_OUTPUT_CHARS)
+        return {"output": output or "(no output)", "exit_code": result["exit_code"]}
+
+    async def _execute_host(
+        self, content: str, ctx: dict, _AGENT_WORKDIR, _truncate
+    ) -> dict:
         progress_cb = ctx.get("progress_cb")
         workspace = ctx.get("workspace")
         _subproc_env = ctx.get("subproc_env")

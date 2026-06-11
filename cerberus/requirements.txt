@@ -43,3 +43,5 @@ qrcode[pil]
 croniter
 pytest
 pytest-asyncio
+# OpenSandbox secure execution SDK (Phase 2)
+opensandbox
