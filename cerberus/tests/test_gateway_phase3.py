@@ -527,6 +527,132 @@ async def test_mock_round_trip_message():
 
 
 # ---------------------------------------------------------------------------
+# Discord config tests
+# ---------------------------------------------------------------------------
+
+def test_discord_config_disabled_when_no_token(monkeypatch):
+    monkeypatch.delenv("DISCORD_BOT_TOKEN", raising=False)
+    from gateway.config import GatewayConfig
+    cfg = GatewayConfig.from_env()
+    assert cfg.discord.enabled is False
+
+
+def test_discord_config_enabled_when_token_set(monkeypatch):
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "Test.Token.Here")
+    from gateway.config import GatewayConfig
+    cfg = GatewayConfig.from_env()
+    assert cfg.discord.enabled is True
+
+
+def test_discord_allowed_guild_ids_parsed(monkeypatch):
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "tok")
+    monkeypatch.setenv("DISCORD_ALLOWED_GUILD_IDS", "111111,222222")
+    from gateway.config import GatewayConfig
+    cfg = GatewayConfig.from_env()
+    assert cfg.discord.allowed_guild_ids == frozenset({111111, 222222})
+
+
+def test_discord_allowed_channel_ids_parsed(monkeypatch):
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "tok")
+    monkeypatch.setenv("DISCORD_ALLOWED_CHANNEL_IDS", "9001,9002,9003")
+    from gateway.config import GatewayConfig
+    cfg = GatewayConfig.from_env()
+    assert cfg.discord.allowed_channel_ids == frozenset({9001, 9002, 9003})
+
+
+def test_discord_open_access_when_no_guild_filter(monkeypatch):
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "tok")
+    monkeypatch.delenv("DISCORD_ALLOWED_GUILD_IDS", raising=False)
+    from gateway.config import GatewayConfig
+    cfg = GatewayConfig.from_env()
+    assert cfg.discord.allowed_guild_ids == frozenset()
+
+
+def test_discord_adapter_guild_access_control():
+    from gateway.platforms.discord import DiscordAdapter
+    from gateway.config import DiscordConfig, CerberusConfig
+
+    cfg = DiscordConfig(
+        bot_token="tok",
+        allowed_guild_ids=frozenset({100, 200}),
+        allowed_channel_ids=frozenset(),
+    )
+    cerberus = CerberusConfig(api_url="http://x", token="", username="g", session_model="")
+    adapter = DiscordAdapter(cfg, cerberus)
+
+    assert adapter._is_guild_allowed(100) is True
+    assert adapter._is_guild_allowed(999) is False
+
+
+def test_discord_adapter_channel_access_control():
+    from gateway.platforms.discord import DiscordAdapter
+    from gateway.config import DiscordConfig, CerberusConfig
+
+    cfg = DiscordConfig(
+        bot_token="tok",
+        allowed_guild_ids=frozenset(),
+        allowed_channel_ids=frozenset({555}),
+    )
+    cerberus = CerberusConfig(api_url="http://x", token="", username="g", session_model="")
+    adapter = DiscordAdapter(cfg, cerberus)
+
+    assert adapter._is_channel_allowed(555) is True
+    assert adapter._is_channel_allowed(777) is False
+
+
+def test_discord_adapter_open_channel_when_no_filter():
+    from gateway.platforms.discord import DiscordAdapter
+    from gateway.config import DiscordConfig, CerberusConfig
+
+    cfg = DiscordConfig(
+        bot_token="tok",
+        allowed_guild_ids=frozenset(),
+        allowed_channel_ids=frozenset(),
+    )
+    cerberus = CerberusConfig(api_url="http://x", token="", username="g", session_model="")
+    adapter = DiscordAdapter(cfg, cerberus)
+
+    assert adapter._is_channel_allowed(99999) is True
+
+
+def test_discord_message_split_short():
+    from gateway.platforms.discord import _split_long_message
+    chunks = _split_long_message("hello", max_len=2000)
+    assert chunks == ["hello"]
+
+
+def test_discord_message_split_long():
+    from gateway.platforms.discord import _split_long_message
+    text = "a" * 3000
+    chunks = _split_long_message(text, max_len=2000)
+    assert len(chunks) >= 2
+    for chunk in chunks:
+        assert len(chunk) <= 2000
+
+
+def test_enabled_platforms_includes_discord(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tg-tok")
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "dc-tok")
+    from gateway.config import GatewayConfig
+    cfg = GatewayConfig.from_env()
+    platforms = cfg.enabled_platforms()
+    assert platforms.get("telegram") is True
+    assert platforms.get("discord") is True
+
+
+def test_compose_gateway_has_discord_env():
+    """Gateway service in docker-compose.yml exposes Discord env vars."""
+    import yaml
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    data = yaml.safe_load((root / "docker-compose.yml").read_text())
+    env = data["services"]["cerberus-gateway"]["environment"]
+    env_keys = [e.split("=")[0] for e in env]
+    assert "DISCORD_BOT_TOKEN" in env_keys
+    assert "DISCORD_ALLOWED_GUILD_IDS" in env_keys
+
+
+# ---------------------------------------------------------------------------
 # GPU compose sync: gateway service appears in standalone files
 # ---------------------------------------------------------------------------
 

@@ -72,16 +72,14 @@ services:
   # ---------------------------------------------------------------------------
   # Cerberus Gateway — messaging platform connectivity (Phase 3)
   #
-  # Routes messages from Telegram (and future platforms) to the Cerberus chat
-  # API and delivers responses back. Runs as a separate process using the same
-  # Docker image as the main cerberus service.
+  # Routes messages from Telegram and Discord to the Cerberus chat API.
+  # Runs as a separate process using the same Docker image as cerberus.
   #
   # Security posture:
-  #   - No ports exposed: the gateway is outbound-only (Telegram long-polling).
-  #   - TELEGRAM_BOT_TOKEN must be set by the operator — never hardcoded.
+  #   - No ports exposed: gateway is outbound-only (polling, not webhook).
+  #   - Bot tokens must be set by the operator — never hardcoded here.
   #   - CERBERUS_GATEWAY_TOKEN authenticates the gateway to the Cerberus API.
-  #   - Set TELEGRAM_ALLOWED_CHAT_IDS to restrict which Telegram chats the bot
-  #     will respond to (comma-separated chat IDs). Empty = any chat.
+  #   - Set *_ALLOWED_*_IDS env vars to restrict which chats/guilds respond.
   # ---------------------------------------------------------------------------
   cerberus-gateway:
     build: .
@@ -94,8 +92,14 @@ services:
       - CERBERUS_GATEWAY_TOKEN=${CERBERUS_GATEWAY_TOKEN:-}
       - CERBERUS_GATEWAY_USER=${CERBERUS_GATEWAY_USER:-gateway}
       - CERBERUS_SESSION_MODEL=${CERBERUS_SESSION_MODEL:-}
+      # Telegram
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_ALLOWED_CHAT_IDS=${TELEGRAM_ALLOWED_CHAT_IDS:-}
+      # Discord
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
+      - DISCORD_ALLOWED_GUILD_IDS=${DISCORD_ALLOWED_GUILD_IDS:-}
+      - DISCORD_ALLOWED_CHANNEL_IDS=${DISCORD_ALLOWED_CHANNEL_IDS:-}
+      # Cron scheduler
       - GATEWAY_CRON_ENABLED=${GATEWAY_CRON_ENABLED:-true}
       - GATEWAY_CRON_INTERVAL=${GATEWAY_CRON_INTERVAL:-60}
       - GATEWAY_CRON_JOBS_PATH=/app/data/gateway/cron_jobs.json

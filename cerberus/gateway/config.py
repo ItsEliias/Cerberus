@@ -19,6 +19,13 @@ Environment variables:
   TELEGRAM_BOT_TOKEN      — Telegram Bot API token (from @BotFather)
                             Leave empty to disable Telegram.
 
+  DISCORD_BOT_TOKEN       — Discord bot token (from Discord Developer Portal)
+                            Leave empty to disable Discord.
+  DISCORD_ALLOWED_GUILD_IDS   — Comma-separated guild (server) IDs to respond in.
+                                 Empty = all guilds the bot is in.
+  DISCORD_ALLOWED_CHANNEL_IDS — Comma-separated channel IDs to respond in.
+                                 Empty = all channels in allowed guilds.
+
   GATEWAY_CRON_ENABLED    — Enable the cron scheduler (true/false)
                             Default: true
   GATEWAY_CRON_INTERVAL   — Seconds between scheduler ticks
@@ -84,6 +91,38 @@ class TelegramConfig:
         )
 
 
+def _parse_id_frozenset(env_var: str) -> frozenset:
+    """Parse a comma-separated list of integer IDs from an env var."""
+    raw = os.environ.get(env_var, "").strip()
+    if not raw:
+        return frozenset()
+    try:
+        return frozenset(int(p.strip()) for p in raw.split(",") if p.strip())
+    except ValueError:
+        return frozenset()
+
+
+@dataclass(frozen=True)
+class DiscordConfig:
+    """Discord platform configuration."""
+
+    bot_token: str
+    allowed_guild_ids: frozenset
+    allowed_channel_ids: frozenset
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.bot_token.strip())
+
+    @classmethod
+    def from_env(cls) -> "DiscordConfig":
+        return cls(
+            bot_token=os.environ.get("DISCORD_BOT_TOKEN", "").strip(),
+            allowed_guild_ids=_parse_id_frozenset("DISCORD_ALLOWED_GUILD_IDS"),
+            allowed_channel_ids=_parse_id_frozenset("DISCORD_ALLOWED_CHANNEL_IDS"),
+        )
+
+
 @dataclass(frozen=True)
 class CronConfig:
     """Cron scheduler configuration."""
@@ -113,6 +152,7 @@ class GatewayConfig:
 
     cerberus: CerberusConfig
     telegram: TelegramConfig
+    discord: DiscordConfig
     cron: CronConfig
 
     @classmethod
@@ -120,10 +160,12 @@ class GatewayConfig:
         return cls(
             cerberus=CerberusConfig.from_env(),
             telegram=TelegramConfig.from_env(),
+            discord=DiscordConfig.from_env(),
             cron=CronConfig.from_env(),
         )
 
     def enabled_platforms(self) -> Dict[str, bool]:
         return {
             "telegram": self.telegram.enabled,
+            "discord": self.discord.enabled,
         }

@@ -40,9 +40,14 @@ def _build_adapters(cfg: GatewayConfig) -> Dict[str, object]:
         adapters["telegram"] = TelegramAdapter(cfg.telegram, cfg.cerberus)
         logger.info("gateway: telegram adapter enabled")
     else:
-        logger.info(
-            "gateway: telegram adapter disabled (TELEGRAM_BOT_TOKEN not set)"
-        )
+        logger.info("gateway: telegram adapter disabled (TELEGRAM_BOT_TOKEN not set)")
+
+    if cfg.discord.enabled:
+        from gateway.platforms.discord import DiscordAdapter
+        adapters["discord"] = DiscordAdapter(cfg.discord, cfg.cerberus)
+        logger.info("gateway: discord adapter enabled")
+    else:
+        logger.info("gateway: discord adapter disabled (DISCORD_BOT_TOKEN not set)")
 
     # Add more platforms here:
     # if cfg.slack.enabled:
@@ -58,7 +63,7 @@ async def _run(cfg: GatewayConfig) -> None:
     if not adapters:
         logger.warning(
             "gateway: no platforms are configured — "
-            "set TELEGRAM_BOT_TOKEN (or another platform token) to enable."
+            "set TELEGRAM_BOT_TOKEN or DISCORD_BOT_TOKEN to enable."
         )
 
     tasks = []

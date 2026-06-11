@@ -47,3 +47,5 @@ pytest-asyncio
 opensandbox
 # Telegram Bot API adapter (Phase 3 gateway)
 python-telegram-bot>=20.0
+# Discord adapter (Phase 3 gateway)
+discord.py>=2.0
