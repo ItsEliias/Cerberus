@@ -695,6 +695,10 @@ def _probe_endpoint(base_url: str, api_key: str = None, timeout: int = 5) -> Lis
         if api_key:
             return fetch_available_models(api_key, timeout=timeout)
         return []
+    if provider == "claude-subscription":
+        # Static model list — no HTTP endpoint to probe.
+        from routes.claude_subscription_routes import _MODELS as _CSUB_MODELS
+        return list(_CSUB_MODELS)
     if provider == "anthropic":
         # Try Anthropic's /v1/models endpoint first
         url = _safe_build_models_url(base)
@@ -777,6 +781,13 @@ def _probe_endpoint(base_url: str, api_key: str = None, timeout: int = 5) -> Lis
 
 def _ping_endpoint(base_url: str, api_key: str = None, timeout: float = 1.5) -> Dict[str, Any]:
     """Reachability probe that does not require installed/listed models."""
+    # Claude Subscription uses subprocess transport — no HTTP to probe.
+    from src.claude_subscription import is_claude_subscription_base
+    if is_claude_subscription_base(base_url or ""):
+        from src.claude_subscription import preflight_check
+        pre = preflight_check()
+        return {"reachable": pre["ok"], "error": None if pre["ok"] else pre.get("error")}
+
     from src.endpoint_resolver import resolve_url
     base = resolve_url(_normalize_base(base_url))
     headers = _safe_build_headers(api_key, base)
