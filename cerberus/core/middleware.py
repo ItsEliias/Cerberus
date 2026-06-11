@@ -77,6 +77,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Command Center proxy: served inside the Cerberus sidebar iframe.
         # Strip framing/CSP restrictions so the embedded React app can render.
         is_command_center = path == "/command-center" or path.startswith("/command-center/")
+        # Command Center JARVIS React build (same-origin iframe in the rail overlay)
+        is_cc_app = path.startswith("/static/cc-app/")
 
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
@@ -104,11 +106,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # sandbox="allow-scripts" attribute provides isolation.
             # Don't overwrite the route's own restrictive CSP either.
             pass
-        elif is_command_center:
-            # Command Center proxy is meant to be embedded in the Cerberus
-            # sidebar iframe. Skip X-Frame-Options / frame-ancestors so the
-            # browser will actually render it. The upstream React app's own
-            # security headers (if any) flow through the proxy untouched.
+        elif is_command_center or is_cc_app:
+            # Command Center is embedded in the Cerberus sidebar overlay.
+            # Skip X-Frame-Options / frame-ancestors so the browser will
+            # actually render it. Applies to both the proxy route and the
+            # vendored React build at /static/cc-app/.
             pass
         elif is_document_pdf_preview:
             response.headers["X-Frame-Options"] = "SAMEORIGIN"

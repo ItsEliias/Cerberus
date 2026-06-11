@@ -697,6 +697,13 @@
         <svg class="sidebar-action-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
         <span class="grow" style="position:relative;left:-1px;">Search</span>
       </div>
+      <div class="list-item" id="sidebar-command-center-btn" title="Open Command Center (JARVIS overview)">
+        <svg class="sidebar-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" style="position:relative;left:-1px;">
+          <path d="M12 2 L19 5 V11 C19 16 12 22 12 22 C12 22 5 16 5 11 V5 Z"/>
+          <circle cx="12" cy="11" r="2.2" fill="currentColor" stroke="none"/>
+        </svg>
+        <span class="grow" style="position:relative;left:-1px;">Command Center</span>
+      </div>
       <div class="list-item" id="sidebar-cyber-apps-btn" title="Open Cyber Apps (CyberOS tools)">
         <svg class="sidebar-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" style="position:relative;left:-1px;">
           <path d="M12 2 L19 5.5 V11 C19 16 12 22 12 22 C12 22 5 16 5 11 V5.5 Z"/>
@@ -2389,7 +2396,9 @@
 <script type="module" src="/static/js/assistant.js"></script>
 <script src="/static/js/cyberapps/registry.js"></script>
 <!-- Command Center: JARVIS-aesthetic Cerberus overview — must load first (uses unshift) -->
-<script type="module" src="/static/js/cyberapps/command-center/index.js"></script>
+<!-- Command Center is its own sidebar overlay (loads the React build at /static/cc-app/),
+     not a Cyber Apps pill. Removed from the registry to avoid duplication. -->
+
 <script type="module" src="/static/js/cyberapps/cyberlab/index.js"></script>
 <script type="module" src="/static/js/cyberapps/credvault/index.js"></script>
 <script type="module" src="/static/js/cyberapps/dashboard/index.js"></script>
@@ -2414,37 +2423,56 @@
 <script type="module" src="/static/js/init.js"></script>
 <script type="module" src="/static/js/a11y.js"></script>
 <script type="module" src="/static/js/cyberapps/index.js"></script>
-<!-- Auto-open Cyber Apps panel on root URL, respecting sessionStorage dismiss flag.
-     Mirrors the behaviour of the old Command Center IIFE but for the Cyber Apps panel.
-     Key: 'cyber-apps-dismissed' — set on manual close, cleared on fresh tab. -->
+<!-- ===== Command Center Overlay Panel ===== -->
+<div id="command-center-panel" style="display:none; position:fixed; top:0; bottom:0; left:calc(var(--icon-rail-w, 48px) + var(--sidebar-w, 0px)); right:0; z-index:100; background:#000; transition:left 0.25s ease;">
+  <iframe id="command-center-iframe"
+    src="about:blank"
+    allow="clipboard-write; clipboard-read"
+    referrerpolicy="no-referrer"
+    style="border:none;width:100%;height:100%;background:#060708;display:block;"
+    title="Command Center">
+  </iframe>
+</div>
 <script nonce="{{CSP_NONCE}}">(function(){
+  var btn = document.getElementById('sidebar-command-center-btn');
+  var panel = document.getElementById('command-center-panel');
+  var iframe = document.getElementById('command-center-iframe');
+  var chat = document.getElementById('chat-container');
+  if (!btn || !panel || !iframe) return;
+  var CC_URL = location.origin + '/static/cc-app/index.html';
+  var _loaded = false;
+  function openCC(){
+    if (!_loaded) { iframe.src = CC_URL; _loaded = true; }
+    panel.style.display = 'block';
+    if (chat) chat.style.visibility = 'hidden';
+    btn.classList.add('active');
+  }
+  function closeCC(){
+    panel.style.display = 'none';
+    if (chat) chat.style.visibility = '';
+    btn.classList.remove('active');
+  }
+  btn.addEventListener('click', function(){
+    panel.style.display === 'block' ? closeCC() : openCC();
+  });
+  document.querySelectorAll('.sidebar .list-item').forEach(function(el){
+    if (el.id !== 'sidebar-command-center-btn') el.addEventListener('click', closeCC);
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && panel.style.display === 'block') {
+      closeCC();
+      sessionStorage.setItem('command-center-dismissed', '1');
+    }
+  });
+  // Auto-open on Cerberus root (within-session sticky dismiss)
   var isRoot = (window.location.pathname === '/' || window.location.pathname === '');
-  if (!isRoot) return;
-  if (sessionStorage.getItem('cyber-apps-dismissed')) return;
-  // Wait for all modules to load before auto-opening
-  window.addEventListener('load', function() {
-    // Small delay so cyberapps/index.js IIFE has wired up the panel
-    setTimeout(function() {
-      if (window.CyberApps && typeof window.CyberApps.open === 'function') {
-        window.CyberApps.open();
-        // The panel's own close paths (_closePanel) do not set the flag,
-        // so we intercept the close button, Esc key, and sidebar clicks here.
-        var closeBtn = document.getElementById('cyber-apps-close-btn');
-        function _markDismissed() {
-          sessionStorage.setItem('cyber-apps-dismissed', '1');
-        }
-        if (closeBtn) closeBtn.addEventListener('click', _markDismissed, {once: true});
-        document.addEventListener('keydown', function onEsc(e) {
-          if (e.key === 'Escape') { _markDismissed(); document.removeEventListener('keydown', onEsc); }
-        });
-        document.querySelectorAll('.sidebar .list-item').forEach(function(el) {
-          if (el.id !== 'sidebar-cyber-apps-btn') {
-            el.addEventListener('click', _markDismissed, {once: true});
-          }
-        });
-      }
-    }, 150);
-  }, {once: true});
+  if (isRoot && !sessionStorage.getItem('command-center-dismissed')) {
+    window.addEventListener('load', function(){ setTimeout(openCC, 50); }, {once: true});
+  }
+  // Mark dismissed when user explicitly closes
+  btn.addEventListener('click', function(){
+    if (panel.style.display !== 'block') sessionStorage.setItem('command-center-dismissed', '1');
+  });
 })();</script>
 <script nonce="{{CSP_NONCE}}">if('serviceWorker' in navigator){navigator.serviceWorker.register('/static/sw.js').catch(()=>{});}</script>
 </body>
