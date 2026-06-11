@@ -29,11 +29,16 @@ import * as EcosystemView from './view-ecosystem.js';
 
 (function injectCSS() {
   if (document.querySelector('[data-dashboard-css]')) return;
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = '/static/js/cyberapps/dashboard/dashboard.css';
-  link.dataset.dashboardCss = '1';
-  document.head.appendChild(link);
+  [
+    '/static/js/cyberapps/dashboard/dashboard.css',
+    '/static/js/cyberapps/dashboard/dashboard-views.css',
+  ].forEach((href, i) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    if (i === 0) link.dataset.dashboardCss = '1';
+    document.head.appendChild(link);
+  });
 })();
 
 // ---------------------------------------------------------------------------
