@@ -750,6 +750,10 @@ app.include_router(setup_contacts_routes())
 from companion import setup_companion_routes
 app.include_router(setup_companion_routes())
 
+# TerminalLink — Python PTY WebSocket bridge (CyberOS native migration)
+from routes.cyberapps_terminallink_routes import setup_cyberapps_terminallink_routes
+app.include_router(setup_cyberapps_terminallink_routes())
+
 # CredVault — encrypted credential vault (CyberOS native migration)
 from routes.cyberapps_credvault_routes import setup_cyberapps_credvault_routes
 app.include_router(setup_cyberapps_credvault_routes())
