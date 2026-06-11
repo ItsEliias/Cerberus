@@ -229,6 +229,37 @@ def _score(task: Any) -> int:
 # Router setup
 # ---------------------------------------------------------------------------
 
+def _council_data(user: str | None) -> Dict[str, Any]:
+    """Return CrewMember list as council agents."""
+    try:
+        from core.database import SessionLocal as _SL, CrewMember
+        db = _SL()
+        try:
+            q = db.query(CrewMember)
+            if user:
+                q = q.filter(CrewMember.owner == user)
+            members = q.order_by(CrewMember.sort_order, CrewMember.name).all()
+            return {
+                "members": [
+                    {
+                        "id": m.id,
+                        "name": m.name,
+                        "model": m.model or "—",
+                        "is_active": bool(m.is_active),
+                        "is_default_assistant": bool(m.is_default_assistant),
+                        "status": "active" if m.is_active else "standby",
+                    }
+                    for m in members
+                ],
+                "toggle_supported": True,
+            }
+        finally:
+            db.close()
+    except Exception as e:
+        logger.warning("operations council_data failed: %s", e)
+        return {"members": [], "toggle_supported": False}
+
+
 def setup_cyberapps_operations_routes() -> APIRouter:
     router = APIRouter(tags=["cyberapps-operations"])
 
@@ -261,5 +292,36 @@ def setup_cyberapps_operations_routes() -> APIRouter:
     def operations_agents(request: Request):
         user = get_current_user(request)
         return JSONResponse({"agents": _agents_data(user)})
+
+    @router.get("/api/cyberapps/operations/council")
+    def operations_council(request: Request):
+        user = get_current_user(request)
+        return JSONResponse(_council_data(user))
+
+    @router.patch("/api/cyberapps/operations/council/{member_id}")
+    async def operations_council_toggle(member_id: str, request: Request):
+        user = get_current_user(request)
+        body = await request.json()
+        is_active = bool(body.get("is_active", True))
+        try:
+            from core.database import SessionLocal as _SL, CrewMember
+            db = _SL()
+            try:
+                q = db.query(CrewMember).filter(CrewMember.id == member_id)
+                if user:
+                    q = q.filter(CrewMember.owner == user)
+                member = q.first()
+                if not member:
+                    from fastapi import HTTPException
+                    raise HTTPException(404, "Crew member not found")
+                member.is_active = is_active
+                db.commit()
+                return JSONResponse({"ok": True, "is_active": is_active})
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning("council toggle failed: %s", e)
+            from fastapi import HTTPException
+            raise HTTPException(500, str(e))
 
     return router
