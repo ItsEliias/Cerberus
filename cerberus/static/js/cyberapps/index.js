@@ -31,12 +31,32 @@
     return;
   }
 
+  // Mouse-wheel → horizontal scroll on the pill nav so users without a
+  // touchpad can pan to off-screen pills. Trackpads already produce deltaX
+  // for swipe; this only kicks in when deltaY dominates.
+  pillNav.addEventListener('wheel', function (e) {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      pillNav.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }
+  }, { passive: false });
+
   // -------------------------------------------------------------------------
   // State
   // -------------------------------------------------------------------------
   let _activeId = null;
   let _vaultUnlocked = false;
   const _vaultListeners = [];
+  let _cyberAppsSettings = {};
+
+  // Pull per-app prefs from /api/cyberapps/settings so the pill nav can
+  // hide apps the user has disabled and surface their preferred default.
+  async function _loadSettings() {
+    try {
+      const res = await fetch('/api/cyberapps/settings', { credentials: 'same-origin' });
+      if (res.ok) _cyberAppsSettings = await res.json();
+    } catch (_) { /* defaults stay */ }
+  }
 
   // -------------------------------------------------------------------------
   // Context factory
@@ -67,7 +87,16 @@
   // -------------------------------------------------------------------------
   function _renderPills() {
     pillNav.innerHTML = '';
-    const registry = window.CYBER_APPS_REGISTRY || [];
+    const registry = (window.CYBER_APPS_REGISTRY || []).filter(function (app) {
+      const prefs = _cyberAppsSettings[app.id];
+      return !prefs || prefs.showPill !== false;
+    }).sort(function (a, b) {
+      const aPrefs = _cyberAppsSettings[a.id] || {};
+      const bPrefs = _cyberAppsSettings[b.id] || {};
+      if (aPrefs.defaultActive && !bPrefs.defaultActive) return -1;
+      if (!aPrefs.defaultActive && bPrefs.defaultActive) return 1;
+      return 0;
+    });
     registry.forEach(function (app) {
       const btn = document.createElement('button');
       btn.className = 'cyber-apps-pill';
@@ -145,20 +174,33 @@
     if (chat) chat.style.visibility = 'hidden';
     if (sidebarBtn) sidebarBtn.classList.add('active');
 
-    // Render pills fresh each open (registry may have been pushed to)
-    _renderPills();
-
-    // Auto-activate first app if none active and registry is populated
-    const registry = window.CYBER_APPS_REGISTRY || [];
-    if (!_activeId && registry.length > 0) {
-      _activate(registry[0].id);
-    } else if (_activeId) {
-      // Re-highlight the active pill
-      pillNav.querySelectorAll('.cyber-apps-pill').forEach(function (btn) {
-        btn.classList.toggle('active', btn.dataset.app === _activeId);
+    // Pull latest settings, then render + auto-activate (filtered, defaultActive-first)
+    _loadSettings().then(function () {
+      _renderPills();
+      const visible = (window.CYBER_APPS_REGISTRY || []).filter(function (app) {
+        const prefs = _cyberAppsSettings[app.id];
+        return !prefs || prefs.showPill !== false;
+      }).sort(function (a, b) {
+        const aPrefs = _cyberAppsSettings[a.id] || {};
+        const bPrefs = _cyberAppsSettings[b.id] || {};
+        if (aPrefs.defaultActive && !bPrefs.defaultActive) return -1;
+        if (!aPrefs.defaultActive && bPrefs.defaultActive) return 1;
+        return 0;
       });
-    }
+      if (!_activeId && visible.length > 0) {
+        _activate(visible[0].id);
+      } else if (_activeId) {
+        pillNav.querySelectorAll('.cyber-apps-pill').forEach(function (btn) {
+          btn.classList.toggle('active', btn.dataset.app === _activeId);
+        });
+      }
+    });
   }
+
+  // Re-render pills when settings change (Settings panel fires this on save)
+  window.addEventListener('cyber-apps:settings-updated', function () {
+    if (panel.style.display === 'block') _loadSettings().then(_renderPills);
+  });
 
   function _closePanel() {
     panel.style.display = 'none';
