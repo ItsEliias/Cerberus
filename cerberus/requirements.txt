@@ -53,3 +53,6 @@ discord.py>=2.0
 # Provides PtyProcess.spawn() — a clean cross-platform PTY wrapper that
 # lives entirely inside the Cerberus FastAPI process (no Node sidecar needed).
 ptyprocess
+# System metrics for Operations overview panel (CPU/RAM/disk).
+# Optional — Operations degrades gracefully to stdlib/resource if missing.
+psutil
