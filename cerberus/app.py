@@ -768,6 +768,10 @@ app.include_router(setup_cyberapps_cyberlab_routes())
 from routes.cyberapps_credvault_routes import setup_cyberapps_credvault_routes
 app.include_router(setup_cyberapps_credvault_routes())
 
+# Dashboard — operator dashboard and ecosystem health monitor (CyberOS native migration)
+from routes.cyberapps_dashboard_routes import setup_cyberapps_dashboard_routes
+app.include_router(setup_cyberapps_dashboard_routes())
+
 # GhostVault — anonymous session vault (CyberOS native migration)
 from routes.cyberapps_ghostvault_routes import setup_cyberapps_ghostvault_routes
 app.include_router(setup_cyberapps_ghostvault_routes())
@@ -799,7 +803,6 @@ app.include_router(setup_cyberapps_terminallink_routes())
 # VaultCore — vault orchestration and scraping engine (CyberOS native migration)
 from routes.cyberapps_vaultcore_routes import setup_cyberapps_vaultcore_routes
 app.include_router(setup_cyberapps_vaultcore_routes())
-
 # ========= ROUTES (kept in app.py) =========
 
 def _serve_html_with_nonce(request: Request, file_path: str) -> HTMLResponse:
