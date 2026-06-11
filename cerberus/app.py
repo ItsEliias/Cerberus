@@ -788,6 +788,10 @@ app.include_router(setup_cyberapps_netlab_routes())
 from routes.cyberapps_networkmap_routes import setup_networkmap_routes
 app.include_router(setup_networkmap_routes())
 
+# PlaybookStudio — VAPT playbook builder and runner (CyberOS native)
+from routes.cyberapps_playbookstudio_routes import setup_cyberapps_playbookstudio_routes
+app.include_router(setup_cyberapps_playbookstudio_routes())
+
 # ReconDesk — recon dashboard (CyberOS native migration)
 from routes.cyberapps_recondesk_routes import setup_recondesk_routes
 app.include_router(setup_recondesk_routes())
