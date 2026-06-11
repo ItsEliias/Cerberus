@@ -750,6 +750,18 @@ app.include_router(setup_contacts_routes())
 from companion import setup_companion_routes
 app.include_router(setup_companion_routes())
 
+# CredVault — encrypted credential vault (CyberOS native migration)
+from routes.cyberapps_credvault_routes import setup_cyberapps_credvault_routes
+app.include_router(setup_cyberapps_credvault_routes())
+
+# NetworkMap — force-directed network topology visualiser (CyberOS native migration)
+from routes.cyberapps_networkmap_routes import setup_networkmap_routes
+app.include_router(setup_networkmap_routes())
+
+# NetLab — packet/protocol playground (CyberOS native migration)
+from routes.cyberapps_netlab_routes import setup_cyberapps_netlab_routes
+app.include_router(setup_cyberapps_netlab_routes())
+
 # ========= ROUTES (kept in app.py) =========
 
 def _serve_html_with_nonce(request: Request, file_path: str) -> HTMLResponse:
