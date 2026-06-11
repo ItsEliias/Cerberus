@@ -1,0 +1,22 @@
+{
+  "name": "cerberus",
+  "version": "0.1.1",
+  "description": "Connect Codex to a scoped Cerberus instance.",
+  "author": {
+    "name": "Cerberus"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Cerberus",
+    "shortDescription": "Use scoped Cerberus tools from Codex.",
+    "longDescription": "Connects Codex terminal sessions to Cerberus through user-controlled scoped API tokens. Codex must use /api/codex/* endpoints so Cerberus Settings can enforce tool access.",
+    "developerName": "Cerberus",
+    "category": "Productivity",
+    "capabilities": [
+      "todos",
+      "email",
+      "scoped-api"
+    ],
+    "defaultPrompt": "Use Cerberus only through configured scoped access. Check capabilities before reading or writing data."
+  }
+}
