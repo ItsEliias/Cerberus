@@ -689,6 +689,10 @@ app.include_router(setup_backup_routes(memory_manager, preset_manager, skills_ma
 from routes.font_routes import setup_font_routes
 app.include_router(setup_font_routes())
 
+# CyberOS native apps — PlaybookStudio
+from routes.cyberapps_playbookstudio_routes import setup_cyberapps_playbookstudio_routes
+app.include_router(setup_cyberapps_playbookstudio_routes())
+
 
 # MCP (Model Context Protocol)
 from src.mcp_manager import McpManager
@@ -749,6 +753,18 @@ app.include_router(setup_contacts_routes())
 
 from companion import setup_companion_routes
 app.include_router(setup_companion_routes())
+
+from routes.cyberapps_ghostvault_routes import setup_cyberapps_ghostvault_routes
+app.include_router(setup_cyberapps_ghostvault_routes())
+
+from routes.cyberapps_dashboard_routes import setup_cyberapps_dashboard_routes
+app.include_router(setup_cyberapps_dashboard_routes())
+
+from routes.cyberapps_signalboard_routes import setup_cyberapps_signalboard_routes
+app.include_router(setup_cyberapps_signalboard_routes())
+
+from routes.cyberapps_reportforge_routes import setup_cyberapps_reportforge_routes
+app.include_router(setup_cyberapps_reportforge_routes())
 
 # ========= ROUTES (kept in app.py) =========
 
