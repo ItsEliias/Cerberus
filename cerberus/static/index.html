@@ -2387,6 +2387,8 @@
 <script type="module" src="/static/js/admin.js"></script>
 <script type="module" src="/static/js/assistant.js"></script>
 <script src="/static/js/cyberapps/registry.js"></script>
+<!-- Operations: JARVIS-aesthetic Cerberus overview — must load first (uses unshift) -->
+<script type="module" src="/static/js/cyberapps/operations/index.js"></script>
 <script type="module" src="/static/js/cyberapps/cyberlab/index.js"></script>
 <script type="module" src="/static/js/cyberapps/credvault/index.js"></script>
 <script type="module" src="/static/js/cyberapps/dashboard/index.js"></script>
@@ -2411,6 +2413,38 @@
 <script type="module" src="/static/js/init.js"></script>
 <script type="module" src="/static/js/a11y.js"></script>
 <script type="module" src="/static/js/cyberapps/index.js"></script>
+<!-- Auto-open Cyber Apps panel on root URL, respecting sessionStorage dismiss flag.
+     Mirrors the behaviour of the old Command Center IIFE but for the Cyber Apps panel.
+     Key: 'cyber-apps-dismissed' — set on manual close, cleared on fresh tab. -->
+<script nonce="{{CSP_NONCE}}">(function(){
+  var isRoot = (window.location.pathname === '/' || window.location.pathname === '');
+  if (!isRoot) return;
+  if (sessionStorage.getItem('cyber-apps-dismissed')) return;
+  // Wait for all modules to load before auto-opening
+  window.addEventListener('load', function() {
+    // Small delay so cyberapps/index.js IIFE has wired up the panel
+    setTimeout(function() {
+      if (window.CyberApps && typeof window.CyberApps.open === 'function') {
+        window.CyberApps.open();
+        // The panel's own close paths (_closePanel) do not set the flag,
+        // so we intercept the close button, Esc key, and sidebar clicks here.
+        var closeBtn = document.getElementById('cyber-apps-close-btn');
+        function _markDismissed() {
+          sessionStorage.setItem('cyber-apps-dismissed', '1');
+        }
+        if (closeBtn) closeBtn.addEventListener('click', _markDismissed, {once: true});
+        document.addEventListener('keydown', function onEsc(e) {
+          if (e.key === 'Escape') { _markDismissed(); document.removeEventListener('keydown', onEsc); }
+        });
+        document.querySelectorAll('.sidebar .list-item').forEach(function(el) {
+          if (el.id !== 'sidebar-cyber-apps-btn') {
+            el.addEventListener('click', _markDismissed, {once: true});
+          }
+        });
+      }
+    }, 150);
+  }, {once: true});
+})();</script>
 <script nonce="{{CSP_NONCE}}">if('serviceWorker' in navigator){navigator.serviceWorker.register('/static/sw.js').catch(()=>{});}</script>
 </body>
 </html>
