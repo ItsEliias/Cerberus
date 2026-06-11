@@ -23,15 +23,6 @@
  */
 
 window.CYBER_APPS_REGISTRY = [
-  // Migrators: push your entry here.
-  // Example (uncomment and fill in):
-  //
-  // {
-  //   id: 'cyberlab',
-  //   name: 'CyberLab',
-  //   icon: '<svg width="16" height="16" ...></svg>',
-  //   init: (container, ctx) => { window.CyberLabApp.init(container, ctx); },
-  //   destroy: () => { window.CyberLabApp.destroy(); },
-  //   vault: true,
-  // },
+  // CyberLab Companion — registered by static/js/cyberapps/cyberlab/index.js
+  // (self-registration happens in the module; this placeholder documents the slot)
 ];
