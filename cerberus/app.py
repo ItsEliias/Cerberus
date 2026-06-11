@@ -764,6 +764,22 @@ app.include_router(setup_companion_routes())
 from routes.cyberapps_cyberlab_routes import setup_cyberapps_cyberlab_routes
 app.include_router(setup_cyberapps_cyberlab_routes())
 
+# NetworkMap — force-directed network topology visualiser (CyberOS native migration)
+from routes.cyberapps_networkmap_routes import setup_networkmap_routes
+app.include_router(setup_networkmap_routes())
+
+# ReconDesk — recon dashboard (CyberOS native migration)
+from routes.cyberapps_recondesk_routes import setup_recondesk_routes
+app.include_router(setup_recondesk_routes())
+
+# TerminalLink — Python PTY WebSocket bridge (CyberOS native migration)
+from routes.cyberapps_terminallink_routes import setup_cyberapps_terminallink_routes
+app.include_router(setup_cyberapps_terminallink_routes())
+
+# VaultCore — vault orchestration and scraping engine (CyberOS native migration)
+from routes.cyberapps_vaultcore_routes import setup_cyberapps_vaultcore_routes
+app.include_router(setup_cyberapps_vaultcore_routes())
+
 # ========= ROUTES (kept in app.py) =========
 
 def _serve_html_with_nonce(request: Request, file_path: str) -> HTMLResponse:
