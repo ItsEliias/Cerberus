@@ -452,6 +452,9 @@ def _detect_provider(url: str) -> str:
     from src.copilot import is_copilot_base
     if is_copilot_base(url):
         return "copilot"
+    from src.claude_subscription import is_claude_subscription_base
+    if is_claude_subscription_base(url):
+        return "claude-subscription"
     return "openai"
 
 
@@ -526,6 +529,8 @@ def _provider_label(url: str) -> str:
     if is_chatgpt_subscription_base(url): return "ChatGPT Subscription"
     from src.copilot import is_copilot_base
     if is_copilot_base(url): return "GitHub Copilot"
+    from src.claude_subscription import is_claude_subscription_base
+    if is_claude_subscription_base(url): return "Claude (Subscription)"
     if _host_match(url, "mistral.ai"): return "Mistral"
     if _host_match(url, "deepseek.com"): return "DeepSeek"
     if _host_match(url, "nvidia.com"): return "NVIDIA"
@@ -1375,6 +1380,15 @@ async def llm_call_async(
         _set_cached_response(cache_key, response)
         return response
 
+    if provider == "claude-subscription":
+        from src.claude_subscription import call_completion as _claude_sub_call
+        try:
+            response = await _claude_sub_call(messages_copy)
+        except Exception as exc:
+            raise HTTPException(502, str(exc)) from exc
+        _set_cached_response(cache_key, response)
+        return response
+
     if provider == "anthropic":
         target_url = _normalize_anthropic_url(url)
         h = _build_anthropic_headers(headers)
@@ -1605,6 +1619,13 @@ async def stream_llm(url: str, model: str, messages: List[Dict], temperature: fl
         except Exception as e:
             logger.error(f"ChatGPT Subscription stream error: {e}")
             yield f'event: error\ndata: {json.dumps({"error": str(e), "status": 502})}\n\n'
+        return
+
+    # ── Claude Subscription (subprocess) streaming ──
+    if provider == "claude-subscription":
+        from src.claude_subscription import stream_completion as _claude_sub_stream
+        async for chunk in _claude_sub_stream(messages_copy):
+            yield chunk
         return
 
     # ── Native Ollama streaming ──

@@ -179,6 +179,9 @@ def build_chat_url(base: str) -> str:
         return _ollama_api_root(base) + "/chat"
     if provider == "chatgpt-subscription":
         return base.rstrip("/") + "/responses"
+    if provider == "claude-subscription":
+        from src.claude_subscription import CLAUDE_SUBSCRIPTION_SENTINEL_URL
+        return CLAUDE_SUBSCRIPTION_SENTINEL_URL
     return base + "/chat/completions"
 
 
@@ -192,6 +195,8 @@ def build_models_url(base: str) -> Optional[str]:
         return _ollama_api_root(base) + "/tags"
     if provider == "chatgpt-subscription":
         return None
+    if provider == "claude-subscription":
+        return None  # No HTTP model endpoint; models are static
     return base + "/models"
 
 
@@ -210,6 +215,8 @@ def build_headers(api_key: Optional[str], base: str) -> Dict[str, str]:
     if provider == "chatgpt-subscription":
         from src.chatgpt_subscription import chatgpt_headers
         return chatgpt_headers(api_key)
+    if provider == "claude-subscription":
+        return {}  # No HTTP headers; transport is subprocess
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     if provider == "openrouter":
