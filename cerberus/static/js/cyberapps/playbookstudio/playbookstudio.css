@@ -1,0 +1,146 @@
+/* PlaybookStudio — scoped styles using .ps- prefix */
+
+/* ── Layout shells ────────────────────────────────────────────────────── */
+.ps-library, .ps-editor, .ps-run, .ps-history {
+  display: flex; flex-direction: column; height: 100%; overflow: hidden;
+  color: var(--fg, #c5c9d0); font-size: 13px;
+}
+.ps-editor-body, .ps-history { overflow-y: auto; flex: 1; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.ps-grid { padding: 14px 16px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; overflow-y: auto; flex: 1; }
+@media (max-width: 700px) { .ps-grid { grid-template-columns: 1fr; } }
+
+/* ── Toolbar ──────────────────────────────────────────────────────────── */
+.ps-toolbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 16px; border-bottom: 1px solid var(--border, #3a2a2a);
+  background: rgba(13,14,24,.6); flex-shrink: 0;
+}
+.ps-toolbar-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
+.ps-cat-pills { display: flex; align-items: center; gap: 4px; overflow-x: auto; flex: 1; min-width: 0; }
+.ps-tag-bar, .ps-vapt-bar {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 6px 16px; border-bottom: 1px solid var(--border); background: rgba(7,8,15,.4); flex-shrink: 0;
+}
+.ps-vapt-bar { flex-direction: column; align-items: flex-start; background: rgba(45,212,191,.03); border-bottom-color: rgba(45,212,191,.12); }
+.ps-vapt-methods { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── Pill navigation ──────────────────────────────────────────────────── */
+.ps-pill {
+  flex-shrink: 0; font-size: 11px; padding: 4px 10px; border-radius: 20px; cursor: pointer;
+  background: rgba(42,51,71,.2); color: #8b949e; border: 1px solid rgba(42,51,71,.4);
+  transition: all 150ms;
+}
+.ps-pill.active, .ps-pill:hover { background: rgba(74,158,255,.15); color: #4a9eff; border-color: rgba(74,158,255,.35); }
+.ps-pill-tag { font-size: 10px; padding: 2px 7px; border-radius: 20px; cursor: pointer;
+  background: rgba(42,51,71,.2); color: #6b7280; border: 1px solid rgba(42,51,71,.4); }
+.ps-pill-tag.active { background: rgba(45,212,191,.14); color: #2dd4bf; border-color: rgba(45,212,191,.32); }
+
+/* ── Badges ───────────────────────────────────────────────────────────── */
+.ps-badge {
+  display: inline-flex; align-items: center; font-size: 10px; padding: 2px 6px;
+  border-radius: 4px; white-space: nowrap;
+}
+.ps-badge-mono { font-family: monospace; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.ps-btn {
+  font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer;
+  background: rgba(42,51,71,.4); color: var(--fg, #c5c9d0); border: 1px solid rgba(42,51,71,.6);
+  transition: all 150ms; white-space: nowrap;
+}
+.ps-btn:hover:not(:disabled) { background: rgba(42,51,71,.7); }
+.ps-btn:disabled { opacity: .45; cursor: default; }
+.ps-btn-primary { background: #4a9eff; color: #0a0a0f; border-color: #4a9eff; }
+.ps-btn-primary:hover:not(:disabled) { background: #6abaff; }
+.ps-btn-danger { background: rgba(248,81,73,.1); color: #f85149; border: 1px solid rgba(248,81,73,.2); }
+.ps-btn-danger-xs { font-size: 10px; padding: 2px 6px; background: rgba(248,81,73,.08); color: #f85149; border: 1px solid rgba(248,81,73,.2); }
+.ps-btn-active { background: rgba(45,212,191,.1); border-color: rgba(45,212,191,.25); color: #2dd4bf; }
+
+/* ── Inputs ───────────────────────────────────────────────────────────── */
+.ps-input {
+  background: rgba(7,8,15,.8); border: 1px solid var(--border, #3a2a2a); color: var(--fg, #c5c9d0);
+  border-radius: 4px; padding: 5px 8px; font-size: 12px; width: 100%;
+  outline: none; transition: border-color 150ms;
+}
+.ps-input:focus { border-color: rgba(74,158,255,.5); }
+.ps-input:disabled { opacity: .5; }
+.ps-input-sm { width: 140px; }
+.ps-input-mono { font-family: monospace; }
+select.ps-input { width: auto; }
+
+/* ── Labels ───────────────────────────────────────────────────────────── */
+.ps-label { display: block; font-size: 10px; color: var(--fg); opacity: .5; margin-bottom: 3px; }
+.ps-section-label {
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
+  color: #4a9eff; display: flex; align-items: center; gap: 6px;
+}
+.ps-dim { color: var(--fg); opacity: .4; font-size: 11px; }
+
+/* ── Tags ─────────────────────────────────────────────────────────────── */
+.ps-tag {
+  font-size: 10px; padding: 1px 5px; border-radius: 4px;
+  background: rgba(139,148,158,.1); color: #6b7280; border: 1px solid rgba(139,148,158,.2);
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────── */
+.ps-card {
+  background: rgba(22,27,39,.75); backdrop-filter: blur(8px);
+  border: 1px solid rgba(42,51,71,.6); border-radius: 8px;
+  padding: 12px; display: flex; flex-direction: column; gap: 10px;
+  transition: border-color 200ms, box-shadow 200ms, transform 200ms;
+}
+.ps-card:hover { border-color: rgba(74,158,255,.4); box-shadow: 0 4px 20px rgba(74,158,255,.08); transform: translateY(-1px); }
+.ps-card-head { flex: 1; }
+.ps-card-meta { display: flex; flex-direction: column; gap: 4px; }
+.ps-card-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 2px; }
+.ps-card-name { font-size: 13px; font-weight: 600; color: #e2e8f0; }
+.ps-card-desc { font-size: 11px; color: #8b949e; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ps-card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.ps-card-foot { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px solid rgba(42,51,71,.35); gap: 6px; }
+.ps-card-stats { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ps-card-actions { display: flex; gap: 3px; }
+
+/* ── Status bar ───────────────────────────────────────────────────────── */
+.ps-status-bar { padding: 6px 16px; font-size: 11px; flex-shrink: 0; border-bottom: 1px solid rgba(42,51,71,.4); }
+
+/* ── Empty state ──────────────────────────────────────────────────────── */
+.ps-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 220px; gap: 10px; color: #8b949e; font-size: 13px; grid-column: 1 / -1;
+}
+
+/* ── Meta / var panels (editor) ───────────────────────────────────────── */
+.ps-meta-panel, .ps-vars-panel {
+  background: rgba(13,14,24,.9); border: 1px solid rgba(42,51,71,.6); border-radius: 6px;
+  padding: 12px; display: flex; flex-direction: column; gap: 8px;
+}
+.ps-vars-panel { border-color: rgba(45,212,191,.15); }
+
+/* ── Editor header ────────────────────────────────────────────────────── */
+.ps-editor-header {
+  display: flex; align-items: center; gap: 8px; padding: 8px 16px; flex-shrink: 0;
+  border-bottom: 1px solid rgba(42,51,71,.5); background: rgba(13,14,24,.8);
+}
+
+/* ── Run: step list item ──────────────────────────────────────────────── */
+.ps-step-list-item {
+  border: none; background: transparent; cursor: pointer; transition: background 100ms;
+}
+.ps-step-list-item:hover:not(:disabled) { background: rgba(74,158,255,.05) !important; }
+
+/* ── Run: step detail ─────────────────────────────────────────────────── */
+.ps-step-detail { height: 100%; }
+
+/* ── History card ─────────────────────────────────────────────────────── */
+.ps-hist-card { transition: border-color 150ms; }
+.ps-hist-card:hover { border-color: rgba(74,158,255,.3); }
+
+/* ── Run progress bar ─────────────────────────────────────────────────── */
+.ps-run-progress { padding: 8px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.ps-run-bar { display: flex; align-items: center; gap: 8px; }
+
+/* ── Dot track ────────────────────────────────────────────────────────── */
+.ps-dot { transition: all 200ms; flex-shrink: 0; }
+
+/* ── Util ─────────────────────────────────────────────────────────────── */
+.ps-center-msg { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; color: #8b949e; }
