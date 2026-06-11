@@ -750,6 +750,13 @@ app.include_router(setup_contacts_routes())
 from companion import setup_companion_routes
 app.include_router(setup_companion_routes())
 
+from routes.cyberapps_reportforge_routes import setup_cyberapps_reportforge_routes
+app.include_router(setup_cyberapps_reportforge_routes())
+
+# PlaybookStudio — VAPT playbook builder and runner (CyberOS native)
+from routes.cyberapps_playbookstudio_routes import setup_cyberapps_playbookstudio_routes
+app.include_router(setup_cyberapps_playbookstudio_routes())
+
 # ========= ROUTES (kept in app.py) =========
 
 def _serve_html_with_nonce(request: Request, file_path: str) -> HTMLResponse:
