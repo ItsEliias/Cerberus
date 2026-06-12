@@ -214,6 +214,13 @@
     })();
   </script>
   <link rel="stylesheet" href="/static/style.css">
+  <!-- jarvis-v2 design system (branch: design/jarvis-cerberus-skilled)
+       Loaded after style.css so jx2- tokens layer on top.
+       Skill-informed: frontend-design + ui-ux-pro-max + frontend-design-pro. -->
+  <link rel="stylesheet" href="/static/jarvis-v2/tokens.css">
+  <link rel="stylesheet" href="/static/jarvis-v2/components.css">
+  <link rel="stylesheet" href="/static/jarvis-v2/surfaces.css">
+  <script src="/static/jarvis-v2/effects.js"></script>
   <link rel="modulepreload" href="/static/app.js">
   <link rel="modulepreload" href="/static/js/chat.js">
   <link rel="modulepreload" href="/static/js/ui.js">
@@ -2432,5 +2439,13 @@
   });
 })();</script>
 <script nonce="{{CSP_NONCE}}">if('serviceWorker' in navigator){navigator.serviceWorker.register('/static/sw.js').catch(()=>{});}</script>
+<!-- jarvis-v2 init — activates body.jx2-active and wires bracket corner signature interaction -->
+<script nonce="{{CSP_NONCE}}">
+  (function() {
+    if (typeof JX2 !== 'undefined' && JX2.init) {
+      JX2.init();
+    }
+  })();
+</script>
 </body>
 </html>
