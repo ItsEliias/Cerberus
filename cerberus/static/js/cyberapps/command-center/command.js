@@ -234,10 +234,11 @@ export function buildCommandTab() {
   return `
 <div class="cc-command-tab">
   <div class="cc-top-row">
-    <div class="cc-card cc-card-orb">
+    <div class="cc-card cc-card-orb-slim">
       <div class="cc-card-title">Cerberus Core</div>
-      <div class="cc-orb-wrap" id="cc-orb-mount">
-        ${GLOBE_HTML}
+      <div class="cc-core-status" id="cc-orb-mount">
+        <div class="cc-core-ring"></div>
+        <div class="cc-core-state-text">CORE</div>
         <div class="cc-orb-status idle">OFFLINE</div>
       </div>
     </div>
@@ -265,9 +266,11 @@ export function buildCommandTab() {
       ${['cpu','ram','latency'].map(k => _sparkSvg(k)).join('')}
     </div>
   </div>
-  <div class="cc-agents">
-    <div class="cc-section-header">Active Tasks / Agents</div>
-    <div id="cc-agents-table"><div class="cc-empty">Loading...</div></div>
+  <div class="cc-hero-globe">
+    <div class="cc-hero-globe-stage" id="cc-hero-globe-mount">
+      ${GLOBE_HTML}
+    </div>
+    <div class="cc-hero-globe-state idle" id="cc-hero-globe-state">CERBERUS CORE — IDLE</div>
   </div>
 </div>`.trim();
 }
