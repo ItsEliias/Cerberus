@@ -28,7 +28,7 @@ from src.claude_subscription import (
 
 logger = logging.getLogger(__name__)
 
-_MODELS = ["claude-sonnet-4-6", "claude-opus-4", "claude-haiku-4", "claude-sonnet-4-5"]
+_MODELS = ["opus", "sonnet", "haiku", "fable"]
 
 
 def _get_endpoint(db, owner: Optional[str]) -> Optional[ModelEndpoint]:
