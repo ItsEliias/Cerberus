@@ -598,6 +598,54 @@
 .cc-action-activate { border-color: #2ecc71; color: #2ecc71; opacity: 0.8; }
 .cc-action-activate:hover { background: rgba(46,204,113,0.12); border-color: #2ecc71; color: #2ecc71; }
 .cc-action-idle     { border-color: var(--cc-border); }
+.cc-action-invoke   { border-color: #9b59b6; color: #9b59b6; opacity: 0.8; }
+.cc-action-invoke:hover { background: rgba(155,89,182,0.12); border-color: #9b59b6; color: #9b59b6; opacity: 1; }
+.cc-action-save     { border-color: #3498db; color: #3498db; opacity: 0.9; margin-top: 6px; }
+.cc-action-save:hover { background: rgba(52,152,219,0.12); }
+
+/* -- Invoke pane -- */
+.cc-invoke-pane {
+  margin-top: 8px; padding: 8px; border-top: 1px solid var(--cc-border);
+  background: rgba(0,0,0,0.2); border-radius: 2px;
+}
+.cc-invoke-input-row { display: flex; gap: 6px; align-items: center; }
+.cc-invoke-input {
+  flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--cc-border);
+  color: var(--cc-fg); font-family: 'JetBrains Mono','Fira Code',monospace;
+  font-size: 10px; padding: 4px 8px; border-radius: 2px; outline: none;
+}
+.cc-invoke-input:focus { border-color: #9b59b6; }
+.cc-invoke-result {
+  margin-top: 6px; font-size: 10px; opacity: 0.8; white-space: pre-wrap;
+  max-height: 140px; overflow-y: auto; line-height: 1.5;
+  font-family: 'JetBrains Mono','Fira Code',monospace;
+}
+
+/* -- Agent details overlay -- */
+.cc-agent-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;
+}
+.cc-overlay-panel {
+  position: relative; background: var(--cc-bg, #0a0a0f);
+  border: 1px solid var(--cc-border); min-width: 360px; max-width: 540px; width: 90%;
+  padding: 16px; border-radius: 3px;
+}
+.cc-overlay-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.cc-overlay-title { font-family: 'Orbitron', 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.1em; color: var(--cc-crimson); }
+.cc-overlay-close { font-size: 9px; background: transparent; border: 1px solid var(--cc-border); color: var(--cc-fg); cursor: pointer; padding: 2px 8px; font-family: inherit; opacity: 0.6; }
+.cc-overlay-close:hover { opacity: 1; border-color: var(--cc-crimson); color: var(--cc-crimson); }
+.cc-overlay-body { display: flex; flex-direction: column; gap: 8px; }
+.cc-overlay-row { display: flex; gap: 10px; align-items: flex-start; font-size: 11px; }
+.cc-overlay-lbl { min-width: 90px; opacity: 0.5; font-size: 10px; padding-top: 2px; }
+.cc-overlay-prompt-row { flex-direction: column; }
+.cc-overlay-prompt {
+  width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.05);
+  border: 1px solid var(--cc-border); color: var(--cc-fg);
+  font-family: 'JetBrains Mono','Fira Code',monospace;
+  font-size: 10px; padding: 6px; border-radius: 2px; resize: vertical; outline: none;
+}
+.cc-overlay-prompt:focus { border-color: var(--cc-crimson); }
 
 /* -- Theme / Motion -- */
 :root.light .cc-shell::before { display: none; }
