@@ -737,6 +737,43 @@
 .cc-overlay-body { display: flex; flex-direction: column; gap: 8px; }
 .cc-overlay-row { display: flex; gap: 10px; align-items: flex-start; font-size: 11px; }
 .cc-overlay-lbl { min-width: 90px; opacity: 0.5; font-size: 10px; padding-top: 2px; }
+.cc-overlay-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); }
+
+/* NEW AGENT button in council header */
+.cc-new-agent-btn {
+  margin-left: auto; padding: 4px 12px; font-size: 9px; letter-spacing: 0.12em;
+  background: rgba(0,0,0,0.55); border: 1px solid var(--cc-crimson); color: var(--cc-crimson);
+  cursor: pointer; font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
+  box-shadow: 0 0 6px var(--cc-crimson-glow), inset 0 0 4px rgba(192,57,43,0.15);
+  transition: all 0.15s;
+}
+.cc-new-agent-btn:hover { background: var(--cc-crimson); color: #fff; }
+.cc-action-cancel {
+  padding: 5px 14px; font-size: 9px; letter-spacing: 0.12em; cursor: pointer;
+  background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--cc-fg);
+  font-family: 'JetBrains Mono', monospace; text-transform: uppercase;
+}
+.cc-action-cancel:hover { border-color: rgba(255,255,255,0.4); }
+
+/* New-agent form fields */
+.cc-na-field { display: flex; flex-direction: column; gap: 4px; }
+.cc-na-field > span {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em;
+  color: var(--cc-fg); opacity: 0.55; text-transform: uppercase;
+}
+.cc-na-field input,
+.cc-na-field select,
+.cc-na-field textarea {
+  background: rgba(0,0,0,0.55); border: 1px solid var(--cc-border); color: var(--cc-fg);
+  padding: 6px 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  border-radius: 2px; outline: none;
+}
+.cc-na-field input:focus,
+.cc-na-field select:focus,
+.cc-na-field textarea:focus {
+  border-color: var(--cc-crimson); box-shadow: 0 0 6px var(--cc-crimson-glow);
+}
+.cc-na-err { color: var(--cc-crimson); font-size: 10px; padding: 6px 0; }
 .cc-overlay-prompt-row { flex-direction: column; }
 .cc-overlay-prompt {
   width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.05);

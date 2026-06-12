@@ -25,10 +25,12 @@ export function destroy() {
 }
 
 async function _fetchVitals(cb) {
+  // Live psutil-backed vitals. Operations endpoints from the CyberApps spike
+  // were stripped during the revert — these are the canonical paths now.
   try {
     const [vr, tr] = await Promise.all([
-      fetch(`${BASE}/api/cyberapps/operations/vitals`),
-      fetch(`${BASE}/api/cyberapps/operations/timeseries`),
+      fetch(`${BASE}/api/system/vitals`,     { credentials: 'same-origin' }),
+      fetch(`${BASE}/api/system/timeseries`, { credentials: 'same-origin' }),
     ]);
     if (vr.ok && cb.onVitals)      cb.onVitals(await vr.json());
     if (tr.ok && cb.onTimeseries)  cb.onTimeseries(await tr.json());

@@ -71,25 +71,22 @@ function _buildVitals() {
  *  Worker timer deviation as a proxy (shows "—" if unavailable).
  */
 async function _refreshVitals() {
-  // Latency: ping /api/version
-  let latMs = null;
+  // Real host metrics via psutil — /api/system/vitals
+  let cpuPct = null, ramPct = null, latMs = null;
   try {
-    const t0 = performance.now();
-    await fetch(`${API}/api/version`, { credentials: 'same-origin' });
-    latMs = Math.round(performance.now() - t0);
+    const res = await fetch(`${API}/api/system/vitals`, { credentials: 'same-origin' });
+    if (res.ok) {
+      const v = await res.json();
+      cpuPct = v.cpu_percent != null ? Math.round(v.cpu_percent) : null;
+      ramPct = v.ram_percent != null ? Math.round(v.ram_percent) : null;
+      latMs  = v.latency_ms  != null ? Math.round(v.latency_ms)  : null;
+    }
   } catch (_) {}
 
-  // RAM: browser performance.memory (Chrome only; undefined elsewhere)
-  let ramPct = null;
-  if (window.performance && performance.memory) {
-    const { usedJSHeapSize, jsHeapSizeLimit } = performance.memory;
-    if (jsHeapSizeLimit > 0) ramPct = Math.round((usedJSHeapSize / jsHeapSizeLimit) * 100);
-  }
-
-  const latPct = latMs !== null ? Math.min(100, Math.round((latMs / 800) * 100)) : null;
+  const latPct = latMs !== null ? Math.min(100, Math.round((latMs / 50) * 100)) : null;
 
   const updates = [
-    { id: 'dash-g-cpu', pct: null },         // CPU not available without backend
+    { id: 'dash-g-cpu', pct: cpuPct },
     { id: 'dash-g-ram', pct: ramPct },
     { id: 'dash-g-lat', pct: latPct },
   ];
