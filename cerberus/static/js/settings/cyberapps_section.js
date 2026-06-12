@@ -68,6 +68,21 @@
     if (window.uiModule && typeof window.uiModule.showToast === 'function') window.uiModule.showToast(msg);
   }
 
+  function _applyReducedMotion(enabled) {
+    if (enabled) {
+      document.documentElement.classList.add('jx-reduced-motion');
+    } else {
+      document.documentElement.classList.remove('jx-reduced-motion');
+    }
+  }
+
+  // Restore reduced-motion preference on page load (before settings panel opens)
+  (function _restoreReducedMotion() {
+    if (localStorage.getItem('jx-reduced-motion') === '1') {
+      document.documentElement.classList.add('jx-reduced-motion');
+    }
+  }());
+
   // ── Inject nav entry between Shortcuts divider and Account ────────────────
   function _injectNavEntry(modalEl) {
     if (modalEl.querySelector('[data-settings-tab="cyberapps"]')) return;
@@ -115,6 +130,11 @@
           '<div><div class="admin-toggle-label">Show Cyber Apps in sidebar</div>' +
           '<div class="admin-toggle-sub">Master switch — hides the entire Cyber Apps sidebar entry if off</div></div>' +
           '<label class="admin-switch"><input type="checkbox" id="set-cyberapps-show-sidebar" checked><span class="admin-slider"></span></label>' +
+        '</div>' +
+        '<div class="admin-toggle-row">' +
+          '<div><div class="admin-toggle-label">Reduced motion (disable JARVIS effects)</div>' +
+          '<div class="admin-toggle-sub">Stops all animations, glows, and scanlines across the Cyber Apps suite. Mirrors the OS prefers-reduced-motion setting.</div></div>' +
+          '<label class="admin-switch"><input type="checkbox" id="set-cyberapps-reduced-motion"><span class="admin-slider"></span></label>' +
         '</div>' +
       '</div>';
 
@@ -243,6 +263,19 @@
         if (btn) btn.style.display = sidebarToggle.checked ? '' : 'none';
         _saveGlobal('showSidebar', sidebarToggle.checked);
         showToast('Cyber Apps sidebar ' + (sidebarToggle.checked ? 'shown' : 'hidden'));
+      });
+    }
+
+    // JARVIS: reduced-motion master toggle
+    const reducedMotionToggle = panelEl.querySelector('#set-cyberapps-reduced-motion');
+    if (reducedMotionToggle) {
+      // Seed initial state from localStorage
+      reducedMotionToggle.checked = localStorage.getItem('jx-reduced-motion') === '1';
+      _applyReducedMotion(reducedMotionToggle.checked);
+      reducedMotionToggle.addEventListener('change', function () {
+        _applyReducedMotion(reducedMotionToggle.checked);
+        localStorage.setItem('jx-reduced-motion', reducedMotionToggle.checked ? '1' : '0');
+        showToast('JARVIS effects ' + (reducedMotionToggle.checked ? 'disabled' : 'enabled'));
       });
     }
     panelEl.querySelectorAll('.ca-toggle-show-pill').forEach(function (el) {

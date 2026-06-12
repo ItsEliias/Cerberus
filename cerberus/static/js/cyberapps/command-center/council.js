@@ -31,6 +31,10 @@ export async function loadCouncil(root) {
       return;
     }
     container.innerHTML = members.map(m => _rowHtml(m)).join('');
+    // JARVIS: stagger-in council rows
+    if (window.JX && typeof window.JX.staggerIn === 'function') {
+      window.JX.staggerIn(container, '.cc-council-row', 0);
+    }
     if (note) note.textContent = data.toggle_supported
       ? ''
       : '(read-only) — No agent-toggle endpoint found; activate/idle buttons are display-only.';
@@ -62,11 +66,14 @@ function _rowHtml(m) {
   const btnClass = m.is_active ? '' : 'active-btn';
   const btnLabel = m.is_active ? 'IDLE' : 'ACTIVATE';
   const btnAction = m.is_active ? 'idle' : 'activate';
+  const scoreNum = typeof m.score === 'number'
+    ? `<span class="cc-council-score jx-number-tick" data-jx-tick="${m.score}">${m.score}</span>`
+    : `<span class="cc-council-score">${_esc(m.status || status)}</span>`;
   return `<div class="cc-council-row">
-    <span class="cc-dot ${dotClass}"></span>
+    <span class="cc-dot jx-status-dot ${dotClass}"></span>
     <span class="cc-council-role">${_esc(m.name)}</span>
     <span class="cc-council-type">${_esc(m.model || '—')}</span>
-    <span class="cc-council-score">${_esc(m.status || status)}</span>
+    ${scoreNum}
     <button class="cc-council-btn ${btnClass}" data-id="${_esc(m.id)}" data-action="${btnAction}">
       ${btnLabel}
     </button>

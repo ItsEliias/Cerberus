@@ -302,3 +302,16 @@
 :root.light .ops-shell::before { display: none; }
 :root.light .ops-card { background: rgba(0,0,0,0.04); }
 :root.light .ops-swarm-num { color: var(--red, #c0392b); }
+
+/* ── JARVIS polish ────────────────────────────────────────────────────────── */
+.ops-card {
+  border-color: color-mix(in srgb, var(--red, #c0392b) 18%, var(--border, #3a2a2a));
+  transition: box-shadow 0.25s ease;
+}
+.ops-card:hover {
+  box-shadow: 0 0 8px rgba(192, 57, 43, 0.25);
+}
+.ops-swarm-num {
+  font-variant-numeric: tabular-nums;
+}
+:root.jx-reduced-motion .ops-card { transition: none; box-shadow: none; }

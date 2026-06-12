@@ -200,3 +200,94 @@
 /* Light theme */
 :root.light .cc-shell::before { display: none; }
 :root.light .cc-card { background: rgba(0,0,0,0.04); }
+
+/* ── JARVIS polish — Command Center augments ───────────────────────────────── */
+
+/* COMMAND tab: Cerberus Core card gets orb-class glow enhancement */
+#cc-orb-mount {
+  position: relative;
+  padding: 8px 0;
+}
+
+/* Stronger glow on vitals dials */
+.cc-dial-wrap {
+  position: relative;
+  transition: filter 0.3s ease;
+}
+.cc-dial-wrap:hover {
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+/* Swarm health numbers: number-tick class */
+.cc-swarm-num {
+  transition: color 0.2s ease;
+}
+
+/* Sparkline containers: cursor support */
+.cc-spark-wrap {
+  position: relative;
+  overflow: visible;
+}
+
+/* COMMAND tab card: edge glow on Cerberus Core */
+.cc-top-row > .cc-card:first-child {
+  border-color: color-mix(in srgb, var(--red, #c0392b) 40%, transparent);
+  box-shadow: 0 0 8px rgba(192, 57, 43, 0.45),
+              inset 0 0 12px rgba(192, 57, 43, 0.04);
+  transition: box-shadow 0.25s ease;
+}
+
+/* COUNCIL tab: stagger-in rows */
+.cc-council-row {
+  opacity: 1; /* will be set by jxStaggerIn */
+  transition: opacity 0.15s ease;
+}
+
+/* Council rows: scanning ring on active agents */
+.cc-council-row .cc-dot.active {
+  box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6);
+  animation: cc-council-ripple 1.8s ease-out infinite;
+}
+
+@keyframes cc-council-ripple {
+  0%   { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); }
+  70%  { box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+}
+
+/* WORKSPACE tab: edge glow on workspace items */
+.cc-ws-item-row {
+  border-radius: 2px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.cc-ws-item-row:hover {
+  box-shadow: 0 0 4px rgba(192, 57, 43, 0.3);
+  opacity: 1;
+}
+
+/* FINANCE tab: pulsing no-data badge */
+.cc-finance-stub-banner {
+  position: relative;
+}
+
+/* ASSISTANT tab: scanlines on chat history */
+.cc-chat-history {
+  position: relative;
+}
+.cc-chat-history::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: repeating-linear-gradient(
+    to bottom, transparent 0px, transparent 3px,
+    rgba(0,0,0,0.035) 3px, rgba(0,0,0,0.035) 4px
+  );
+}
+.cc-chat-history > * { position: relative; z-index: 1; }
+
+/* Reduced-motion overrides */
+:root.jx-reduced-motion .cc-council-row .cc-dot.active { animation: none; box-shadow: none; }
+:root.jx-reduced-motion .cc-dial-wrap:hover { filter: none; }
+:root.jx-reduced-motion .cc-top-row > .cc-card:first-child { box-shadow: none; }

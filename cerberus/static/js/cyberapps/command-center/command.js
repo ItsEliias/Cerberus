@@ -74,6 +74,18 @@ function _updateSparklines(container, series) {
   });
 }
 
+// ---- JARVIS helpers ----
+
+function _jxAnimateNum(el, toVal, suffix) {
+  if (!el) return;
+  if (window.JX && typeof window.JX.animateNumber === 'function') {
+    const fromVal = parseFloat(el.textContent.replace(/[^0-9.-]/g, '')) || 0;
+    window.JX.animateNumber(el, fromVal, toVal, 700, suffix || '');
+  } else {
+    el.textContent = (toVal < 0 ? '—' : toVal) + (suffix || '');
+  }
+}
+
 // ---- Build HTML ----
 
 export function buildCommandTab() {
@@ -90,9 +102,9 @@ export function buildCommandTab() {
     <div class="cc-card">
       <div class="cc-card-title">Swarm Health</div>
       <div class="cc-swarm-grid">
-        <div><div class="cc-swarm-num" id="sw-active">—</div><div class="cc-swarm-lbl">Active</div></div>
-        <div><div class="cc-swarm-num" id="sw-total">—</div><div class="cc-swarm-lbl">Total</div></div>
-        <div><div class="cc-swarm-num" id="sw-queued">—</div><div class="cc-swarm-lbl">Running</div></div>
+        <div><div class="cc-swarm-num jx-number-tick" id="sw-active">—</div><div class="cc-swarm-lbl">Active</div></div>
+        <div><div class="cc-swarm-num jx-number-tick" id="sw-total">—</div><div class="cc-swarm-lbl">Total</div></div>
+        <div><div class="cc-swarm-num jx-number-tick" id="sw-queued">—</div><div class="cc-swarm-lbl">Running</div></div>
       </div>
     </div>
     <div class="cc-card">
@@ -138,13 +150,31 @@ export function applyVitals(root, v) {
 
 export function applyTimeseries(root, ts) {
   const s = root.querySelector('#cc-sparklines');
-  if (s) _updateSparklines(s, ts);
+  if (!s) return;
+  _updateSparklines(s, ts);
+  // Attach / update sparkline cursors via JX
+  if (window.JX) {
+    ['cpu', 'ram', 'latency'].forEach(key => {
+      const svg = s.querySelector(`.cc-spark-svg`);
+      const poly = s.querySelector(`.cc-spark-line-${key}`);
+      if (!poly) return;
+      const parentSvg = poly.closest('svg');
+      if (!parentSvg) return;
+      window.JX.addSparkCursor(parentSvg, SPARK_COLORS[key]);
+      window.JX.updateSparkCursor(parentSvg);
+    });
+  }
 }
 
 export function applySwarm(root, sw, orbWrap) {
   ['active','total','queued'].forEach(k => {
     const el = root.querySelector(`#sw-${k}`);
-    if (el) el.textContent = sw[k] != null ? sw[k] : '—';
+    if (!el) return;
+    if (sw[k] != null) {
+      _jxAnimateNum(el, sw[k]);
+    } else {
+      el.textContent = '—';
+    }
   });
   if (orbWrap) {
     const state = sw.status === 'DEGRADED' ? 'degraded'
