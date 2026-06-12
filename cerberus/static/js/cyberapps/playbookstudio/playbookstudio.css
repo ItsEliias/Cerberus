@@ -248,3 +248,15 @@
 .ps-editor-body::-webkit-scrollbar-thumb,
 #ps-run-sidebar::-webkit-scrollbar-thumb,
 #ps-run-detail::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 4px; }
+
+/* ── JARVIS polish ────────────────────────────────────────────────────────── */
+.ps-card, .ps-playbook-card {
+  border-color: color-mix(in srgb, var(--red, #c0392b) 18%, var(--border, #3a2a2a));
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.ps-card:hover, .ps-playbook-card:hover {
+  box-shadow: 0 0 8px rgba(192, 57, 43, 0.25);
+  border-color: color-mix(in srgb, var(--red, #c0392b) 40%, transparent);
+}
+:root.jx-reduced-motion .ps-card,
+:root.jx-reduced-motion .ps-playbook-card { box-shadow: none; transition: none; }

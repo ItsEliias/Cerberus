@@ -1,0 +1,318 @@
+/*
+ * jarvis-effects.css — Shared JARVIS / Iron Man aesthetic primitives
+ *
+ * Reusable classes for the Cyber Apps suite. All animations respect
+ * prefers-reduced-motion. Use CSS var --stagger-index on children
+ * to drive staggered entrance timing.
+ *
+ * Local vars (override at :root or component level as needed):
+ *   --jx-accent       crimson highlight
+ *   --jx-glow-color   glow shadow colour
+ *   --jx-glow-radius  default glow spread
+ *   --jx-scan-opacity scanline overlay opacity
+ */
+
+:root {
+  --jx-accent:       var(--red, #c0392b);
+  --jx-glow-color:   rgba(192, 57, 43, 0.55);
+  --jx-glow-radius:  8px;
+  --jx-scan-opacity: 0.055;
+  --jx-tile-dur:     320ms;
+  --jx-tile-dist:    12px;
+}
+
+/* ── Reduced-motion master switch ──────────────────────────────────────────── */
+/* Applied via Settings toggle: document.documentElement.classList.add('jx-reduced-motion') */
+.jx-reduced-motion *,
+.jx-reduced-motion *::before,
+.jx-reduced-motion *::after {
+  animation:  none !important;
+  transition: none !important;
+  box-shadow: none !important;
+  filter:     none !important;
+}
+
+/* ── Keyframes ─────────────────────────────────────────────────────────────── */
+
+@keyframes jx-orb-pulse {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50%       { opacity: 1;    transform: scale(1.04); }
+}
+
+@keyframes jx-orb-ring {
+  0%   { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.4);  opacity: 0; }
+}
+
+@keyframes jx-pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1; }
+}
+
+@keyframes jx-shimmer-sweep {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+@keyframes jx-tile-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--jx-tile-dist, 12px));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes jx-status-ripple {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+@keyframes jx-number-flash {
+  0%   { color: #fff; text-shadow: 0 0 8px var(--jx-accent); }
+  100% { color: inherit; text-shadow: none; }
+}
+
+@keyframes jx-scan-sweep {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 4px; }
+}
+
+@keyframes jx-border-breathe {
+  0%, 100% { border-color: color-mix(in srgb, var(--jx-accent) 35%, transparent); }
+  50%       { border-color: color-mix(in srgb, var(--jx-accent) 70%, transparent); }
+}
+
+/* ── prefers-reduced-motion fallbacks ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .jx-orb,
+  .jx-pulse,
+  .jx-tile-in,
+  .jx-status-dot::after,
+  .jx-sparkline-cursor,
+  .jx-shimmer::before,
+  .jx-edge-glow {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .jx-edge-glow {
+    box-shadow: none !important;
+  }
+}
+
+/* ── .jx-orb — pulsing radial orb ─────────────────────────────────────────── */
+.jx-orb {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: jx-orb-pulse 2.8s ease-in-out infinite;
+}
+
+/* Scan ring radiates outward from the orb */
+.jx-orb::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--jx-accent);
+  border-radius: 50%;
+  animation: jx-orb-ring 2s ease-out infinite;
+  pointer-events: none;
+}
+
+/* ── .jx-edge-glow — container border + outer glow ────────────────────────── */
+.jx-edge-glow {
+  border: 1px solid color-mix(in srgb, var(--jx-accent) 40%, transparent);
+  box-shadow: 0 0 var(--jx-glow-radius) var(--jx-glow-color),
+              inset 0 0 12px rgba(192, 57, 43, 0.04);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.jx-edge-glow:hover {
+  box-shadow: 0 0 calc(var(--jx-glow-radius) * 1.8) var(--jx-glow-color),
+              inset 0 0 18px rgba(192, 57, 43, 0.07);
+  border-color: color-mix(in srgb, var(--jx-accent) 65%, transparent);
+}
+
+/* ── .jx-scanlines — subtle repeating scan-line overlay ───────────────────── */
+.jx-scanlines {
+  position: relative;
+}
+
+.jx-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, var(--jx-scan-opacity)) 3px,
+    rgba(0, 0, 0, var(--jx-scan-opacity)) 4px
+  );
+}
+
+/* ── .jx-pulse — slow color/opacity pulse for status indicators ────────────── */
+.jx-pulse {
+  animation: jx-pulse-glow 2.5s ease-in-out infinite;
+}
+
+/* ── .jx-tile-in — stagger fade+slide entrance ────────────────────────────── */
+/* Set --stagger-index on each child for staggered delay. */
+.jx-tile-in {
+  opacity: 0;
+  animation: jx-tile-enter var(--jx-tile-dur) ease-out both;
+  animation-delay: calc(var(--stagger-index, 0) * 55ms);
+}
+
+/* ── .jx-shimmer — sweeping shine on hover ────────────────────────────────── */
+.jx-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.jx-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.jx-shimmer:hover::before {
+  animation: jx-shimmer-sweep 0.55s ease-out forwards;
+}
+
+/* ── .jx-section-header — uppercase tracking-widest with hairline rule ─────── */
+.jx-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jx-accent);
+  opacity: 0.8;
+  padding-bottom: 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--jx-accent) 25%, transparent);
+  margin-bottom: 10px;
+}
+
+/* Icon socket — sibling svg auto-picks up current color */
+.jx-section-header svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* ── .jx-status-dot — agent/process dot with ripple ring ───────────────────── */
+.jx-status-dot {
+  position: relative;
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Ripple ring on active status dots */
+.jx-status-dot.active::after,
+.jx-status-dot.running::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  animation: jx-status-ripple 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+/* ── .jx-number-tick — tabular-nums with glow flash on change ─────────────── */
+.jx-number-tick {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+.jx-number-tick.ticking {
+  animation: jx-number-flash 0.4s ease-out forwards;
+}
+
+/* ── .jx-sparkline-cursor — animated dot at leading edge ───────────────────── */
+.jx-sparkline-cursor {
+  fill: var(--jx-accent);
+  animation: jx-pulse-glow 1.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 3px var(--jx-accent));
+}
+
+/* ── .jx-pill-glow — active pill enhancement ───────────────────────────────── */
+.jx-pill-glow.active {
+  box-shadow: 0 0 8px var(--jx-glow-color),
+              0 0 2px var(--jx-accent);
+  animation: jx-border-breathe 3s ease-in-out infinite;
+}
+
+/* ── Panel slide-in animation ──────────────────────────────────────────────── */
+@keyframes jx-panel-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.jx-panel-enter {
+  animation: jx-panel-slide-in 0.25s ease-out both;
+}
+
+/* ── Finance "no data" pulse badge ────────────────────────────────────────── */
+.jx-no-data-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--jx-accent) 40%, transparent);
+  border-radius: 3px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--jx-accent);
+  animation: jx-border-breathe 2.5s ease-in-out infinite;
+}
+
+.jx-no-data-badge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--jx-accent);
+  animation: jx-pulse-glow 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* Light theme: dial down most effects */
+:root.light .jx-scanlines::after {
+  --jx-scan-opacity: 0.025;
+}
+:root.light .jx-edge-glow {
+  box-shadow: 0 0 4px rgba(192, 57, 43, 0.2);
+}
+:root.light .jx-section-header {
+  opacity: 1;
+}

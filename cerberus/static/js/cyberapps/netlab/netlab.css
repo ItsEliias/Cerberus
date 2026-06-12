@@ -307,3 +307,26 @@
 .nl-nav-btn:hover { color: var(--fg,#c5c9d0); background: rgba(255,255,255,0.04); }
 .nl-nav-active { color: #5ec4ff; border-left: 2px solid #5ec4ff; padding-left: 12px; }
 .nl-nav-icon   { width: 14px; text-align: center; font-size: 12px; }
+
+/* ── JARVIS polish ────────────────────────────────────────────────────────── */
+/* Main detail pane: edge glow border + scanlines overlay */
+.nl-detail-pane {
+  border-left: 1px solid color-mix(in srgb, var(--red, #c0392b) 25%, transparent);
+  box-shadow: inset 2px 0 12px rgba(192, 57, 43, 0.04);
+  position: relative;
+}
+
+/* Progress stat numbers: tabular-nums */
+.nl-stat-num, .nl-progress-pct, .nl-count-badge {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Section headers: adopt jx-section-header energy */
+.nl-section-title {
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--red, #c0392b);
+  opacity: 0.8;
+}
+
+:root.jx-reduced-motion .nl-detail-pane { box-shadow: none; }

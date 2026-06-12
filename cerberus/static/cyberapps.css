@@ -239,3 +239,64 @@
 :root.light #cyber-apps-content {
   background: var(--bg, #f5f5f5);
 }
+
+/* ── JARVIS polish additions ─────────────────────────────────────────────── */
+
+/* Panel slide-in from left on open */
+#cyber-apps-panel.jx-panel-enter {
+  animation: jx-panel-slide-in 0.25s ease-out both;
+}
+
+/* Content mount area: subtle scanlines overlay via jx-scanlines class */
+#cyber-apps-content {
+  position: relative;
+}
+
+/* Active pill: crimson edge glow */
+.cyber-apps-pill.active {
+  box-shadow: 0 0 8px var(--jx-glow-color, rgba(192, 57, 43, 0.55)),
+              0 0 2px var(--jx-accent, #c0392b);
+}
+
+/* Pill nav scanline overlay (very subtle) */
+.cyber-apps-pill-nav-bar {
+  position: relative;
+  overflow: hidden;
+}
+
+.cyber-apps-pill-nav-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px, transparent 3px,
+    rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px
+  );
+}
+
+/* Shimmer on pill hover — uses position:relative already on .cyber-apps-pill */
+.cyber-apps-pill {
+  overflow: hidden;
+}
+
+.cyber-apps-pill::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.cyber-apps-pill:hover::before {
+  animation: jx-shimmer-sweep 0.5s ease-out forwards;
+}
+
+/* Respect reduced-motion master switch */
+:root.jx-reduced-motion .cyber-apps-pill::before { display: none; }
+:root.jx-reduced-motion .cyber-apps-pill.active   { box-shadow: none; }

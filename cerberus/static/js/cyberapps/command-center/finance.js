@@ -15,7 +15,8 @@ export function buildFinanceTab() {
         <line x1="12" y1="8" x2="12" y2="12"/>
         <line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
-      <span>(no data source connected) — Finance tab is a placeholder. Connect a financial data source to populate real metrics.</span>
+      <span class="jx-no-data-badge">(no data source connected)</span>
+      <span style="font-size:10px;opacity:0.7;margin-left:8px;">Finance tab is a placeholder. Connect a financial data source to populate real metrics.</span>
     </div>
 
     <div class="cc-section-header">Finance Overview</div>

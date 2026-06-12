@@ -60,6 +60,11 @@ export async function loadWorkspace(root) {
 
   body.innerHTML = `<div class="cc-ws-grid">${sections.join('')}</div>`;
 
+  // JARVIS: stagger-in workspace items
+  if (window.JX && typeof window.JX.staggerIn === 'function') {
+    window.JX.staggerIn(body, '.cc-ws-item', 0);
+  }
+
   // Wire clicks to open the right Cerberus section
   body.querySelectorAll('.cc-ws-item-row[data-link]').forEach(row => {
     row.addEventListener('click', () => {
