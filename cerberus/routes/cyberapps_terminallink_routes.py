@@ -4,11 +4,15 @@ routes/cyberapps_terminallink_routes.py
 TerminalLink — Python PTY WebSocket bridge native to Cerberus.
 
 Security gate: the WebSocket handler validates the Cerberus session cookie
-via get_current_user() BEFORE PtyProcess.spawn().  Unauthenticated upgrades
-are closed with code 4401 — no PTY is ever spawned for unauthed clients.
+directly from the WS cookie jar BEFORE PtyProcess.spawn().  Starlette's
+BaseHTTPMiddleware does NOT run for WebSocket upgrade requests, so
+request.state.current_user is never set for WS connections.  We therefore
+read and validate the cerberus_session cookie ourselves against the
+app-level auth_manager.
 
 PTY management:
-  - ptyprocess.PtyProcess.spawn() launches /bin/bash as the container user.
+  - ptyprocess.PtyProcess.spawn() launches the user's shell (TERMINALLINK_DEFAULT_SHELL
+    env var, or SHELL env var, fallback to /bin/sh — always present).
   - Active PTYs are tracked in a module-level dict keyed by WebSocket id.
   - Resize control messages: {"type":"resize","cols":N,"rows":M}
   - On disconnect/error: pty.terminate() is called to prevent orphans.
@@ -30,9 +34,18 @@ logger = logging.getLogger(__name__)
 # PTY tracking — keyed by id(websocket) to survive reconnects
 _active_ptys: Dict[int, object] = {}
 
-_DEFAULT_SHELL = os.environ.get("SHELL", "/bin/bash")
+# Shell resolution: operator sets TERMINALLINK_DEFAULT_SHELL to override.
+# Fallback chain: env SHELL → /bin/bash → /bin/sh (always present).
+_DEFAULT_SHELL = (
+    os.environ.get("TERMINALLINK_DEFAULT_SHELL")
+    or os.environ.get("SHELL")
+    or ("/bin/bash" if os.path.exists("/bin/bash") else "/bin/sh")
+)
 _DEFAULT_COLS = 80
 _DEFAULT_ROWS = 24
+
+# Cookie name must match app.py / auth_routes.py SESSION_COOKIE constant.
+_SESSION_COOKIE = "cerberus_session"
 
 
 def setup_cyberapps_terminallink_routes() -> APIRouter:
@@ -40,21 +53,21 @@ def setup_cyberapps_terminallink_routes() -> APIRouter:
 
     @router.websocket("/ws")
     async def terminallink_ws(websocket: WebSocket):
-        """WebSocket PTY bridge — session-cookie auth gate BEFORE pty.spawn()."""
+        """WebSocket PTY bridge — session-cookie auth gate BEFORE pty.spawn().
+
+        NOTE: Starlette BaseHTTPMiddleware does not dispatch for WebSocket
+        upgrade requests, so request.state.current_user is never populated.
+        Auth is performed by reading cerberus_session directly from the WS
+        cookie jar and validating against app.state.auth_manager.
+        """
         try:
             from ptyprocess import PtyProcess  # type: ignore[import]
         except ImportError:
             await websocket.close(code=1011, reason="ptyprocess not installed")
             return
 
-        # Validate session cookie BEFORE accepting the WebSocket upgrade.
-        # WebSocket objects expose cookies via websocket.cookies (Starlette).
-        # The auth middleware runs on HTTP upgrade so request.state.current_user
-        # is available — but WebSocket handlers receive a WebSocket, not Request.
-        # We build a minimal duck-typed request wrapper so get_current_user works.
         user = _get_ws_user(websocket)
         if not user:
-            # Reject before any PTY resource is touched
             await websocket.close(code=4401, reason="Unauthorized")
             return
 
@@ -63,9 +76,25 @@ def setup_cyberapps_terminallink_routes() -> APIRouter:
         pty_proc: object | None = None
 
         try:
-            pty_proc = await asyncio.to_thread(
-                _spawn_pty, _DEFAULT_COLS, _DEFAULT_ROWS
-            )
+            try:
+                pty_proc = await asyncio.to_thread(
+                    _spawn_pty, _DEFAULT_COLS, _DEFAULT_ROWS
+                )
+            except Exception as spawn_err:
+                err_msg = str(spawn_err)
+                if "ptmx" in err_msg.lower() or "permission" in err_msg.lower():
+                    reason = "PTY permission denied — container missing tty group"
+                elif "not found" in err_msg.lower() or "no such file" in err_msg.lower():
+                    reason = f"Shell not found: {_DEFAULT_SHELL}"
+                else:
+                    reason = f"PTY spawn failed: {err_msg}"
+                logger.error("[terminallink] spawn failed: %s", spawn_err)
+                await websocket.send_text(
+                    '{"type":"error","message":' + _json_str(reason) + '}'
+                )
+                await websocket.close(1011)
+                return
+
             _active_ptys[ws_id] = pty_proc
 
             # Send ready signal
@@ -102,6 +131,12 @@ def setup_cyberapps_terminallink_routes() -> APIRouter:
     return router
 
 
+def _json_str(s: str) -> str:
+    """Return a JSON-encoded string literal for inline embedding."""
+    import json
+    return json.dumps(s)
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -122,14 +157,46 @@ class _EmptyState:
 
 
 def _get_ws_user(ws: WebSocket) -> str | None:
-    """Return authenticated username for a WebSocket connection, or None."""
-    adapter = _WsRequestAdapter(ws)
-    # Try middleware-stamped state first (present when auth middleware ran)
+    """Return authenticated username for a WebSocket connection, or None.
+
+    Starlette's BaseHTTPMiddleware skips WebSocket upgrade requests, so
+    ws.state.current_user is never stamped.  We validate the session cookie
+    directly against app.state.auth_manager — the same path the HTTP
+    middleware takes but inlined here for the WS fast path.
+
+    Falls back to AUTH_ENABLED=false (single-user / dev) pass-through.
+    """
+    import os
+
+    # Fast path: middleware DID run (e.g. future ASGI middleware migration)
     user = getattr(ws.state, "current_user", None)
     if user:
         return user
-    # Fall back to auth_helpers which reads cookies / state
-    return get_current_user(adapter)  # type: ignore[arg-type]
+
+    # AUTH_ENABLED=false — operator explicitly disabled auth
+    if os.getenv("AUTH_ENABLED", "true").lower() == "false":
+        return "_anon"
+
+    # Validate session cookie directly against auth_manager
+    auth_mgr = getattr(ws.app.state, "auth_manager", None)
+    if auth_mgr is None:
+        # App not fully initialised (rare) — fallback to adapter path
+        adapter = _WsRequestAdapter(ws)
+        return get_current_user(adapter)  # type: ignore[arg-type]
+
+    if not getattr(auth_mgr, "is_configured", False):
+        # First-run / unconfigured: allow loopback only
+        client_host = ws.client.host if ws.client else None
+        if client_host in ("127.0.0.1", "::1"):
+            return "_anon"
+        return None
+
+    token = ws.cookies.get(_SESSION_COOKIE)
+    if not token:
+        return None
+    if not auth_mgr.validate_token(token):
+        return None
+    return auth_mgr.get_username_for_token(token) or "_session"
 
 
 def _spawn_pty(cols: int, rows: int) -> object:

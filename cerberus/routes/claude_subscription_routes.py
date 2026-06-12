@@ -47,8 +47,22 @@ def setup_claude_subscription_routes() -> APIRouter:
 
     @router.get("/status")
     def status(request: Request):
-        """Preflight check: is Claude Code installed and the user logged in?"""
+        """Preflight check: is Claude Code installed and the user logged in?
+
+        Also includes a `provisioned` field indicating whether the endpoint
+        row has already been added to this user's model list.
+        """
+        owner = get_current_user(request) or None
         result = preflight_check()
+        # Augment with provisioned state so the Settings card can show the
+        # correct button state without a separate /api/model-endpoints fetch.
+        db = SessionLocal()
+        try:
+            ep = _get_endpoint(db, owner)
+            result["provisioned"] = ep is not None and bool(ep.is_enabled)
+            result["logged_in"] = result.get("ok") or False
+        finally:
+            db.close()
         return result
 
     @router.post("/provision")

@@ -2489,11 +2489,101 @@ function initDangerZone() {
 }
 
 /* ═══════════════════════════════════════════
+   CLAUDE SUBSCRIPTION CARD
+   ═══════════════════════════════════════════ */
+
+function initClaudeSubscriptionCard() {
+  const card = el('adm-claude-sub-card');
+  if (!card) return;
+
+  const statusEl = el('adm-claude-sub-status');
+  const enableBtn = el('adm-claude-sub-enable');
+  const removeBtn = el('adm-claude-sub-remove');
+  const badgeEl = el('adm-claude-sub-badge');
+  const msgEl = el('adm-claude-sub-msg');
+
+  async function checkStatus() {
+    try {
+      const r = await fetch('/api/claude-subscription/status', { credentials: 'same-origin' });
+      const data = await r.json();
+      _applyPreflightStatus(data);
+    } catch (e) {
+      statusEl.textContent = 'Status check failed — is the server running?';
+      enableBtn.disabled = true;
+    }
+  }
+
+  function _applyPreflightStatus(data) {
+    const ok = !!data.ok;
+    const lines = [];
+    if (data.binary) lines.push('claude binary: ' + data.binary);
+    if (data.logged_in !== undefined) lines.push('logged in: ' + (data.logged_in ? 'yes' : 'no'));
+    if (!ok && data.action) lines.push('Action: ' + data.action);
+    if (!ok && data.error) lines.push('Error: ' + data.error);
+    statusEl.textContent = lines.join(' | ') || (ok ? 'Ready' : 'Not available');
+    enableBtn.disabled = !ok || data.provisioned;
+    if (data.provisioned) {
+      badgeEl.style.display = '';
+      removeBtn.style.display = '';
+      enableBtn.style.display = 'none';
+    } else {
+      badgeEl.style.display = 'none';
+      removeBtn.style.display = 'none';
+      enableBtn.style.display = '';
+    }
+  }
+
+  enableBtn.addEventListener('click', async () => {
+    enableBtn.disabled = true;
+    enableBtn.textContent = 'Enabling…';
+    msgEl.textContent = '';
+    try {
+      const r = await fetch('/api/claude-subscription/provision', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        msgEl.textContent = d.detail || ('Provision failed (' + r.status + ')');
+        msgEl.style.color = 'var(--color-error,#c0392b)';
+        enableBtn.disabled = false;
+        enableBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Enable';
+        return;
+      }
+      msgEl.textContent = '';
+      await checkStatus();
+      await loadEndpoints();
+    } catch (e) {
+      msgEl.textContent = String(e.message || e);
+      msgEl.style.color = 'var(--color-error,#c0392b)';
+      enableBtn.disabled = false;
+      enableBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Enable';
+    }
+  });
+
+  removeBtn.addEventListener('click', async () => {
+    if (!confirm('Remove the Claude Subscription endpoint?')) return;
+    removeBtn.disabled = true;
+    try {
+      await fetch('/api/claude-subscription/remove', { method: 'DELETE', credentials: 'same-origin' });
+      await checkStatus();
+      await loadEndpoints();
+    } catch (e) {
+      msgEl.textContent = String(e.message || e);
+    } finally {
+      removeBtn.disabled = false;
+    }
+  });
+
+  checkStatus();
+}
+
+/* ═══════════════════════════════════════════
    INIT & REFRESH
    ═══════════════════════════════════════════ */
 function initAll() {
   modalEl = el('settings-modal');
-  const inits = [initSignupToggle, initAddUser, initEndpointForm, initMcpForm, initCalDAV, initBackup, initDangerZone, initTokenForm, () => settingsModule.initIntegrations()];
+  const inits = [initSignupToggle, initAddUser, initEndpointForm, initMcpForm, initCalDAV, initBackup, initDangerZone, initTokenForm, initClaudeSubscriptionCard, () => settingsModule.initIntegrations()];
   for (const fn of inits) {
     try { fn(); } catch (e) { console.error('Admin init error in', fn.name || 'anonymous', e); }
   }
