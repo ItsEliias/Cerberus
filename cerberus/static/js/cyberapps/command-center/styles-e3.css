@@ -1,0 +1,379 @@
+/* =====================================================================
+ * styles-e3.css — Phase E3 Council Voice Call Overlay
+ *
+ * Depends on: styles.css (--cc-accent, --cc-accent-rgb, --cc-fg)
+ * Imported by: styles.css via @import
+ *
+ * z-index: 9500 (above E2 message drawer at 1101)
+ * ===================================================================== */
+
+/* ---- Overlay backdrop ---- */
+.cc-call-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  opacity: 0;
+  transition: opacity 0.22s ease;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.cc-call-overlay--visible {
+  opacity: 1;
+}
+
+/* ---- Panel ---- */
+.cc-call-panel {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  min-height: 0;
+}
+
+/* ---- Left column: stage + waveform (~60%) ---- */
+.cc-call-left {
+  flex: 0 0 58%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.cc-call-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- Portrait ---- */
+.cc-call-portrait {
+  width: 192px;
+  height: 192px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid rgba(var(--cc-accent-rgb), 0.45);
+  border-radius: 6px;
+  background: rgba(var(--cc-accent-rgb), 0.05);
+  color: var(--cc-accent);
+  box-shadow:
+    0 0 32px rgba(var(--cc-accent-rgb), 0.2),
+    0 0 64px rgba(var(--cc-accent-rgb), 0.08);
+}
+
+.cc-call-portrait .cc-agent-portrait-svg {
+  width: 140px;
+  height: 140px;
+}
+
+/* ---- Name / role ---- */
+.cc-call-agent-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cc-fg);
+  margin-top: 4px;
+}
+
+.cc-call-agent-role {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cc-accent);
+  opacity: 0.65;
+}
+
+/* ---- Live indicator ---- */
+.cc-call-live-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.cc-call-live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cc-accent);
+  opacity: 0.4;
+}
+
+.cc-call-live-dot--active {
+  opacity: 1;
+  animation: cc-call-live-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes cc-call-live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--cc-accent-rgb), 0.5); }
+  50%       { box-shadow: 0 0 0 5px rgba(var(--cc-accent-rgb), 0); }
+}
+
+.cc-call-live-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cc-accent);
+  opacity: 0.8;
+}
+
+/* ---- Waveform container ---- */
+.cc-call-waveform-wrap {
+  width: 320px;
+}
+
+.cc-call-waveform {
+  display: block;
+  width: 320px;
+  height: 60px;
+  overflow: visible;
+}
+
+/* Idle: thin static hairline */
+.cc-wf-idle {
+  stroke: rgba(var(--cc-accent-rgb), 0.3);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* Recording: animated amplitude in accent */
+.cc-wf-recording {
+  fill: none;
+  stroke: var(--cc-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: cc-wf-rec-wave 0.7s ease-in-out infinite;
+}
+
+@keyframes cc-wf-rec-wave {
+  0%   { d: path("M0,30 C40,10 80,50 120,30 C160,10 200,50 240,30 C280,10 320,50 320,30"); }
+  25%  { d: path("M0,30 C40,5  80,55 120,30 C160,5  200,55 240,30 C280,5  320,55 320,30"); }
+  50%  { d: path("M0,30 C40,15 80,45 120,30 C160,15 200,45 240,30 C280,15 320,45 320,30"); }
+  75%  { d: path("M0,30 C40,5  80,55 120,30 C160,5  200,55 240,30 C280,5  320,55 320,30"); }
+  100% { d: path("M0,30 C40,10 80,50 120,30 C160,10 200,50 240,30 C280,10 320,50 320,30"); }
+}
+
+/* Speaking: animated amplitude in lighter tint */
+.cc-wf-speaking {
+  fill: none;
+  stroke: rgba(var(--cc-accent-rgb), 0.65);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: cc-wf-spk-wave 1.1s ease-in-out infinite;
+}
+
+@keyframes cc-wf-spk-wave {
+  0%   { d: path("M0,30 C53,12 107,48 160,30 C213,12 267,48 320,30"); }
+  33%  { d: path("M0,30 C53,6  107,54 160,30 C213,6  267,54 320,30"); }
+  66%  { d: path("M0,30 C53,18 107,42 160,30 C213,18 267,42 320,30"); }
+  100% { d: path("M0,30 C53,12 107,48 160,30 C213,12 267,48 320,30"); }
+}
+
+/* ---- Right column: transcript (~36%) ---- */
+.cc-call-right {
+  flex: 1;
+  min-width: 0;
+}
+
+.cc-call-transcript-list {
+  max-height: 60vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.12);
+  border-radius: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--cc-accent-rgb), 0.15) transparent;
+}
+
+.cc-call-transcript-list::-webkit-scrollbar { width: 4px; }
+.cc-call-transcript-list::-webkit-scrollbar-thumb {
+  background: rgba(var(--cc-accent-rgb), 0.15);
+  border-radius: 2px;
+}
+
+/* User bubble — right-aligned tinted (mirrors E2) */
+.cc-call-bubble-user {
+  align-self: flex-end;
+  max-width: 65%;
+  background: rgba(var(--cc-accent-rgb), 0.12);
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.25);
+  border-radius: 3px 3px 0 3px;
+  padding: 8px 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--cc-fg);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Agent bubble — left-aligned hairline (mirrors E2) */
+.cc-call-bubble-agent {
+  align-self: flex-start;
+  max-width: 80%;
+  background: transparent;
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.18);
+  border-radius: 3px 3px 3px 0;
+  padding: 8px 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--cc-fg);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  opacity: 0.9;
+}
+
+.cc-call-bubble-agent.streaming {
+  border-color: rgba(var(--cc-accent-rgb), 0.45);
+  animation: cc-call-stream-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cc-call-stream-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--cc-accent-rgb), 0); }
+  50%       { box-shadow: 0 0 8px 2px rgba(var(--cc-accent-rgb), 0.18); }
+}
+
+/* ---- Controls row ---- */
+.cc-call-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0 0;
+  width: 100%;
+}
+
+/* Hold to speak button */
+.cc-call-btn-hold {
+  background: rgba(var(--cc-accent-rgb), 0.06);
+  border: 1.5px solid var(--cc-accent);
+  color: var(--cc-accent);
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 12px 28px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cc-call-btn-hold:hover:not(:disabled) {
+  background: rgba(var(--cc-accent-rgb), 0.14);
+  box-shadow: 0 0 12px rgba(var(--cc-accent-rgb), 0.25);
+}
+
+.cc-call-btn-hold:active:not(:disabled),
+.cc-call-btn-hold--recording {
+  background: rgba(var(--cc-accent-rgb), 0.22);
+  box-shadow: 0 0 20px rgba(var(--cc-accent-rgb), 0.4);
+  animation: cc-call-hold-pulse 0.7s ease-in-out infinite;
+}
+
+@keyframes cc-call-hold-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(var(--cc-accent-rgb), 0.3); }
+  50%       { box-shadow: 0 0 24px rgba(var(--cc-accent-rgb), 0.6); }
+}
+
+.cc-call-btn-hold:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* End call button */
+.cc-call-btn-end {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--cc-fg);
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  padding: 12px 24px;
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.cc-call-btn-end:hover {
+  opacity: 1;
+  border-color: rgba(231, 76, 60, 0.5);
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.06);
+}
+
+/* ---- Error notice ---- */
+.cc-call-error {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #e74c3c;
+  text-align: center;
+  padding: 6px 12px;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 2px;
+  background: rgba(231, 76, 60, 0.05);
+  margin-bottom: 6px;
+  max-width: 600px;
+  width: 100%;
+}
+
+/* ---- Active CALL button on cards — no longer dimmed ---- */
+.cc-action-call {
+  opacity: 0.8 !important;
+}
+.cc-action-call:hover {
+  opacity: 1 !important;
+  color: var(--cc-accent) !important;
+  border-color: rgba(var(--cc-accent-rgb), 0.6) !important;
+}
+
+/* ---- prefers-reduced-motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .cc-call-overlay {
+    transition: none;
+  }
+  .cc-call-live-dot--active {
+    animation: none;
+  }
+  .cc-wf-recording,
+  .cc-wf-speaking {
+    animation: none;
+    /* fallback static wavy line */
+    d: path("M0,30 C53,12 107,48 160,30 C213,12 267,48 320,30");
+  }
+  .cc-call-btn-hold--recording {
+    animation: none;
+  }
+  .cc-call-btn-hold:active:not(:disabled) {
+    animation: none;
+  }
+  .cc-call-bubble-agent.streaming {
+    animation: none;
+  }
+}

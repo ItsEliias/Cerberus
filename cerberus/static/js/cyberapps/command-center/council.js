@@ -19,6 +19,7 @@ import { formatTelemetry } from './command.js';
 import { getGlyph } from './council-glyphs.js';
 import { openNewAgentModal } from './council-new-agent.js';
 import { openMessageDrawer } from './council-message-drawer.js';
+import { openCallView } from './council-call-view.js';
 
 const AGENTS_API = '/api/agents';
 
@@ -295,7 +296,8 @@ function _wireButtons(root) {
       return;
     }
     if (action === 'call') {
-      _toast(root, 'Coming soon — Phase E3');
+      const member = _members.find(m => m.id === id);
+      if (member) openCallView(root, member);
       return;
     }
     if (action === 'details') {

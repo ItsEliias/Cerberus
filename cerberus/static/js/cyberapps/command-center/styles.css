@@ -811,3 +811,6 @@
 
 /* Phase E2 message drawer — see styles-e2.css */
 @import './styles-e2.css';
+
+/* Phase E3 voice call overlay — see styles-e3.css */
+@import './styles-e3.css';
