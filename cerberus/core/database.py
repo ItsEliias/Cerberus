@@ -1084,6 +1084,43 @@ def _migrate_add_pinned_models_column():
         except Exception:
             pass
 
+class CerberusAgentTask(TimestampMixin, Base):
+    """Per-agent task record (Phase E5)."""
+    __tablename__ = "cerberus_agent_tasks"
+
+    VALID_STATUSES = {"proposed", "approved", "rejected", "in_progress", "done"}
+
+    id          = Column(String, primary_key=True, index=True)
+    agent_id    = Column(String, ForeignKey("cerberus_agents.id", ondelete="CASCADE"),
+                         nullable=False, index=True)
+    owner       = Column(String, nullable=False, index=True)
+    title       = Column(String(200), nullable=False)
+    description = Column(Text, nullable=False, default="")
+    status      = Column(String, nullable=False, default="proposed")
+    context_json = Column(Text, nullable=False, default="{}")
+
+    agent = relationship("CerberusAgent",
+                         backref=backref("tasks", cascade="all, delete-orphan"))
+
+    __table_args__ = (
+        Index("ix_cerberus_agent_tasks_agent_status_created",
+              "agent_id", "status", "created_at"),
+    )
+
+    def to_dict(self):
+        return {
+            "id":           self.id,
+            "agent_id":     self.agent_id,
+            "owner":        self.owner,
+            "title":        self.title,
+            "description":  self.description,
+            "status":       self.status,
+            "context_json": self.context_json,
+            "created_at":   self.created_at.isoformat() if self.created_at else None,
+            "updated_at":   self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 class CerberusCouncilMeeting(TimestampMixin, Base):
     """Persisted council round-table meeting record (Phase E4)."""
     __tablename__ = "cerberus_council_meetings"

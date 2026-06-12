@@ -768,8 +768,10 @@ app.include_router(setup_companion_routes())
 # Cerberus Agent personas (Council)
 from routes.cerberus_agent_routes import setup_cerberus_agent_routes
 from routes.cerberus_council_routes import setup_council_routes
+from routes.cerberus_agent_task_routes import setup_cerberus_agent_task_routes
 app.include_router(setup_cerberus_agent_routes())
 app.include_router(setup_council_routes())
+app.include_router(setup_cerberus_agent_task_routes())
 
 # Live system vitals + timeseries (Command Center hero globe + Phase D dashboard)
 from routes.system_vitals_routes import setup_system_vitals_routes
