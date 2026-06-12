@@ -348,11 +348,18 @@ body.jx2-active .code-area {
 /* ── MODAL / DIALOG ───────────────────────────────────────────────────
  * Glass panel treatment. Scrim at 50% black (ui-ux-pro-max rule).
  * ------------------------------------------------------------------- */
-/* Modals + dialogs intentionally use Cerberus's native styles (no v2 override).
- * The previous override on .modal interfered with the existing positioning /
- * drag math and caused popups to shift right on interaction. JARVIS treatment
- * should be applied explicitly with class="jx2-glass-panel" on individual
- * inner content where wanted, not globally on the .modal overlay. */
+/* Apply JARVIS chrome to the INNER popup content only, not the outer .modal
+ * overlay (the overlay is the full-screen scrim and overriding its layout
+ * shifted popups right on click — see v343 fix). The .modal-content target
+ * is the actual visible popup that the user sees and drags. */
+body.jx2-active .modal-content {
+  background:              var(--jx2-surface-glass) !important;
+  backdrop-filter:         blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border:                  1px solid var(--jx2-border-default) !important;
+  border-top:              1px solid var(--jx2-border-glow) !important;
+  box-shadow:              var(--jx2-glow-lift), var(--jx2-glow-ambient) !important;
+}
 
 /* Modal scrim */
 body.jx2-active .modal-overlay,
