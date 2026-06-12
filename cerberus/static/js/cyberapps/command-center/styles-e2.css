@@ -1,0 +1,275 @@
+/* =====================================================================
+ * styles-e2.css — Phase E2 Council Message Drawer
+ *
+ * Depends on: styles.css (--cc-accent, --cc-accent-rgb, --cc-accent-glow, --cc-fg, --cc-bg)
+ * Imported by: styles.css via @import
+ * ===================================================================== */
+
+/* Backdrop: full-screen dim */
+.cc-msg-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.cc-msg-backdrop--visible {
+  opacity: 1;
+}
+
+/* Drawer: slides in from the right */
+.cc-msg-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 420px;
+  z-index: 1101;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 10, 14, 0.97);
+  border-left: 1px solid rgba(var(--cc-accent-rgb), 0.25);
+  box-shadow: -4px 0 24px rgba(var(--cc-accent-rgb), 0.12);
+  transform: translateX(100%);
+  opacity: 0;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.cc-msg-drawer--open {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Header */
+.cc-msg-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid rgba(var(--cc-accent-rgb), 0.12);
+  flex-shrink: 0;
+}
+
+.cc-msg-header-portrait {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.2);
+  border-radius: 4px;
+  background: rgba(var(--cc-accent-rgb), 0.04);
+  color: var(--cc-accent);
+}
+.cc-msg-header-portrait .cc-agent-portrait-svg {
+  width: 30px;
+  height: 30px;
+}
+
+.cc-msg-header-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cc-msg-header-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cc-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cc-msg-header-role {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cc-accent);
+  opacity: 0.6;
+}
+
+.cc-msg-close-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.2);
+  color: var(--cc-fg);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 4px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+}
+.cc-msg-close-btn:hover {
+  opacity: 1;
+  border-color: rgba(var(--cc-accent-rgb), 0.55);
+  color: var(--cc-accent);
+}
+
+/* Message list */
+.cc-msg-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--cc-accent-rgb), 0.15) transparent;
+}
+.cc-msg-list::-webkit-scrollbar { width: 4px; }
+.cc-msg-list::-webkit-scrollbar-thumb { background: rgba(var(--cc-accent-rgb), 0.15); border-radius: 2px; }
+
+/* User bubble: right-aligned */
+.cc-msg-bubble-user {
+  align-self: flex-end;
+  max-width: 60%;
+  background: rgba(var(--cc-accent-rgb), 0.12);
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.25);
+  border-radius: 3px 3px 0 3px;
+  padding: 8px 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--cc-fg);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Agent bubble: left-aligned */
+.cc-msg-bubble-agent {
+  align-self: flex-start;
+  max-width: 80%;
+  background: transparent;
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.18);
+  border-radius: 3px 3px 3px 0;
+  padding: 8px 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--cc-fg);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  opacity: 0.9;
+}
+
+/* Streaming pulse */
+.cc-msg-bubble-agent.streaming {
+  border-color: rgba(var(--cc-accent-rgb), 0.45);
+  animation: cc-msg-stream-pulse 1.2s ease-in-out infinite;
+}
+@keyframes cc-msg-stream-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--cc-accent-rgb), 0); }
+  50%       { box-shadow: 0 0 8px 2px rgba(var(--cc-accent-rgb), 0.18); }
+}
+
+/* Footer */
+.cc-msg-footer {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  padding: 10px 14px 14px;
+  border-top: 1px solid rgba(var(--cc-accent-rgb), 0.12);
+  flex-shrink: 0;
+}
+
+/* TTS toggle */
+.cc-msg-tts-toggle {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.2);
+  color: var(--cc-fg);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 6px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+  height: 32px;
+}
+.cc-msg-tts-toggle:hover {
+  opacity: 0.85;
+}
+.cc-msg-tts-toggle.cc-msg-tts-on {
+  opacity: 1;
+  border-color: #dc2626;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+
+/* Input textarea */
+.cc-msg-input {
+  flex: 1;
+  background: rgba(var(--cc-accent-rgb), 0.03);
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.2);
+  border-radius: 2px;
+  color: var(--cc-fg);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 6px 9px;
+  resize: none;
+  min-height: 32px;
+  max-height: 100px;
+  overflow-y: auto;
+  line-height: 1.45;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cc-msg-input:focus {
+  border-color: rgba(var(--cc-accent-rgb), 0.5);
+  background: rgba(var(--cc-accent-rgb), 0.05);
+}
+
+/* Send button */
+.cc-msg-send-btn {
+  flex-shrink: 0;
+  background: rgba(var(--cc-accent-rgb), 0.08);
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.3);
+  color: var(--cc-accent);
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 6px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  height: 32px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.cc-msg-send-btn:hover:not(:disabled) {
+  background: rgba(var(--cc-accent-rgb), 0.18);
+  border-color: rgba(var(--cc-accent-rgb), 0.6);
+}
+.cc-msg-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Make MESSAGE button no longer dimmed — it's now active */
+.cc-action-message {
+  opacity: 0.8 !important;
+}
+.cc-action-message:hover {
+  opacity: 1 !important;
+  color: var(--cc-accent) !important;
+  border-color: rgba(var(--cc-accent-rgb), 0.6) !important;
+}
+
+/* Reduced motion: disable slide-in and streaming pulse */
+@media (prefers-reduced-motion: reduce) {
+  .cc-msg-drawer              { transition: opacity 0.25s ease; }
+  .cc-msg-drawer-backdrop     { transition: opacity 0.25s ease; }
+  .cc-msg-bubble-agent.streaming { animation: none; }
+}

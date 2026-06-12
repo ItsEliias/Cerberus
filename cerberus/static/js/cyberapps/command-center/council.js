@@ -18,6 +18,7 @@
 import { formatTelemetry } from './command.js';
 import { getGlyph } from './council-glyphs.js';
 import { openNewAgentModal } from './council-new-agent.js';
+import { openMessageDrawer } from './council-message-drawer.js';
 
 const AGENTS_API = '/api/agents';
 
@@ -288,8 +289,13 @@ function _wireButtons(root) {
     if (!btn) return;
     const { id, action } = btn.dataset;
 
-    if (action === 'message' || action === 'call') {
-      _toast(root, `Coming soon — Phase E${action === 'message' ? '2' : '3'}`);
+    if (action === 'message') {
+      const member = _members.find(m => m.id === id);
+      if (member) openMessageDrawer(root, member);
+      return;
+    }
+    if (action === 'call') {
+      _toast(root, 'Coming soon — Phase E3');
       return;
     }
     if (action === 'details') {

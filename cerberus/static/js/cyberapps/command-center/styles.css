@@ -808,3 +808,6 @@
 
 /* Phase E1 card layout — see styles-e1.css */
 @import './styles-e1.css';
+
+/* Phase E2 message drawer — see styles-e2.css */
+@import './styles-e2.css';
