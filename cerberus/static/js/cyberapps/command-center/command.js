@@ -84,21 +84,35 @@ const GLOBE_HTML = `
         <ellipse cx="50" cy="50" rx="30" ry="49" fill="none" stroke="#c0392b" stroke-width="0.4"/>
       </svg>
     </div>
+    <div class="cc-globe-wire-counter" aria-hidden="true"></div>
     <div class="cc-globe-particles" aria-hidden="true">
       <div class="cc-globe-p cc-globe-p1"></div>
       <div class="cc-globe-p cc-globe-p2"></div>
       <div class="cc-globe-p cc-globe-p3"></div>
       <div class="cc-globe-p cc-globe-p4"></div>
       <div class="cc-globe-p cc-globe-p5"></div>
+      <div class="cc-globe-p cc-globe-p6"></div>
+      <div class="cc-globe-p cc-globe-p7"></div>
     </div>
   </div>
 </div>`;
 
 function _updateOrb(wrap, state) {
-  const globe = wrap.querySelector('#cc-globe-body');
-  const lbl   = wrap.querySelector('.cc-orb-status');
-  if (globe) { globe.className = 'cc-globe-wrap ' + state; globe.id = 'cc-globe-body'; }
-  if (lbl)   { lbl.className = 'cc-orb-status ' + state; lbl.textContent = state.toUpperCase(); }
+  // Slim top-left status card
+  const lbl = wrap.querySelector('.cc-orb-status');
+  if (lbl) { lbl.className = 'cc-orb-status ' + state; lbl.textContent = state.toUpperCase(); }
+  const ring = wrap.querySelector('.cc-core-ring');
+  if (ring) { ring.className = 'cc-core-ring ' + state; }
+
+  // Hero globe (bottom centerpiece) — class drives animation speed + glow
+  const root = wrap.closest('.cc-command-tab') || document;
+  const heroGlobe = root.querySelector('#cc-hero-globe-mount .cc-globe-wrap');
+  if (heroGlobe) heroGlobe.className = 'cc-globe-wrap ' + state;
+  const heroLbl = root.querySelector('#cc-hero-globe-state');
+  if (heroLbl) {
+    heroLbl.className = 'cc-hero-globe-state ' + state;
+    heroLbl.textContent = 'CERBERUS CORE — ' + state.toUpperCase();
+  }
 }
 
 // ---- Dials ----

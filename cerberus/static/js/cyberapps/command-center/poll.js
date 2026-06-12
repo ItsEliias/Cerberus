@@ -36,12 +36,27 @@ async function _fetchVitals(cb) {
 }
 
 async function _fetchAgents(cb) {
+  // Operations endpoints were stripped during the CyberApps revert. Use the
+  // new /api/agents (Level 2 persistence) as the source of truth — derive
+  // swarm counts from agent statuses so the globe still reacts.
   try {
-    const [sr, ar] = await Promise.all([
-      fetch(`${BASE}/api/cyberapps/operations/swarm`),
-      fetch(`${BASE}/api/cyberapps/operations/agents`),
-    ]);
-    if (sr.ok && cb.onSwarm)   cb.onSwarm(await sr.json());
-    if (ar.ok && cb.onAgents)  { const d = await ar.json(); cb.onAgents(d.agents || []); }
+    const ar = await fetch(`${BASE}/api/agents`, { credentials: 'same-origin' });
+    if (!ar.ok) return;
+    const data = await ar.json();
+    const agents = Array.isArray(data) ? data : (data.agents || []);
+    if (cb.onAgents) cb.onAgents(agents);
+    if (cb.onSwarm) {
+      const counts = { active: 0, idle: 0, standby: 0, alert: 0 };
+      agents.forEach(a => { counts[a.status] = (counts[a.status] || 0) + 1; });
+      const status = counts.alert > 0 ? 'DEGRADED'
+                   : counts.active > 0 ? 'ACTIVE'
+                   : 'IDLE';
+      cb.onSwarm({
+        active: counts.active,
+        total:  agents.length,
+        queued: counts.standby + counts.idle,
+        status,
+      });
+    }
   } catch (e) { cb.onError && cb.onError(e); }
 }

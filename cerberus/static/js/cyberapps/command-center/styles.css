@@ -264,12 +264,23 @@
     0 0 32px rgba(192,57,43,0.18);
 }
 
-/* Wireframe SVG overlay — rotates */
+/* Wireframe SVG overlay — rotates (faster default for fluidity) */
 .cc-globe-wire {
   position: absolute; inset: 0; border-radius: 50%;
-  opacity: 0.28;
-  animation: cc-globe-spin 18s linear infinite;
+  opacity: 0.32;
+  animation: cc-globe-spin 12s linear infinite;
 }
+/* Surface shimmer — second wireframe layer rotating the other way for life */
+.cc-globe-wire-counter {
+  position: absolute; inset: 0; border-radius: 50%;
+  opacity: 0.14;
+  animation: cc-globe-spin-counter 24s linear infinite;
+  background: conic-gradient(from 0deg,
+    transparent 0%, rgba(192,57,43,0.18) 25%, transparent 50%,
+    rgba(192,57,43,0.10) 75%, transparent 100%);
+  mix-blend-mode: screen;
+}
+@keyframes cc-globe-spin-counter { from { transform: rotateZ(0deg); } to { transform: rotateZ(-360deg); } }
 .cc-globe-wire svg { width: 100%; height: 100%; }
 
 @keyframes cc-globe-spin {
@@ -295,6 +306,8 @@
 .cc-globe-p3 { animation: cc-orbit-b 9s  linear infinite 1s; }
 .cc-globe-p4 { animation: cc-orbit-b 13s linear infinite 4s; opacity: 0.6; }
 .cc-globe-p5 { animation: cc-orbit-c 7.5s linear infinite 3s; }
+.cc-globe-p6 { animation: cc-orbit-a 6.5s linear infinite 5s; opacity: 0.55; }
+.cc-globe-p7 { animation: cc-orbit-c 10s  linear infinite 1.5s; opacity: 0.45; }
 
 @keyframes cc-orbit-a {
   from { transform: rotate(0deg)   translateX(46px) scale(0.9); }
@@ -309,9 +322,14 @@
   to   { transform: rotate(480deg) translateX(52px) scaleX(0.25); }
 }
 
-/* Globe states */
+/* Globe states — idle now breathes a bit quicker for more "alive" feel */
 .cc-globe-wrap.idle .cc-globe-sphere {
-  animation: cc-globe-idle 4s ease-in-out infinite;
+  animation: cc-globe-idle 3s ease-in-out infinite;
+}
+.cc-globe-wrap.idle .cc-globe-wire { animation-duration: 14s; }
+.cc-globe-wrap.idle .cc-globe-halo {
+  box-shadow: 0 0 0 1px rgba(192,57,43,0.25), 0 0 22px rgba(192,57,43,0.18);
+  animation: cc-globe-halo-pulse 5s ease-in-out infinite;
 }
 .cc-globe-wrap.offline .cc-globe-sphere {
   animation: cc-globe-offline 5s ease-in-out infinite;
