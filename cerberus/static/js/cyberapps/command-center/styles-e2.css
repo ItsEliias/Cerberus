@@ -12,10 +12,12 @@
   z-index: 1100;
   background: rgba(0, 0, 0, 0.45);
   opacity: 0;
+  pointer-events: none;          /* invisible = don't block app clicks */
   transition: opacity 0.25s ease;
 }
 .cc-msg-backdrop--visible {
   opacity: 1;
+  pointer-events: auto;
 }
 
 /* Drawer: slides in from the right */
@@ -33,11 +35,13 @@
   box-shadow: -4px 0 24px rgba(var(--cc-accent-rgb), 0.12);
   transform: translateX(100%);
   opacity: 0;
+  pointer-events: none;          /* closed = don't intercept */
   transition: transform 0.25s ease, opacity 0.25s ease;
 }
 .cc-msg-drawer--open {
   transform: translateX(0);
   opacity: 1;
+  pointer-events: auto;
 }
 
 /* Header */

@@ -45,10 +45,12 @@
   z-index: 9400;
   background: rgba(0, 0, 0, 0.45);
   opacity: 0;
+  pointer-events: none;          /* invisible = don't block clicks */
   transition: opacity 0.25s ease;
 }
 .cc-tasks-backdrop--visible {
   opacity: 1;
+  pointer-events: auto;          /* visible = catch backdrop clicks to close */
 }
 
 /* ---- Tasks drawer panel ---- */
@@ -67,11 +69,13 @@
   box-shadow: -4px 0 24px rgba(var(--cc-accent-rgb), 0.12);
   transform: translateX(100%);
   opacity: 0;
+  pointer-events: none;          /* closed = don't intercept clicks */
   transition: transform 0.25s ease, opacity 0.25s ease;
 }
 .cc-tasks-drawer--open {
   transform: translateX(0);
   opacity: 1;
+  pointer-events: auto;
 }
 
 /* ---- Tasks drawer header ---- */
