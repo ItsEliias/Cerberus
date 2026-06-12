@@ -1,0 +1,342 @@
+/* ============================================================ */
+/* Cerberus JARVIS Design System — Component Classes           */
+/* Phase A — opt-in utility classes for surfaces               */
+/* Requires: tokens.css loaded first                           */
+/* ============================================================ */
+
+/* ── Glass Panel ─────────────────────────────────────────────── */
+/* Frosted dark panel: crimson hairline border + faint inner glow */
+
+.jx-glass-panel {
+  background: linear-gradient(
+    145deg,
+    rgba(17, 19, 24, 0.96) 0%,
+    rgba(14, 16, 20, 0.98) 100%
+  );
+  border: 1px solid var(--cbr-border-hairline);
+  box-shadow:
+    inset 0 1px 0 rgba(192, 57, 43, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.40),
+    var(--cbr-glow-soft);
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+/* ── Glow Border (animated on focus/hover) ───────────────────── */
+
+.jx-glow-border {
+  border: 1px solid var(--cbr-border-hairline);
+  transition:
+    border-color var(--cbr-dur-base) var(--cbr-ease-out),
+    box-shadow   var(--cbr-dur-base) var(--cbr-ease-out);
+}
+
+.jx-glow-border:hover,
+.jx-glow-border:focus-within {
+  border-color: var(--cbr-border-glow);
+  box-shadow: var(--cbr-glow-red);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jx-glow-border {
+    transition: none;
+  }
+}
+
+/* ── HUD Frame (bracket corners + scanline pseudo) ───────────── */
+/* Heavy effect — for hero / landing surfaces only.              */
+
+.jx-hud-frame {
+  position: relative;
+}
+
+.jx-hud-frame::before,
+.jx-hud-frame::after {
+  content: '';
+  position: absolute;
+  width: var(--cbr-bracket-size);
+  height: var(--cbr-bracket-size);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Top-left bracket */
+.jx-hud-frame::before {
+  top: 0;
+  left: 0;
+  border-top: var(--cbr-bracket-weight) solid var(--cbr-red-500);
+  border-left: var(--cbr-bracket-weight) solid var(--cbr-red-500);
+}
+
+/* Bottom-right bracket (via inner spans .jx-hud-br) */
+.jx-hud-frame::after {
+  bottom: 0;
+  right: 0;
+  border-bottom: var(--cbr-bracket-weight) solid var(--cbr-red-500);
+  border-right:  var(--cbr-bracket-weight) solid var(--cbr-red-500);
+}
+
+/* Inner bracket pair (top-right + bottom-left) */
+.jx-hud-inner::before,
+.jx-hud-inner::after {
+  content: '';
+  position: absolute;
+  width: var(--cbr-bracket-size);
+  height: var(--cbr-bracket-size);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.jx-hud-inner::before {
+  top: 0;
+  right: 0;
+  border-top: var(--cbr-bracket-weight) solid var(--cbr-red-500);
+  border-right: var(--cbr-bracket-weight) solid var(--cbr-red-500);
+}
+
+.jx-hud-inner::after {
+  bottom: 0;
+  left: 0;
+  border-bottom: var(--cbr-bracket-weight) solid var(--cbr-red-500);
+  border-left:   var(--cbr-bracket-weight) solid var(--cbr-red-500);
+}
+
+/* Scanline overlay inside hud frame */
+.jx-hud-frame .jx-scanline-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image:
+    linear-gradient(
+      0deg,
+      transparent 0%,
+      transparent calc(var(--cbr-scanline-size) - 1px),
+      rgba(255, 255, 255, var(--cbr-scanline-opacity)) calc(var(--cbr-scanline-size) - 1px),
+      rgba(255, 255, 255, var(--cbr-scanline-opacity)) var(--cbr-scanline-size)
+    );
+  background-size: 100% var(--cbr-scanline-size);
+  border-radius: inherit;
+}
+
+/* ── Stat Chip ───────────────────────────────────────────────── */
+/* Pill with monospace value + label. Status variants via data attr */
+
+.jx-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cbr-sp-1);
+  padding: 2px var(--cbr-sp-2);
+  border-radius: 3px;
+  border: 1px solid var(--cbr-border-hairline);
+  background: rgba(14, 16, 20, 0.80);
+  font-family: 'Fira Code', ui-monospace, monospace;
+  font-size: var(--cbr-font-caption);
+  letter-spacing: 0.04em;
+  color: var(--cbr-status-active);
+}
+
+.jx-stat-chip[data-status="idle"]    { color: var(--cbr-status-idle); }
+.jx-stat-chip[data-status="process"] { color: var(--cbr-status-process); }
+.jx-stat-chip[data-status="alert"]   { color: var(--cbr-status-alert); }
+.jx-stat-chip[data-status="active"]  { color: var(--cbr-status-active); }
+
+.jx-stat-chip .jx-chip-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 4px currentColor;
+  flex-shrink: 0;
+}
+
+.jx-stat-chip .jx-chip-value {
+  font-weight: 500;
+}
+
+.jx-stat-chip .jx-chip-label {
+  opacity: 0.55;
+  font-weight: 400;
+  font-size: 0.9em;
+}
+
+/* ── Gauge (CSS-only semicircle dial) ───────────────────────── */
+/* Animate via --cbr-gauge-pct (0–1) custom property            */
+
+.jx-gauge {
+  --cbr-gauge-pct: 0.5;
+  position: relative;
+  width: 80px;
+  height: 44px; /* half-circle */
+  overflow: hidden;
+}
+
+.jx-gauge-track,
+.jx-gauge-fill {
+  position: absolute;
+  inset: 0 0 auto 0;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 5px solid transparent;
+  box-sizing: border-box;
+}
+
+.jx-gauge-track {
+  border-color: var(--cbr-border-hairline);
+}
+
+.jx-gauge-fill {
+  border-color: var(--cbr-red-500) transparent transparent transparent;
+  transform: rotate(calc(180deg * var(--cbr-gauge-pct)));
+  transition: transform var(--cbr-dur-slow) var(--cbr-ease-snap);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jx-gauge-fill { transition: none; }
+}
+
+/* ── Sparkline Frame ─────────────────────────────────────────── */
+
+.jx-sparkline-frame {
+  position: relative;
+  border-bottom: 1px solid var(--cbr-border-hairline);
+  padding-bottom: var(--cbr-sp-1);
+}
+
+.jx-sparkline-frame svg {
+  display: block;
+  overflow: visible;
+}
+
+/* ── Scan Line Sweep (animated horizontal band) ─────────────── */
+/* Add .jx-scan-line to a positioned container                   */
+
+.jx-scan-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.jx-scan-line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 120px;
+  top: -120px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(192, 57, 43, 0.012) 50%,
+    transparent 100%
+  );
+  animation: jx-scanline-move var(--cbr-dur-sweep) linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes jx-scanline-move {
+  0%   { top: -120px; }
+  100% { top: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jx-scan-line::after { animation: none; }
+}
+
+/* ── Section Header ──────────────────────────────────────────── */
+
+.jx-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--cbr-sp-2);
+  padding: var(--cbr-sp-2) 0;
+  font-family: 'Fira Code', ui-monospace, monospace;
+  font-size: var(--cbr-font-caption);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cbr-red-500);
+}
+
+.jx-section-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    var(--cbr-border-hairline) 0%,
+    transparent 100%
+  );
+}
+
+/* ── Active List Item Edge Glow ──────────────────────────────── */
+
+.jx-active-edge {
+  position: relative;
+}
+
+.jx-active-edge.active::before,
+.jx-active-edge[aria-current="page"]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15%;
+  bottom: 15%;
+  width: 2px;
+  background: var(--cbr-red-500);
+  box-shadow: 0 0 6px var(--cbr-red-500), 0 0 12px rgba(192, 57, 43, 0.4);
+  border-radius: 0 1px 1px 0;
+}
+
+/* ── Brand Pulse ─────────────────────────────────────────────── */
+
+@keyframes jx-brand-pulse {
+  0%,  100% { filter: drop-shadow(0 0 3px rgba(192,57,43,0.30)); }
+  50%        { filter: drop-shadow(0 0 8px rgba(192,57,43,0.70)); }
+}
+
+.jx-brand-pulse {
+  animation: jx-brand-pulse 3.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jx-brand-pulse { animation: none; }
+}
+
+/* ── Chat Message Variants ───────────────────────────────────── */
+
+.jx-msg-user {
+  background: linear-gradient(
+    135deg,
+    rgba(192, 57, 43, 0.07) 0%,
+    rgba(14, 16, 20, 0.70) 100%
+  );
+  border: 1px solid rgba(192, 57, 43, 0.14);
+  border-radius: 6px 6px 2px 6px;
+}
+
+.jx-msg-assistant {
+  background: transparent;
+  border: 1px solid var(--cbr-border-hairline);
+  border-radius: 2px 6px 6px 6px;
+}
+
+/* ── Input Focus Glow ────────────────────────────────────────── */
+
+.jx-input-glow {
+  transition:
+    border-color var(--cbr-dur-base) var(--cbr-ease-out),
+    box-shadow   var(--cbr-dur-base) var(--cbr-ease-out);
+}
+
+.jx-input-glow:focus,
+.jx-input-glow:focus-within {
+  border-color: var(--cbr-red-500) !important;
+  box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.18), var(--cbr-glow-pulse);
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jx-input-glow { transition: none; }
+}

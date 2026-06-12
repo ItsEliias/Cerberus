@@ -1,0 +1,84 @@
+/* ============================================================ */
+/* Cerberus JARVIS Design System — Token Layer                  */
+/* Phase A — applies on top of style.css (never replaces it)    */
+/* Anchored on: #c0392b crimson family / #1a1d23 near-black     */
+/* ============================================================ */
+
+:root {
+  /* ── Crimson spine (5 shades) ── */
+  --cbr-red-50:  #fce8e6;   /* lightest tint — highlights */
+  --cbr-red-200: #e8736a;   /* mid-light — hover glows    */
+  --cbr-red-500: #c0392b;   /* primary accent (matches --red) */
+  --cbr-red-700: #8b1e26;   /* deep — pressed states, dims */
+  --cbr-red-900: #3d0a0d;   /* near-black red — bg tints  */
+
+  /* ── Surface tiers ── */
+  --cbr-bg-0:    #0e1014;   /* near-black base */
+  --cbr-bg-1:    #111318;   /* panel surface */
+  --cbr-bg-2:    #181c22;   /* raised card */
+  --cbr-bg-3:    #1e2229;   /* modal / elevated */
+
+  /* ── Border tiers ── */
+  --cbr-border-hairline: rgba(192, 57, 43, 0.18);
+  --cbr-border-default:  rgba(192, 57, 43, 0.32);
+  --cbr-border-glow:     rgba(192, 57, 43, 0.60);
+  --cbr-border-bright:   rgba(192, 57, 43, 0.85);
+
+  /* ── Status colors (preserve existing semantics) ── */
+  --cbr-status-active:  #50fa7b;  /* green  — operational  */
+  --cbr-status-idle:    #f0ad4e;  /* amber  — standby      */
+  --cbr-status-process: #61afef;  /* blue   — processing   */
+  --cbr-status-alert:   #c0392b;  /* red    — error/alert  */
+
+  /* ── Type scale (display → caption) ── */
+  --cbr-font-display: clamp(1.75rem, 4vw, 2.5rem);
+  --cbr-font-h1:      clamp(1.25rem, 2.5vw, 1.625rem);
+  --cbr-font-h2:      1.125rem;
+  --cbr-font-h3:      0.9375rem;
+  --cbr-font-body:    0.875rem;
+  --cbr-font-mono:    0.8125rem;
+  --cbr-font-caption: 0.6875rem;
+
+  /* ── Spacing scale (4px base) ── */
+  --cbr-sp-1:   4px;
+  --cbr-sp-2:   8px;
+  --cbr-sp-3:  12px;
+  --cbr-sp-4:  16px;
+  --cbr-sp-6:  24px;
+  --cbr-sp-8:  32px;
+  --cbr-sp-12: 48px;
+  --cbr-sp-16: 64px;
+
+  /* ── Glow tokens ── */
+  --cbr-glow-red:   0 0 12px rgba(192, 57, 43, 0.45),
+                    0 0 28px rgba(192, 57, 43, 0.20);
+  --cbr-glow-soft:  0 0 8px  rgba(192, 57, 43, 0.20),
+                    0 2px 16px rgba(0, 0, 0, 0.60);
+  --cbr-glow-pulse: 0 0 6px  rgba(192, 57, 43, 0.30),
+                    0 0 20px rgba(192, 57, 43, 0.12);
+
+  /* ── Motion tokens ── */
+  --cbr-dur-fast:   120ms;
+  --cbr-dur-base:   240ms;
+  --cbr-dur-slow:   480ms;
+  --cbr-dur-sweep:  8000ms;
+  --cbr-ease-out:   cubic-bezier(0.0, 0.0, 0.2, 1.0);
+  --cbr-ease-in:    cubic-bezier(0.4, 0.0, 1.0, 1.0);
+  --cbr-ease-snap:  cubic-bezier(0.2, 0.8, 0.2, 1.0);
+
+  /* ── Scanline / HUD primitives ── */
+  --cbr-scanline-opacity: 0.025;
+  --cbr-scanline-size:    4px;
+  --cbr-bracket-size:     10px;
+  --cbr-bracket-weight:   1.5px;
+}
+
+/* Reduced-motion overrides */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --cbr-dur-fast:   0ms;
+    --cbr-dur-base:   0ms;
+    --cbr-dur-slow:   0ms;
+    --cbr-dur-sweep: 99999ms; /* effectively stop sweeps */
+  }
+}

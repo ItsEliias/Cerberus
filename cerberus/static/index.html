@@ -214,6 +214,10 @@
     })();
   </script>
   <link rel="stylesheet" href="/static/style.css">
+  <!-- JARVIS design system — Phase A (layers on top of style.css) -->
+  <link rel="stylesheet" href="/static/jarvis/tokens.css">
+  <link rel="stylesheet" href="/static/jarvis/components.css">
+  <link rel="stylesheet" href="/static/jarvis/surfaces.css">
   <link rel="modulepreload" href="/static/app.js">
   <link rel="modulepreload" href="/static/js/chat.js">
   <link rel="modulepreload" href="/static/js/ui.js">
@@ -2377,9 +2381,36 @@
 <script type="module" src="/static/js/settings.js"></script>
 <script type="module" src="/static/js/admin.js"></script>
 <script type="module" src="/static/js/assistant.js"></script>
+<!-- JARVIS effects kit — must load before app.js so window.JX is available -->
+<script src="/static/jarvis/effects.js"></script>
 <script type="module" src="/static/app.js"></script>  <!-- app.js must be LAST -->
 <script type="module" src="/static/js/init.js"></script>
 <script type="module" src="/static/js/a11y.js"></script>
+<!-- JARVIS Phase A — per-surface effect init -->
+<script nonce="{{CSP_NONCE}}">
+(function(){
+  function jxInit() {
+    if (!window.JX) return;
+    // Sidebar: panel glow on hover
+    var sb = document.getElementById('sidebar');
+    if (sb) JX.initPanelGlow(sb);
+    // Chat input bar: glow border handled via CSS; opt-in panel glow
+    var cib = document.querySelector('.chat-input-bar');
+    if (cib) JX.initPanelGlow(cib);
+    // Welcome/Workspace empty state: HUD sweep
+    var ws = document.getElementById('welcome-screen');
+    if (ws) {
+      JX.initHudSweep(ws, { duration: 10000, color: 'rgba(192,57,43,0.015)' });
+      JX.initScanlines(ws, { opacity: 0.018 });
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', jxInit, { once: true });
+  } else {
+    jxInit();
+  }
+})();
+</script>
 <!-- ===== Command Center Overlay Panel ===== -->
 <div id="command-center-panel" style="display:none; position:fixed; top:0; bottom:0; left:calc(var(--icon-rail-w, 48px) + var(--sidebar-w, 0px)); right:0; z-index:100; background:#000; transition:left 0.25s ease;">
   <iframe id="command-center-iframe"

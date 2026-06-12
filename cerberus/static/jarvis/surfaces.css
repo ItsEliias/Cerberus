@@ -1,0 +1,289 @@
+/* ============================================================ */
+/* Cerberus JARVIS — Surface Application                        */
+/* Phase A: shell chrome, chat view, workspace (welcome) state  */
+/* Requires: tokens.css + components.css                        */
+/* ============================================================ */
+
+/* ── A2a. Shell Chrome — Sidebar ─────────────────────────────── */
+
+@media (min-width: 769px) {
+
+  .sidebar {
+    background: linear-gradient(
+      180deg,
+      rgba(14, 16, 20, 0.98) 0%,
+      rgba(11, 13, 16, 0.99) 100%
+    ) !important;
+    border-right: 1px solid var(--cbr-border-hairline) !important;
+    box-shadow:
+      inset -1px 0 0 rgba(192, 57, 43, 0.06),
+      2px 0 16px rgba(0, 0, 0, 0.40);
+  }
+
+  /* Subtle grid texture on sidebar */
+  .sidebar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.7;
+    border-radius: inherit;
+  }
+
+  .sidebar-inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  .sidebar-header {
+    position: relative;
+    z-index: 1;
+    border-bottom: 1px solid var(--cbr-border-hairline);
+    background: transparent;
+  }
+
+  /* Sidebar brand title pulse */
+  .sidebar-brand-title {
+    animation: jx-brand-pulse 3.5s ease-in-out infinite;
+    letter-spacing: 0.06em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar-brand-title { animation: none; }
+  }
+
+  /* Section headers in sidebar */
+  .sidebar .section-header-flex {
+    position: relative;
+  }
+
+  .sidebar .section-title {
+    font-size: var(--cbr-font-caption);
+    font-family: 'Fira Code', ui-monospace, monospace;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--cbr-red-500) !important;
+    opacity: 0.85;
+  }
+
+  /* Active list-item left edge glow */
+  .sidebar .list-item.active,
+  .sidebar .list-item[aria-selected="true"] {
+    position: relative;
+    background: linear-gradient(
+      90deg,
+      rgba(192, 57, 43, 0.10) 0%,
+      rgba(192, 57, 43, 0.03) 50%,
+      transparent 100%
+    ) !important;
+  }
+
+  .sidebar .list-item.active::before,
+  .sidebar .list-item[aria-selected="true"]::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 15%;
+    bottom: 15%;
+    width: 2px;
+    background: var(--cbr-red-500);
+    box-shadow: 0 0 6px var(--cbr-red-500), 0 0 12px rgba(192, 57, 43, 0.4);
+    border-radius: 0 1px 1px 0;
+  }
+
+  /* Sidebar new-chat / search hover */
+  .sidebar .list-item:hover {
+    background: rgba(192, 57, 43, 0.06) !important;
+    border-left: 1px solid var(--cbr-border-hairline);
+  }
+
+} /* end @media min-width */
+
+/* ── A2a. Shell Chrome — Icon Rail (top bar) ─────────────────── */
+
+.icon-rail {
+  background: linear-gradient(
+    180deg,
+    rgba(14, 16, 20, 0.97) 0%,
+    rgba(11, 13, 16, 0.99) 100%
+  );
+  border-right: 1px solid var(--cbr-border-hairline);
+  box-shadow: 1px 0 8px rgba(0, 0, 0, 0.30);
+}
+
+.icon-rail-btn {
+  transition:
+    color      var(--cbr-dur-fast) var(--cbr-ease-out),
+    background var(--cbr-dur-fast) var(--cbr-ease-out),
+    box-shadow var(--cbr-dur-fast) var(--cbr-ease-out);
+}
+
+.icon-rail-btn:hover {
+  color: var(--cbr-red-500) !important;
+  background: rgba(192, 57, 43, 0.08) !important;
+  box-shadow: inset 0 0 0 1px var(--cbr-border-hairline);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-rail-btn { transition: none; }
+}
+
+/* ── A2b. Chat View ──────────────────────────────────────────── */
+
+/* Chat container main area — calm panel frame */
+.chat-container {
+  background: var(--bg, #1a1d23);
+}
+
+/* Top bar chrome */
+.chat-top-bar {
+  border-bottom: 1px solid var(--cbr-border-hairline);
+  background: linear-gradient(
+    180deg,
+    rgba(14, 16, 20, 0.95) 0%,
+    rgba(17, 19, 24, 0.90) 100%
+  );
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Chat input bar — crimson focus glow */
+.chat-input-bar {
+  border-top: 1px solid var(--cbr-border-hairline);
+  background: linear-gradient(
+    0deg,
+    rgba(11, 13, 16, 0.98) 0%,
+    rgba(14, 16, 20, 0.95) 100%
+  );
+  box-shadow: 0 -1px 0 rgba(192, 57, 43, 0.08);
+}
+
+.chat-input-bar textarea#message {
+  transition:
+    border-color var(--cbr-dur-base) var(--cbr-ease-out),
+    box-shadow   var(--cbr-dur-base) var(--cbr-ease-out);
+}
+
+.chat-input-bar textarea#message:focus {
+  border-color: rgba(192, 57, 43, 0.45) !important;
+  box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.12), var(--cbr-glow-pulse);
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-input-bar textarea#message { transition: none; }
+}
+
+/* Chat history area — keep legible, just subtle frame */
+.chat-history {
+  position: relative;
+}
+
+/* User message bubbles — subtle red tint */
+.chat-history .message.user .bubble,
+.chat-history .message[data-role="user"] .bubble {
+  background: linear-gradient(
+    135deg,
+    rgba(192, 57, 43, 0.08) 0%,
+    rgba(14, 16, 20, 0.70) 100%
+  );
+  border: 1px solid rgba(192, 57, 43, 0.14);
+  border-radius: 6px 6px 2px 6px;
+}
+
+/* Assistant message bubbles — transparent with hairline */
+.chat-history .message.assistant .bubble,
+.chat-history .message[data-role="assistant"] .bubble {
+  background: transparent;
+  border: 1px solid var(--cbr-border-hairline);
+  border-radius: 2px 6px 6px 6px;
+}
+
+/* ── A2b. Welcome / Empty State (Workspace) ──────────────────── */
+
+/* Welcome screen — full HUD treatment with bracket corners + ambient */
+#welcome-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Corner bracket decoration on welcome screen */
+#welcome-screen::before,
+#welcome-screen::after {
+  content: '';
+  position: absolute;
+  width: var(--cbr-bracket-size);
+  height: var(--cbr-bracket-size);
+  pointer-events: none;
+  z-index: 2;
+}
+
+#welcome-screen::before {
+  top: 12px;
+  left: 16px;
+  border-top: var(--cbr-bracket-weight) solid var(--cbr-red-500);
+  border-left: var(--cbr-bracket-weight) solid var(--cbr-red-500);
+  opacity: 0.6;
+}
+
+#welcome-screen::after {
+  bottom: 12px;
+  right: 16px;
+  border-bottom: var(--cbr-bracket-weight) solid var(--cbr-red-500);
+  border-right:  var(--cbr-bracket-weight) solid var(--cbr-red-500);
+  opacity: 0.6;
+}
+
+/* Ambient gradient background on welcome */
+.chat-container.welcome-active {
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 50%,
+    rgba(61, 10, 13, 0.22) 0%,
+    transparent 70%
+  ), var(--bg, #1a1d23);
+}
+
+/* Welcome boat icon — branded pulse */
+.welcome-boat {
+  color: var(--cbr-red-500);
+  filter: drop-shadow(0 0 6px rgba(192, 57, 43, 0.45));
+  animation: jx-brand-pulse 3.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-boat { animation: none; }
+}
+
+/* Welcome wordmark */
+.welcome-name {
+  font-family: 'Fira Code', ui-monospace, monospace;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cbr-red-500);
+}
+
+/* Welcome sub text */
+.welcome-sub {
+  font-size: var(--cbr-font-caption);
+  letter-spacing: 0.06em;
+  opacity: 0.65;
+}
+
+/* ── Chat-container when populated: calm, legible ────────────── */
+/* No heavy scanlines / particles on dense message areas.        */
+/* Only subtle structural chrome remains (top bar, input glow).  */
+
+/* ── Stat chip in top bar ───────────────────────────────────── */
+
+.chat-top-bar .jx-stat-chip {
+  margin-left: auto;
+  margin-right: 8px;
+}
