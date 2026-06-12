@@ -814,3 +814,6 @@
 
 /* Phase E3 voice call overlay — see styles-e3.css */
 @import './styles-e3.css';
+
+/* Phase E4 council round-table — see styles-e4.css */
+@import './styles-e4.css';

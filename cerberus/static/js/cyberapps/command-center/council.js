@@ -20,6 +20,7 @@ import { getGlyph } from './council-glyphs.js';
 import { openNewAgentModal } from './council-new-agent.js';
 import { openMessageDrawer } from './council-message-drawer.js';
 import { openCallView } from './council-call-view.js';
+import { openRoundTableModal } from './council-round-table.js';
 
 const AGENTS_API = '/api/agents';
 
@@ -64,6 +65,7 @@ export function buildCouncilTab() {
     <div class="cc-council-header">
       <span class="cc-council-title">COUNCIL <span class="cc-council-sub">— Active Agent Roster</span></span>
       <span class="cc-council-count-chip" id="cc-council-count">0 / 0 ACTIVE</span>
+      <button class="cc-round-table-btn" id="cc-round-table-btn" title="Start a multi-agent round-table meeting">[ ROUND TABLE ]</button>
       <button class="cc-new-agent-btn" id="cc-new-agent-btn" title="Create a new agent persona">+ NEW AGENT</button>
     </div>
     <div class="cc-council-filters" id="cc-council-filters">
@@ -95,6 +97,9 @@ export function initCouncil(root) {
   }
   const newBtn = root.querySelector('#cc-new-agent-btn');
   if (newBtn) newBtn.addEventListener('click', () => openNewAgentModal(root, () => loadCouncil(root)));
+
+  const rtBtn = root.querySelector('#cc-round-table-btn');
+  if (rtBtn) rtBtn.addEventListener('click', () => openRoundTableModal(root));
 }
 
 // ---- Toast helper ----
