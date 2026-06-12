@@ -1,0 +1,175 @@
+/* =====================================================================
+ * styles-e1.css — Phase E1 Council Card Layout
+ *
+ * Depends on: styles.css (for --cc-accent, --cc-accent-rgb, --cc-accent-glow)
+ * Imported by: styles.css via @import (see bottom of styles.css)
+ * ===================================================================== */
+
+/* Grid layout: auto-fill, min 420px cards */
+.cc-council-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 10px;
+}
+
+/* Phase E1 card body: portrait | main content */
+.cc-e1-card-body {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* Portrait container */
+.cc-e1-portrait {
+  flex-shrink: 0;
+  width: 64px; height: 64px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.2);
+  border-radius: 4px;
+  background: rgba(var(--cc-accent-rgb), 0.04);
+  color: var(--cc-accent);
+  opacity: 0.75;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+.cc-council-card:hover .cc-e1-portrait {
+  opacity: 1;
+  border-color: rgba(var(--cc-accent-rgb), 0.45);
+}
+.cc-agent-portrait-svg { width: 42px; height: 42px; }
+
+/* Main info column */
+.cc-e1-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+/* Header row: name | role chip | status dot */
+.cc-e1-header-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.cc-e1-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cc-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cc-e1-role-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.25);
+  border-radius: 2px;
+  color: var(--cc-accent);
+  opacity: 0.7;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cc-e1-status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-left: auto;
+  display: inline-block;
+}
+
+/* Currently: action line */
+.cc-e1-action-line {
+  font-size: 10px;
+  opacity: 0.4;
+  font-style: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--cc-fg);
+}
+.cc-e1-action-line em { font-style: italic; opacity: 0.85; }
+
+/* Metrics row: score | sparkline | tasks badge */
+.cc-e1-metrics-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cc-e1-score {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 3px;
+  border: 1px solid rgba(var(--cc-accent-rgb), 0.3);
+  background: rgba(var(--cc-accent-rgb), 0.08);
+  color: var(--cc-accent);
+  white-space: nowrap; flex-shrink: 0;
+}
+
+.cc-e1-tasks-badge {
+  font-family: 'Orbitron', monospace;
+  font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 1px 5px;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 2px;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+  white-space: nowrap; flex-shrink: 0;
+}
+
+/* 4-button action row */
+.cc-e1-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+
+.cc-action-message,
+.cc-action-call {
+  opacity: 0.5;
+  border-color: rgba(var(--cc-accent-rgb), 0.2);
+  color: var(--cc-fg);
+}
+.cc-action-message:hover,
+.cc-action-call:hover {
+  opacity: 0.75;
+  border-color: rgba(var(--cc-accent-rgb), 0.45);
+  color: var(--cc-accent);
+}
+
+/* Toast notification */
+.cc-council-toast {
+  position: fixed; bottom: 28px; left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid var(--cc-accent);
+  color: var(--cc-accent);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.08em;
+  padding: 7px 18px; border-radius: 3px;
+  z-index: 10000; opacity: 0; pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 0 10px var(--cc-accent-glow);
+}
+.cc-council-toast.cc-toast-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Hover: intensify card edge glow */
+.cc-council-card:hover {
+  border-color: rgba(var(--cc-accent-rgb), 0.5);
+  box-shadow: 0 0 14px rgba(var(--cc-accent-rgb), 0.2);
+}
+
+/* Reduced motion: disable sparkline draw + toast transition */
+@media (prefers-reduced-motion: reduce) {
+  .cc-council-toast { transition: none; }
+  .cc-e1-portrait   { transition: none; }
+}

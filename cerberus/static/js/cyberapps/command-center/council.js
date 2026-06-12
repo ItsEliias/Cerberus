@@ -1,43 +1,54 @@
 /**
- * council.js — COUNCIL sub-tab: Agent Roster Panel.
+ * council.js — COUNCIL sub-tab: Agent Roster Panel (Phase E1).
  *
  * Data source: GET /api/agents
  * Status toggle: PATCH /api/agents/{id}
  * Invoke: POST /api/agents/{id}/invoke  (SSE stream)
  * Details: inline overlay panel
  *
- * Features:
- *  - Header with live active-count chip
- *  - Filter tabs: ALL / ACTIVE / IDLE / STANDBY
- *  - Agent rows with status dot, name, role, current action, score chip
- *  - ACTIVATE / IDLE + DETAILS + INVOKE action buttons
- *  - jx2-hud-frame bracket-corner hover effect
- *  - Per-agent sparkline (last 60s task throughput)
- *  - Falls back to 6-agent demo stub when API returns 5xx
+ * Phase E1 additions:
+ *  - Greek persona SVG portraits (64x64, via council-glyphs.js)
+ *  - Rich card layout: portrait | name+role+action | score+sparkline+actions
+ *  - MESSAGE and CALL buttons (Coming-soon toast — Phase E2/E3)
+ *  - Grid layout: repeat(auto-fill, minmax(420px, 1fr))
+ *  - Theme-reactive via var(--cc-accent) (see styles.css)
+ *  - prefers-reduced-motion respected for sparkline animation
  */
 
 import { formatTelemetry } from './command.js';
+import { getGlyph } from './council-glyphs.js';
+import { openNewAgentModal } from './council-new-agent.js';
 
 const AGENTS_API = '/api/agents';
 
-// Status colours that align with jx2 vars
 const STATUS_COLOR = {
-  active: '#2ecc71', idle: '#e67e22', processing: '#c0392b',
-  alert: '#e74c3c', standby: '#888',
+  active:     '#2ecc71',
+  idle:       '#e67e22',
+  processing: 'var(--cc-accent)',
+  alert:      '#e74c3c',
+  standby:    '#888',
 };
 
-// Demo stub — used when API returns 5xx (graceful degrade only)
+// Demo stub — graceful degrade on 5xx only
 const DEMO_AGENTS = [
-  { id: 'arch-1', name: 'ARCHITECT',  role: 'architect',        action: 'Designing swarm topology',   status: 'active',   score: 94,   history: _rnd(60,60,85),  system_prompt: '', model_alias: 'sonnet', _demo: true },
-  { id: 'code-1', name: 'CODER',      role: 'coder',            action: 'Implementing endpoints',      status: 'active',   score: 1210, history: _rnd(60,40,95),  system_prompt: '', model_alias: 'sonnet', _demo: true },
-  { id: 'test-1', name: 'TESTER',     role: 'tester',           action: 'Running integration suite',   status: 'active',   score: 77,   history: _rnd(60,20,60),  system_prompt: '', model_alias: 'sonnet', _demo: true },
-  { id: 'res-1',  name: 'RESEARCHER', role: 'researcher',       action: 'Idle — awaiting task',        status: 'idle',     score: 52,   history: _rnd(60,0,20),   system_prompt: '', model_alias: 'sonnet', _demo: true },
-  { id: 'rev-1',  name: 'REVIEWER',   role: 'reviewer',         action: 'Idle — awaiting task',        status: 'idle',     score: 88,   history: _rnd(60,0,15),   system_prompt: '', model_alias: 'sonnet', _demo: true },
-  { id: 'sec-1',  name: 'SECURITY',   role: 'security-auditor', action: 'Standby — on-call',           status: 'standby',  score: 100,  history: _rnd(60,5,30),   system_prompt: '', model_alias: 'sonnet', _demo: true },
+  { id: 'arch-1', name: 'Daedalus',   role: 'architect',       current_action: 'Designing swarm topology', status: 'active',  score: 94,   system_prompt: '', model_alias: 'sonnet', _demo: true },
+  { id: 'code-1', name: 'Hephaestus', role: 'backend-dev',     current_action: 'Implementing endpoints',   status: 'active',  score: 1210, system_prompt: '', model_alias: 'sonnet', _demo: true },
+  { id: 'test-1', name: 'Themis',     role: 'tester',          current_action: 'Running integration suite',status: 'active',  score: 77,   system_prompt: '', model_alias: 'sonnet', _demo: true },
+  { id: 'res-1',  name: 'Athena',     role: 'researcher',      current_action: 'Idle — awaiting task',     status: 'idle',    score: 52,   system_prompt: '', model_alias: 'sonnet', _demo: true },
+  { id: 'rev-1',  name: 'Argus',      role: 'reviewer',        current_action: 'Idle — awaiting task',     status: 'idle',    score: 88,   system_prompt: '', model_alias: 'sonnet', _demo: true },
+  { id: 'sec-1',  name: 'Aegis',      role: 'security-auditor',current_action: 'Standby — on-call',        status: 'standby', score: 100,  system_prompt: '', model_alias: 'sonnet', _demo: true },
 ];
 
 function _rnd(len, lo, hi) {
   return Array.from({ length: len }, () => lo + Math.floor(Math.random() * (hi - lo + 1)));
+}
+
+/** Deterministic sparkline based on agent id hash, so each agent has a stable unique line. */
+function _stableHistory(id) {
+  let seed = 0;
+  for (let i = 0; i < id.length; i++) seed = (seed * 31 + id.charCodeAt(i)) >>> 0;
+  const rng = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return (seed >>> 16) / 65535; };
+  return Array.from({ length: 24 }, () => Math.floor(rng() * 80 + 5));
 }
 
 let _filter = 'all';
@@ -59,9 +70,10 @@ export function buildCouncilTab() {
       `).join('')}
     </div>
     <div id="cc-new-agent-overlay" class="cc-agent-overlay" style="display:none"></div>
-    <div id="cc-council-rows" class="cc-council-rows"><div class="cc-empty">Loading council...</div></div>
+    <div id="cc-council-rows" class="cc-council-rows cc-council-grid"><div class="cc-empty">Loading council...</div></div>
     <div class="cc-council-note" id="cc-council-note"></div>
     <div id="cc-agent-details-overlay" class="cc-agent-overlay" style="display:none"></div>
+    <div id="cc-toast" class="cc-council-toast" aria-live="polite" style="display:none"></div>
   </div>`;
 }
 
@@ -80,79 +92,22 @@ export function initCouncil(root) {
     });
   }
   const newBtn = root.querySelector('#cc-new-agent-btn');
-  if (newBtn) newBtn.addEventListener('click', () => _openNewAgentModal(root));
+  if (newBtn) newBtn.addEventListener('click', () => openNewAgentModal(root, () => loadCouncil(root)));
 }
 
-// ---- New agent modal ----
+// ---- Toast helper ----
 
-function _openNewAgentModal(root) {
-  const overlay = root.querySelector('#cc-new-agent-overlay');
-  if (!overlay) return;
-  overlay.style.display = 'flex';
-  overlay.innerHTML = `
-    <div class="cc-overlay-panel" style="max-width:560px;">
-      <div class="cc-overlay-header">
-        <span class="cc-overlay-title">NEW AGENT</span>
-        <button class="cc-overlay-close" id="cc-na-close">&times;</button>
-      </div>
-      <div class="cc-overlay-body">
-        <label class="cc-na-field"><span>NAME</span>
-          <input id="cc-na-name" type="text" placeholder="e.g. devops" autocomplete="off"/></label>
-        <label class="cc-na-field"><span>ROLE</span>
-          <input id="cc-na-role" type="text" placeholder="e.g. coder / architect / custom"/></label>
-        <label class="cc-na-field"><span>AGENT TYPE</span>
-          <input id="cc-na-type" type="text" placeholder="e.g. backend-dev"/></label>
-        <label class="cc-na-field"><span>MODEL ALIAS</span>
-          <select id="cc-na-model">
-            <option value="sonnet">sonnet</option>
-            <option value="opus">opus</option>
-            <option value="haiku">haiku</option>
-            <option value="fable">fable</option>
-          </select></label>
-        <label class="cc-na-field"><span>SYSTEM PROMPT</span>
-          <textarea id="cc-na-prompt" rows="5" placeholder="You are an expert ..."></textarea></label>
-        <div id="cc-na-err" class="cc-na-err" style="display:none"></div>
-      </div>
-      <div class="cc-overlay-footer">
-        <button class="cc-action-cancel" id="cc-na-cancel">CANCEL</button>
-        <button class="cc-action-save" id="cc-na-create">CREATE</button>
-      </div>
-    </div>`;
-  const close = () => { overlay.style.display = 'none'; overlay.innerHTML = ''; };
-  overlay.querySelector('#cc-na-close').addEventListener('click', close);
-  overlay.querySelector('#cc-na-cancel').addEventListener('click', close);
-  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-
-  overlay.querySelector('#cc-na-create').addEventListener('click', async () => {
-    const name   = overlay.querySelector('#cc-na-name').value.trim();
-    const role   = overlay.querySelector('#cc-na-role').value.trim() || 'custom';
-    const atype  = overlay.querySelector('#cc-na-type').value.trim() || role;
-    const model  = overlay.querySelector('#cc-na-model').value;
-    const prompt = overlay.querySelector('#cc-na-prompt').value.trim()
-                || `You are ${name || 'an agent'}, a ${role} persona on the Cerberus council.`;
-    const err    = overlay.querySelector('#cc-na-err');
-    err.style.display = 'none';
-    if (!name) { err.textContent = 'Name is required.'; err.style.display = 'block'; return; }
-    try {
-      const res = await fetch(AGENTS_API, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, role, agent_type: atype, model_alias: model, system_prompt: prompt, status: 'idle' }),
-      });
-      if (!res.ok) {
-        const t = await res.text().catch(() => `HTTP ${res.status}`);
-        err.textContent = res.status === 409 ? 'Agent name already exists.' : t;
-        err.style.display = 'block';
-        return;
-      }
-      close();
-      loadCouncil(root);
-    } catch (e) {
-      err.textContent = String(e);
-      err.style.display = 'block';
-    }
-  });
+function _toast(root, message, duration = 2800) {
+  const el = root.querySelector('#cc-toast');
+  if (!el) return;
+  el.textContent = message;
+  el.style.display = 'block';
+  el.classList.add('cc-toast-visible');
+  clearTimeout(el._toastTimer);
+  el._toastTimer = setTimeout(() => {
+    el.classList.remove('cc-toast-visible');
+    setTimeout(() => { el.style.display = 'none'; }, 300);
+  }, duration);
 }
 
 // ---- Load ----
@@ -166,7 +121,6 @@ export async function loadCouncil(root) {
     const res = await fetch(AGENTS_API, { credentials: 'same-origin' });
     if (!res.ok) {
       if (res.status >= 500) throw new Error(`HTTP ${res.status}`);
-      // 401 / 403 — surface message without demo fallback
       if (note) note.textContent = `Auth error ${res.status} — please log in.`;
       container.innerHTML = `<div class="cc-empty">Not authenticated.</div>`;
       return;
@@ -175,14 +129,14 @@ export async function loadCouncil(root) {
     const raw = data.agents || [];
     _members = raw.map(a => ({
       id:            a.id,
-      name:          (a.name || '').toUpperCase(),
+      name:          a.name || '',
       role:          a.role || '—',
-      action:        a.current_action || 'Idle',
+      action:        a.current_action || 'Idle — awaiting task',
       status:        a.status || 'idle',
       score:         a.score ?? 0,
       system_prompt: a.system_prompt || '',
       model_alias:   a.model_alias || 'sonnet',
-      history:       _rnd(60, 0, 50),
+      history:       _stableHistory(a.id || a.name || 'x'),
     }));
     if (note) note.textContent = '';
     _renderCouncil(root);
@@ -191,8 +145,7 @@ export async function loadCouncil(root) {
     }
     _wireButtons(root);
   } catch (e) {
-    // 5xx / network error — graceful degrade to demo
-    _members = DEMO_AGENTS.map(a => ({ ...a }));
+    _members = DEMO_AGENTS.map(a => ({ ...a, history: _stableHistory(a.id), action: a.current_action || 'Idle' }));
     if (note) note.textContent = `(demo) — API error: ${_esc(String(e))}`;
     _renderCouncil(root);
     _wireButtons(root);
@@ -226,52 +179,61 @@ function _renderCouncil(root) {
   });
 }
 
+// ---- Rich card HTML ----
+
 function _cardHtml(m) {
-  const st = m.status || 'idle';
+  const st       = m.status || 'idle';
   const scoreStr = m.score != null ? formatTelemetry(m.score) : '—';
-  const activeLbl = (st === 'active' || st === 'processing') ? 'IDLE' : 'ACTIVATE';
-  const activeCls = (st === 'active' || st === 'processing') ? 'cc-action-idle' : 'cc-action-activate';
-  const dotAnim   = (st === 'processing') ? ' cc-dot-processing' : (st === 'active' ? ' cc-dot-active-ring' : '');
-  const dotColor  = STATUS_COLOR[st] || STATUS_COLOR.standby;
-  const isDemo    = m._demo ? ' cc-card-demo' : '';
+  const dotAnim  = st === 'processing' ? ' cc-dot-processing' : (st === 'active' ? ' cc-dot-active-ring' : '');
+  const dotColor = STATUS_COLOR[st] || STATUS_COLOR.standby;
+  const isDemo   = m._demo ? ' cc-card-demo' : '';
+  const portrait = getGlyph(m.name);
+  const nameDisp = _esc(m.name).toUpperCase();
+  const actionLbl = _esc(m.action || 'Idle — awaiting task');
 
   return `<div class="cc-council-card jx2-hud-frame${isDemo}" data-agent-id="${_esc(m.id)}" data-status="${st}">
     <span class="jx2-bracket-tl" aria-hidden="true"></span>
     <span class="jx2-bracket-br" aria-hidden="true"></span>
-    <div class="cc-council-card-main">
-      <div class="cc-council-card-status">
-        <span class="cc-council-dot${dotAnim}" style="background:${dotColor}" title="${st}"></span>
-      </div>
-      <div class="cc-council-card-info">
-        <span class="cc-council-name">${_esc(m.name)}</span>
-        <span class="cc-council-role-lbl">${_esc(m.role)}</span>
-        <span class="cc-council-action-lbl">${_esc(m.action)}</span>
-      </div>
-      <div class="cc-council-card-right">
-        <span class="cc-council-score-chip jx2-stat-chip" data-status="${st}">${scoreStr}</span>
-        <div class="cc-council-spark-wrap">
-          <svg class="cc-council-spark" data-spark-id="${_esc(m.id)}"
-            viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true"></svg>
+
+    <div class="cc-e1-card-body">
+      <div class="cc-e1-portrait" aria-label="${nameDisp} portrait">${portrait}</div>
+
+      <div class="cc-e1-main">
+        <div class="cc-e1-header-row">
+          <span class="cc-council-name cc-e1-name">${nameDisp}</span>
+          <span class="cc-e1-role-chip">${_esc(m.role)}</span>
+          <span class="cc-e1-status-dot cc-council-dot${dotAnim}"
+            style="background:${dotColor}" title="${st}"></span>
         </div>
-        <div class="cc-council-actions">
-          <button class="cc-council-action-btn ${activeCls}"
-            data-id="${_esc(m.id)}" data-action="${activeLbl === 'IDLE' ? 'idle' : 'activate'}">
-            [ ${activeLbl} ]
-          </button>
-          <button class="cc-council-action-btn cc-action-details"
-            data-id="${_esc(m.id)}" data-action="details">
-            [ DETAILS ]
-          </button>
+
+        <span class="cc-e1-action-line">Currently: <em>${actionLbl}</em></span>
+
+        <div class="cc-e1-metrics-row">
+          <span class="cc-council-score-chip jx2-stat-chip cc-e1-score"
+            title="Score">${scoreStr}</span>
+          <div class="cc-council-spark-wrap">
+            <svg class="cc-council-spark" data-spark-id="${_esc(m.id)}"
+              viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"></svg>
+          </div>
+          <span class="cc-e1-tasks-badge" style="display:none">0 PENDING</span>
+        </div>
+
+        <div class="cc-council-actions cc-e1-actions">
+          <button class="cc-council-action-btn cc-action-message"
+            data-id="${_esc(m.id)}" data-action="message">[ MESSAGE ]</button>
+          <button class="cc-council-action-btn cc-action-call"
+            data-id="${_esc(m.id)}" data-action="call">[ CALL ]</button>
           <button class="cc-council-action-btn cc-action-invoke"
-            data-id="${_esc(m.id)}" data-action="invoke">
-            [ INVOKE ]
-          </button>
+            data-id="${_esc(m.id)}" data-action="invoke">[ INVOKE ]</button>
+          <button class="cc-council-action-btn cc-action-details"
+            data-id="${_esc(m.id)}" data-action="details">[ DETAILS ]</button>
         </div>
       </div>
     </div>
+
     <div class="cc-invoke-pane" id="cc-invoke-${_esc(m.id)}" style="display:none">
       <div class="cc-invoke-input-row">
-        <input class="cc-invoke-input" type="text" placeholder="Enter prompt for ${_esc(m.name)}..."
+        <input class="cc-invoke-input" type="text" placeholder="Enter prompt for ${nameDisp}..."
           id="cc-invoke-input-${_esc(m.id)}" />
         <button class="cc-council-action-btn cc-action-send"
           data-id="${_esc(m.id)}" data-action="send">[ SEND ]</button>
@@ -289,7 +251,7 @@ function _drawSparkline(svg, data) {
     svg.innerHTML = '';
     return;
   }
-  const W = 120, H = 28, pad = 2;
+  const W = 120, H = 32, pad = 2;
   const max = Math.max(...data, 1);
   const pts = data.map((v, i) => {
     const x = pad + (i / (data.length - 1)) * (W - pad * 2);
@@ -299,7 +261,7 @@ function _drawSparkline(svg, data) {
   const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
   polyline.setAttribute('points', pts.join(' '));
   polyline.setAttribute('fill', 'none');
-  polyline.setAttribute('stroke', 'var(--cc-crimson)');
+  polyline.setAttribute('stroke', 'var(--cc-accent)');
   polyline.setAttribute('stroke-width', '1.5');
   polyline.setAttribute('stroke-linecap', 'round');
   polyline.setAttribute('stroke-linejoin', 'round');
@@ -309,7 +271,7 @@ function _drawSparkline(svg, data) {
   dot.setAttribute('cx', lastPt[0]);
   dot.setAttribute('cy', lastPt[1]);
   dot.setAttribute('r', '2.5');
-  dot.setAttribute('fill', 'var(--cc-crimson)');
+  dot.setAttribute('fill', 'var(--cc-accent)');
   svg.innerHTML = '';
   svg.appendChild(polyline);
   svg.appendChild(dot);
@@ -326,28 +288,25 @@ function _wireButtons(root) {
     if (!btn) return;
     const { id, action } = btn.dataset;
 
+    if (action === 'message' || action === 'call') {
+      _toast(root, `Coming soon — Phase E${action === 'message' ? '2' : '3'}`);
+      return;
+    }
     if (action === 'details') {
       const member = _members.find(m => m.id === id);
       if (member) _showDetails(root, member);
       return;
     }
-
     if (action === 'invoke') {
       _toggleInvokePane(root, id);
       return;
     }
-
     if (action === 'send') {
       await _sendInvoke(root, id);
       return;
     }
-
-    if (action === 'activate' || action === 'idle') {
-      await _toggleStatus(root, id, action);
-    }
   });
 
-  // Also wire Enter key on invoke inputs
   container.querySelectorAll('.cc-invoke-input').forEach(inp => {
     inp.addEventListener('keydown', async e => {
       if (e.key === 'Enter') {
@@ -356,28 +315,6 @@ function _wireButtons(root) {
       }
     });
   });
-}
-
-// ---- Status toggle ----
-
-async function _toggleStatus(root, id, action) {
-  const member = _members.find(m => m.id === id);
-  if (!member || member._demo) return;
-  const newStatus = action === 'activate' ? 'active' : 'idle';
-  try {
-    const res = await fetch(`${AGENTS_API}/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    member.status = newStatus;
-    _renderCouncil(root);
-    _wireButtons(root);
-  } catch (err) {
-    console.warn('[Council] toggle failed', err);
-  }
 }
 
 // ---- Invoke pane ----
@@ -396,28 +333,21 @@ function _toggleInvokePane(root, id) {
 async function _sendInvoke(root, id) {
   const member = _members.find(m => m.id === id);
   if (!member) return;
-
   const inp = root.querySelector(`#cc-invoke-input-${id}`);
   const resultEl = root.querySelector(`#cc-invoke-result-${id}`);
   if (!inp || !resultEl) return;
-
   const prompt = inp.value.trim();
   if (!prompt) return;
-
   if (member._demo) {
     resultEl.textContent = '[DEMO] Cannot invoke demo agents. Reload to connect to the API.';
     return;
   }
-
   resultEl.textContent = 'Invoking...';
   inp.disabled = true;
-
-  // Optimistic UI — flip to active
   member.status = 'active';
   member.action = `Invoking: ${prompt.slice(0, 60)}`;
   _renderCouncil(root);
   _wireButtons(root);
-
   try {
     const res = await fetch(`${AGENTS_API}/${encodeURIComponent(id)}/invoke`, {
       method: 'POST',
@@ -425,41 +355,30 @@ async function _sendInvoke(root, id) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt }),
     });
-
     if (!res.ok) {
       const txt = await res.text();
       resultEl.textContent = `Error ${res.status}: ${txt}`;
       return;
     }
-
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let accumulated = '';
     resultEl.textContent = '';
-
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       const chunk = decoder.decode(value, { stream: true });
-      // Parse SSE lines
       for (const line of chunk.split('\n')) {
-        if (line.startsWith('data: ')) {
-          const payload = line.slice(6).trim();
-          if (payload === '[DONE]') break;
-          try {
-            const obj = JSON.parse(payload);
-            if (obj.delta) {
-              accumulated += obj.delta;
-              resultEl.textContent = accumulated;
-            } else if (obj.error) {
-              resultEl.textContent = `Error: ${obj.error}`;
-            }
-          } catch (_) { /* non-JSON lines ignored */ }
-        }
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6).trim();
+        if (payload === '[DONE]') break;
+        try {
+          const obj = JSON.parse(payload);
+          if (obj.delta) { accumulated += obj.delta; resultEl.textContent = accumulated; }
+          else if (obj.error) { resultEl.textContent = `Error: ${obj.error}`; }
+        } catch (_) { /* non-JSON lines ignored */ }
       }
     }
-
-    // Refresh agent data to pick up updated score/status
     await _refreshAgent(root, id);
   } catch (err) {
     resultEl.textContent = `Stream error: ${err.message}`;
@@ -480,11 +399,11 @@ async function _refreshAgent(root, id) {
     if (idx !== -1) {
       _members[idx] = {
         ..._members[idx],
-        status: fresh.status,
-        score: fresh.score,
-        action: fresh.current_action || 'Idle',
+        status:        fresh.status,
+        score:         fresh.score,
+        action:        fresh.current_action || 'Idle — awaiting task',
         system_prompt: fresh.system_prompt,
-        model_alias: fresh.model_alias,
+        model_alias:   fresh.model_alias,
       };
     }
     _renderCouncil(root);
@@ -497,13 +416,12 @@ async function _refreshAgent(root, id) {
 function _showDetails(root, m) {
   const overlay = root.querySelector('#cc-agent-details-overlay');
   if (!overlay) return;
-
   overlay.innerHTML = `
     <div class="cc-overlay-panel jx2-hud-frame">
       <span class="jx2-bracket-tl" aria-hidden="true"></span>
       <span class="jx2-bracket-br" aria-hidden="true"></span>
       <div class="cc-overlay-header">
-        <span class="cc-overlay-title">AGENT / ${_esc(m.name)}</span>
+        <span class="cc-overlay-title">AGENT / ${_esc(m.name).toUpperCase()}</span>
         <button class="cc-overlay-close" id="cc-overlay-close">[ CLOSE ]</button>
       </div>
       <div class="cc-overlay-body">
@@ -518,13 +436,10 @@ function _showDetails(root, m) {
         ${!m._demo ? `<button class="cc-council-action-btn cc-action-save" data-id="${_esc(m.id)}" data-action="save-prompt">[ SAVE PROMPT ]</button>` : ''}
       </div>
     </div>`;
-
   overlay.style.display = 'block';
-
   overlay.querySelector('#cc-overlay-close').addEventListener('click', () => {
     overlay.style.display = 'none';
   });
-
   const saveBtn = overlay.querySelector('[data-action="save-prompt"]');
   if (saveBtn) {
     saveBtn.addEventListener('click', async () => {
