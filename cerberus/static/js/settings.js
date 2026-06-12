@@ -2184,8 +2184,6 @@ function initAll() {
   initClose();
   initOpacityToggle();
   initialized = true;
-  // Cyber Apps settings section — injected by settings/cyberapps_section.js
-  if (typeof window.initCyberAppsSettings === 'function') window.initCyberAppsSettings();
   initDefaultChat();
   initTeacherModel();
   initUtilityModel();

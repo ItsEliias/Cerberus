@@ -764,63 +764,6 @@ app.include_router(setup_contacts_routes())
 from companion import setup_companion_routes
 app.include_router(setup_companion_routes())
 
-# CyberLab Companion — native Cerberus app (vault + all CyberLab features)
-from routes.cyberapps_cyberlab_routes import setup_cyberapps_cyberlab_routes
-app.include_router(setup_cyberapps_cyberlab_routes())
-
-# CredVault — encrypted credential vault (CyberOS native migration)
-from routes.cyberapps_credvault_routes import setup_cyberapps_credvault_routes
-app.include_router(setup_cyberapps_credvault_routes())
-
-# Dashboard — operator dashboard and ecosystem health monitor (CyberOS native migration)
-from routes.cyberapps_dashboard_routes import setup_cyberapps_dashboard_routes
-app.include_router(setup_cyberapps_dashboard_routes())
-
-# GhostVault — anonymous session vault (CyberOS native migration)
-from routes.cyberapps_ghostvault_routes import setup_cyberapps_ghostvault_routes
-app.include_router(setup_cyberapps_ghostvault_routes())
-
-# Launcher — CyberOS app launcher (CyberOS native migration)
-from routes.cyberapps_launcher_routes import setup_cyberapps_launcher_routes
-app.include_router(setup_cyberapps_launcher_routes())
-
-# NetLab — packet/protocol playground (CyberOS native migration)
-from routes.cyberapps_netlab_routes import setup_cyberapps_netlab_routes
-app.include_router(setup_cyberapps_netlab_routes())
-
-# NetworkMap — force-directed network topology visualiser (CyberOS native migration)
-from routes.cyberapps_networkmap_routes import setup_networkmap_routes
-app.include_router(setup_networkmap_routes())
-
-# PlaybookStudio — VAPT playbook builder and runner (CyberOS native)
-from routes.cyberapps_playbookstudio_routes import setup_cyberapps_playbookstudio_routes
-app.include_router(setup_cyberapps_playbookstudio_routes())
-
-# ReconDesk — recon dashboard (CyberOS native migration)
-from routes.cyberapps_recondesk_routes import setup_recondesk_routes
-app.include_router(setup_recondesk_routes())
-
-# ReportForge — VAPT report generation (CyberOS native migration)
-from routes.cyberapps_reportforge_routes import setup_cyberapps_reportforge_routes
-app.include_router(setup_cyberapps_reportforge_routes())
-
-# SignalBoard — signal intelligence board (CyberOS native migration)
-from routes.cyberapps_signalboard_routes import setup_cyberapps_signalboard_routes
-app.include_router(setup_cyberapps_signalboard_routes())
-
-# TerminalLink — Python PTY WebSocket bridge (CyberOS native migration)
-from routes.cyberapps_terminallink_routes import setup_cyberapps_terminallink_routes
-app.include_router(setup_cyberapps_terminallink_routes())
-
-# VaultCore — vault orchestration and scraping engine (CyberOS native migration)
-from routes.cyberapps_vaultcore_routes import setup_cyberapps_vaultcore_routes
-app.include_router(setup_cyberapps_vaultcore_routes())
-# Operations — real-time JARVIS overview panel (Cerberus native)
-from routes.cyberapps_operations_routes import setup_cyberapps_operations_routes
-app.include_router(setup_cyberapps_operations_routes())
-# Cyber Apps Settings — per-user prefs for all cyber apps
-from routes.cyberapps_settings_routes import setup_cyberapps_settings_routes
-app.include_router(setup_cyberapps_settings_routes())
 # ========= ROUTES (kept in app.py) =========
 
 def _serve_html_with_nonce(request: Request, file_path: str) -> HTMLResponse:
