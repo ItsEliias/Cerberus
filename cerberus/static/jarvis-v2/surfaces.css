@@ -348,19 +348,11 @@ body.jx2-active .code-area {
 /* ── MODAL / DIALOG ───────────────────────────────────────────────────
  * Glass panel treatment. Scrim at 50% black (ui-ux-pro-max rule).
  * ------------------------------------------------------------------- */
-/* NOTE: backdrop-filter on draggable popups causes drag lag because the
- * blur layer must repaint each frame as position changes. Keep the JARVIS
- * border + glow treatment but drop the blur on .modal/[role="dialog"] so
- * dragging stays smooth. Solid panels (jx2-glass-panel applied explicitly)
- * still get the blur. */
-body.jx2-active .modal,
-body.jx2-active [role="dialog"] {
-  background: var(--jx2-surface-modal) !important;
-  border:     1px solid var(--jx2-border-default) !important;
-  border-top: 1px solid var(--jx2-border-glow) !important;
-  box-shadow: var(--jx2-glow-lift), var(--jx2-glow-ambient) !important;
-  will-change: transform;
-}
+/* Modals + dialogs intentionally use Cerberus's native styles (no v2 override).
+ * The previous override on .modal interfered with the existing positioning /
+ * drag math and caused popups to shift right on interaction. JARVIS treatment
+ * should be applied explicitly with class="jx2-glass-panel" on individual
+ * inner content where wanted, not globally on the .modal overlay. */
 
 /* Modal scrim */
 body.jx2-active .modal-overlay,
