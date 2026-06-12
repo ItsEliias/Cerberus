@@ -15,7 +15,7 @@
  */
 
 import { getGlyph } from './council-glyphs.js';
-import { startRecording, stopRecording } from '../../../voiceRecorder.js';
+import { startRecording, stopRecording } from '../../voiceRecorder.js';
 
 const AGENTS_API = '/api/agents';
 const OVERLAY_CLASS = 'cc-call-overlay';

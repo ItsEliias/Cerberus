@@ -154,7 +154,6 @@ export async function injectCalendarStrip(container) {
     const end    = new Date(now.getTime() + 30 * 86400000).toISOString().slice(0, 10);
     const data   = await _fetch(`${API}/api/calendar/events?start=${start}&end=${end}`);
     const events = data.events || data || [];
-    const now     = new Date();
     const todayStr = now.toDateString();
     const weekEnd  = new Date(now.getTime() + 7 * 86400000);
 
