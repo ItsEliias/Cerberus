@@ -1084,6 +1084,36 @@ def _migrate_add_pinned_models_column():
         except Exception:
             pass
 
+class CerberusCouncilMeeting(TimestampMixin, Base):
+    """Persisted council round-table meeting record (Phase E4)."""
+    __tablename__ = "cerberus_council_meetings"
+
+    id         = Column(String, primary_key=True, index=True)
+    owner      = Column(String, nullable=True, index=True)
+    title      = Column(String, nullable=False, default="")
+    prompt     = Column(Text, nullable=False, default="")
+    agent_ids  = Column(Text, nullable=False, default="[]")   # JSON array of UUIDs
+    rounds     = Column(Integer, nullable=False, default=2)
+    transcript = Column(Text, nullable=False, default="[]")   # JSON array of turn dicts
+
+    __table_args__ = (
+        Index('ix_cerberus_council_meetings_owner_created', 'owner', 'created_at'),
+    )
+
+    def to_dict(self):
+        return {
+            "id":         self.id,
+            "owner":      self.owner,
+            "title":      self.title,
+            "prompt":     self.prompt,
+            "agent_ids":  self.agent_ids,
+            "rounds":     self.rounds,
+            "transcript": self.transcript,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 def _migrate_add_notes_sort_order():
     """Add sort_order, image_url, repeat columns to notes if they don't exist."""
     import sqlite3

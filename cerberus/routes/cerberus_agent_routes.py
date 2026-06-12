@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from core.database import CerberusAgent, CerberusAgentMessage, SessionLocal
+from core.database import CerberusAgent, CerberusAgentMessage, CerberusCouncilMeeting, SessionLocal
 from src.auth_helpers import require_user
 
 logger = logging.getLogger(__name__)
