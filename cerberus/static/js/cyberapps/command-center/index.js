@@ -8,7 +8,7 @@
  */
 
 import { buildCommandTab, applyVitals, applyTimeseries, applySwarm, applyAgents } from './command.js';
-import { buildCouncilTab, loadCouncil }    from './council.js';
+import { buildCouncilTab, initCouncil, loadCouncil } from './council.js';
 import { buildWorkspaceTab, loadWorkspace } from './workspace.js';
 import { buildFinanceTab, loadFinance }     from './finance.js';
 import { buildAssistantTab, initAssistant, destroyAssistant } from './assistant.js';
@@ -170,6 +170,7 @@ function _mountTab(id, shell) {
     Poll.start(_pollCallbacks(shell));
   } else if (id === 'council') {
     content.innerHTML = buildCouncilTab();
+    initCouncil(content);
     loadCouncil(content);
   } else if (id === 'workspace') {
     content.innerHTML = buildWorkspaceTab();
