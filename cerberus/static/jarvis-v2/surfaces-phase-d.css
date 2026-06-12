@@ -1,0 +1,299 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/surfaces-phase-d.css
+ * Phase D: Density push — stat strips on Email, Notes, Calendar,
+ * Brain (Memory), Search. Dashboard welcome-screen overlay.
+ * Tasks ops-view stats strip. All selectors gated body.jx2-active.
+ * Depends on: tokens.css, components.css (loaded first).
+ * ==================================================================== */
+
+/* ── PHASE D COMPONENT PRIMITIVES ───────────────────────────────────*/
+
+/* Donut chart */
+.jx2-donut { position:relative;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0; }
+.jx2-donut svg { display:block; }
+.jx2-donut__center { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none; }
+.jx2-donut__total { display:block;font-family:var(--jx2-font-display);font-size:1.1rem;font-weight:700;color:var(--jx2-fg-primary);line-height:1; }
+.jx2-donut__sub { display:block;font-family:var(--jx2-font-mono);font-size:0.6rem;letter-spacing:var(--jx2-tracking-hud);color:var(--jx2-fg-muted);text-transform:uppercase;margin-top:2px; }
+
+/* Burn-down sparkline */
+.jx2-burndown { display:block;width:120px;height:28px;flex-shrink:0; }
+.jx2-burndown path,.jx2-burndown polyline { fill:none;stroke:var(--jx2-status-active);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke var(--jx2-dur-fast) var(--jx2-ease-out); }
+.jx2-burndown .jx2-burndown__fill { fill:rgba(34,197,94,0.10);stroke:none; }
+.jx2-burndown:hover path { filter:drop-shadow(0 0 4px rgba(34,197,94,0.5)); }
+
+/* Tasks stat counters */
+.jx2-tasks-stats { display:flex;align-items:center;gap:var(--jx2-space-3);padding:var(--jx2-space-3) var(--jx2-space-4);background:var(--jx2-surface-raised);border-bottom:1px solid var(--jx2-border-hairline);flex-wrap:wrap; }
+.jx2-tasks-stats__counters { display:flex;gap:var(--jx2-space-3);flex:1;flex-wrap:wrap; }
+.jx2-tasks-stat { display:flex;flex-direction:column;align-items:flex-start;gap:1px; }
+.jx2-tasks-stat__val { font-family:var(--jx2-font-display);font-size:1.25rem;font-weight:700;line-height:1;color:var(--jx2-fg-primary);min-width:2ch; }
+.jx2-tasks-stat__label { font-family:var(--jx2-font-mono);font-size:0.62rem;letter-spacing:var(--jx2-tracking-hud);color:var(--jx2-fg-muted);text-transform:uppercase;white-space:nowrap; }
+.jx2-tasks-stat[data-status="active"] .jx2-tasks-stat__val    { color:var(--jx2-status-active); }
+.jx2-tasks-stat[data-status="processing"] .jx2-tasks-stat__val { color:var(--jx2-status-processing); }
+.jx2-tasks-stat[data-status="alert"] .jx2-tasks-stat__val      { color:var(--jx2-status-alert); }
+.jx2-tasks-stat[data-status="idle"] .jx2-tasks-stat__val       { color:var(--jx2-status-idle); }
+
+/* Filter strip */
+.jx2-filter-strip { display:flex;gap:var(--jx2-space-2);padding:var(--jx2-space-2) var(--jx2-space-4);background:var(--jx2-surface-base);border-bottom:1px solid var(--jx2-border-hairline);flex-wrap:wrap; }
+.jx2-filter-pill { display:inline-flex;align-items:center;gap:4px;padding:2px 10px;background:transparent;border:1px solid var(--jx2-border-hairline);border-radius:var(--jx2-radius-pill);color:var(--jx2-fg-muted);font-family:var(--jx2-font-mono);font-size:var(--jx2-text-caption);letter-spacing:var(--jx2-tracking-label);text-transform:uppercase;cursor:pointer;transition:background var(--jx2-dur-fast),border-color var(--jx2-dur-fast),color var(--jx2-dur-fast); }
+.jx2-filter-pill:hover { border-color:var(--jx2-border-default);color:var(--jx2-fg-secondary); }
+.jx2-filter-pill[aria-pressed="true"],.jx2-filter-pill.active { background:rgba(192,57,43,0.14);border-color:var(--jx2-crimson-500);color:var(--jx2-fg-primary); }
+
+/* Dashboard grid */
+.jx2-dash-grid { display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:var(--jx2-space-4);padding:var(--jx2-space-4);width:100%;box-sizing:border-box; }
+@media (max-width:720px) { .jx2-dash-grid { grid-template-columns:1fr; } }
+.jx2-dash-quadrant { padding:var(--jx2-space-4);min-height:160px;display:flex;flex-direction:column;gap:var(--jx2-space-3);position:relative; }
+.jx2-dash-quadrant__header { display:flex;align-items:center;gap:var(--jx2-space-2);flex-shrink:0; }
+.jx2-dash-quadrant__title { font-family:var(--jx2-font-mono);font-size:var(--jx2-text-caption);font-weight:600;letter-spacing:var(--jx2-tracking-hud);color:var(--jx2-crimson-300);text-transform:uppercase;text-shadow:var(--jx2-glow-hud-label);flex:1; }
+.jx2-dash-quadrant__body { flex:1;display:flex;flex-direction:column;gap:var(--jx2-space-2);overflow:hidden; }
+.jx2-dash-gauges { display:flex;gap:var(--jx2-space-6);align-items:flex-start;flex-wrap:wrap; }
+.jx2-dash-agent-row { display:flex;align-items:center;gap:var(--jx2-space-2);padding:var(--jx2-space-1) 0;border-bottom:1px solid var(--jx2-border-hairline); }
+.jx2-dash-agent-row:last-child { border-bottom:none; }
+.jx2-dash-agent-name { font-family:var(--jx2-font-mono);font-size:var(--jx2-text-caption);color:var(--jx2-fg-primary);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.jx2-dash-agent-action { font-family:var(--jx2-font-mono);font-size:0.65rem;color:var(--jx2-fg-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px; }
+.jx2-dash-feed-row { display:flex;align-items:center;gap:var(--jx2-space-2);padding:var(--jx2-space-1) var(--jx2-space-2);border-radius:var(--jx2-radius-sm);cursor:pointer;transition:background var(--jx2-dur-fast); }
+.jx2-dash-feed-row:hover { background:rgba(192,57,43,0.08); }
+.jx2-dash-feed-label { font-family:var(--jx2-font-mono);font-size:var(--jx2-text-caption);color:var(--jx2-fg-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.jx2-dash-feed-type { font-family:var(--jx2-font-mono);font-size:0.62rem;letter-spacing:var(--jx2-tracking-hud);color:var(--jx2-fg-muted);text-transform:uppercase;flex-shrink:0; }
+.jx2-dash-topstrip { display:flex;align-items:center;gap:var(--jx2-space-4);padding:var(--jx2-space-3) var(--jx2-space-4);background:var(--jx2-surface-raised);border-bottom:1px solid var(--jx2-border-hairline);flex-shrink:0; }
+.jx2-dash-clock { font-family:var(--jx2-font-mono);font-size:var(--jx2-text-caption);letter-spacing:var(--jx2-tracking-hud);color:var(--jx2-fg-secondary);flex:1; }
+
+/* Scan-line overlay */
+.jx2-scan-line { pointer-events:none;position:relative; }
+.jx2-scan-line::before { content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(192,57,43,0.018) 2px,rgba(192,57,43,0.018) 3px);z-index:0;pointer-events:none;border-radius:inherit; }
+.jx2-scan-line > * { position:relative;z-index:1; }
+
+/* ── EMAIL STAT STRIP ────────────────────────────────────────────────*/
+
+body.jx2-active #jx2-email-stat-strip {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--jx2-space-3);
+  padding:       var(--jx2-space-2) var(--jx2-space-4);
+  background:    var(--jx2-surface-raised);
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  flex-wrap:     wrap;
+  flex-shrink:   0;
+}
+
+body.jx2-active .jx2-email-stat-strip__label {
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-hud);
+  color:          var(--jx2-fg-muted);
+  text-transform: uppercase;
+  margin-right:   var(--jx2-space-2);
+}
+
+/* ── NOTES STAT STRIP ────────────────────────────────────────────────*/
+
+body.jx2-active #jx2-notes-stat-strip {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--jx2-space-3);
+  padding:       var(--jx2-space-2) var(--jx2-space-4);
+  background:    var(--jx2-surface-raised);
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  flex-wrap:     wrap;
+  flex-shrink:   0;
+}
+
+body.jx2-active #jx2-notes-sparkline-wrap {
+  display:     flex;
+  align-items: center;
+  gap:         var(--jx2-space-1);
+  margin-left: auto;
+}
+
+body.jx2-active #jx2-notes-sparkline-wrap .jx2-hud-label {
+  font-size: 0.62rem;
+}
+
+/* ── CALENDAR STAT STRIP ─────────────────────────────────────────────*/
+
+body.jx2-active #jx2-cal-stat-strip {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--jx2-space-3);
+  padding:       var(--jx2-space-2) var(--jx2-space-4);
+  background:    var(--jx2-surface-raised);
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  flex-wrap:     wrap;
+  flex-shrink:   0;
+}
+
+/* ── BRAIN (MEMORY) STAT STRIP ───────────────────────────────────────*/
+
+body.jx2-active #jx2-brain-stat-strip {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--jx2-space-3);
+  padding:       var(--jx2-space-2) var(--jx2-space-4);
+  background:    var(--jx2-surface-raised);
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  flex-wrap:     wrap;
+  flex-shrink:   0;
+}
+
+/* ── SEARCH HISTOGRAM ────────────────────────────────────────────────*/
+
+body.jx2-active #jx2-search-histogram {
+  display:       flex;
+  align-items:   flex-end;
+  gap:           var(--jx2-space-2);
+  padding:       var(--jx2-space-2) var(--jx2-space-4);
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  background:    var(--jx2-surface-raised);
+}
+
+body.jx2-active .jx2-histo-bar-wrap {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            2px;
+}
+
+body.jx2-active .jx2-histo-bar {
+  width:         24px;
+  background:    rgba(192, 57, 43, 0.40);
+  border-radius: var(--jx2-radius-sm) var(--jx2-radius-sm) 0 0;
+  min-height:    2px;
+  transition:    background var(--jx2-dur-fast) var(--jx2-ease-out),
+                 height     var(--jx2-dur-slow) var(--jx2-ease-spring);
+}
+
+body.jx2-active .jx2-histo-bar:hover { background: var(--jx2-crimson-400); }
+
+body.jx2-active .jx2-histo-label {
+  font-family:    var(--jx2-font-mono);
+  font-size:      0.58rem;
+  letter-spacing: 0.06em;
+  color:          var(--jx2-fg-muted);
+  text-transform: uppercase;
+  white-space:    nowrap;
+}
+
+/* ── DASHBOARD WELCOME OVERRIDE ──────────────────────────────────────
+ * Replaces the bare welcome-screen with the 4-quadrant dashboard.
+ * The existing #welcome-screen children (.welcome-name etc.) are hidden.
+ * The dashboard container is injected by dashboard.js.
+ * ------------------------------------------------------------------- */
+
+/* Only override welcome-screen layout when the dashboard is actually mounted
+ * (jx2-dash-active class is added by dashboard.js on mount). Without this guard
+ * we were force-flexing the welcome-screen always, which broke Cerberus's
+ * existing layout and could block sidebar clicks on some viewport widths. */
+body.jx2-active #welcome-screen.jx2-dash-active {
+  display:        flex !important;
+  flex-direction: column;
+  height:         100%;
+  overflow:       hidden;
+  padding:        0 !important;
+  background:     var(--jx2-surface-void);
+  position:       relative;
+}
+
+/* Hide the bare welcome text when dashboard is active */
+body.jx2-active #welcome-screen.jx2-dash-active .welcome-name,
+body.jx2-active #welcome-screen.jx2-dash-active .welcome-sub,
+body.jx2-active #welcome-screen.jx2-dash-active .welcome-tip,
+body.jx2-active #welcome-screen.jx2-dash-active .incognito-btn,
+body.jx2-active #welcome-screen.jx2-dash-active #welcome-setup {
+  display: none !important;
+}
+
+body.jx2-active #jx2-dashboard {
+  display:        flex;
+  flex-direction: column;
+  height:         100%;
+  overflow-y:     auto;
+  overflow-x:     hidden;
+}
+
+body.jx2-active .jx2-dash-topstrip .jx2-brand-pulse {
+  font-family:    var(--jx2-font-display);
+  font-size:      var(--jx2-text-caption);
+  font-weight:    700;
+  letter-spacing: var(--jx2-tracking-hud);
+  color:          var(--jx2-crimson-300);
+  text-transform: uppercase;
+  text-shadow:    var(--jx2-glow-hud-label);
+  animation:      jx2-pulse-crimson 4s ease-in-out infinite;
+}
+
+/* Quadrant hover lifts */
+body.jx2-active .jx2-dash-quadrant {
+  transition: box-shadow var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .jx2-dash-quadrant:hover {
+  box-shadow: var(--jx2-glow-panel-hover);
+}
+
+/* Loading placeholder inside quadrant body */
+body.jx2-active .jx2-dash-loading {
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  color:          var(--jx2-fg-muted);
+  letter-spacing: var(--jx2-tracking-hud);
+  text-transform: uppercase;
+  opacity:        0.5;
+}
+
+/* Today's completions mini-list */
+body.jx2-active .jx2-dash-completion-row {
+  font-family:    var(--jx2-font-mono);
+  font-size:      0.68rem;
+  color:          var(--jx2-fg-secondary);
+  letter-spacing: var(--jx2-tracking-label);
+  padding:        2px 0;
+  border-bottom:  1px solid var(--jx2-border-hairline);
+  white-space:    nowrap;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+}
+
+body.jx2-active .jx2-dash-completion-row:last-child { border-bottom: none; }
+
+/* ── TASKS OPS-VIEW STAT STRIP ───────────────────────────────────────
+ * The container is injected by tasks.js before the task list.
+ * ------------------------------------------------------------------- */
+
+body.jx2-active #jx2-tasks-ops-strip {
+  padding:       var(--jx2-space-3) var(--jx2-space-4);
+  background:    var(--jx2-surface-raised);
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--jx2-space-3);
+}
+
+body.jx2-active #jx2-tasks-filter-strip {
+  display:       flex;
+  gap:           var(--jx2-space-2);
+  padding:       var(--jx2-space-2) var(--jx2-space-4);
+  background:    var(--jx2-surface-base);
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  flex-wrap:     wrap;
+}
+
+/* Per-task gauge (mini, 40px arc) */
+body.jx2-active .task-card .jx2-task-priority-gauge {
+  flex-shrink: 0;
+  opacity:     0.75;
+  transition:  opacity var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .task-card:hover .jx2-task-priority-gauge { opacity: 1; }
+
+body.jx2-active .task-card .jx2-gauge__arc {
+  width:  40px;
+  height: 40px;
+}
+
+body.jx2-active .task-card .jx2-gauge__track { stroke-width: 3; }
+body.jx2-active .task-card .jx2-gauge__fill  { stroke-width: 3; }
+
+body.jx2-active .task-card .jx2-gauge__value {
+  font-size:   0.55rem;
+  font-family: var(--jx2-font-mono);
+}
