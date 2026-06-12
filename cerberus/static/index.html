@@ -225,6 +225,7 @@
   <link rel="stylesheet" href="/static/jarvis-v2/surfaces.css">
   <link rel="stylesheet" href="/static/jarvis-v2/surfaces-phase-b.css">
   <link rel="stylesheet" href="/static/jarvis-v2/surfaces-phase-b2.css">
+  <link rel="stylesheet" href="/static/jarvis-v2/surfaces-phase-d.css">
   <script src="/static/jarvis-v2/effects.js"></script>
   <link rel="modulepreload" href="/static/app.js">
   <link rel="modulepreload" href="/static/js/chat.js">
@@ -2451,6 +2452,93 @@
       JX2.init();
     }
   })();
+</script>
+<!-- Phase D: dashboard + density modules -->
+<script type="module" nonce="{{CSP_NONCE}}">
+  import { mountDashboard, unmountDashboard } from '/static/js/dashboard.js';
+  import { injectEmailStrip, injectNotesStrip, injectCalendarStrip, injectBrainStrip, injectSearchHistogram } from '/static/js/density.js';
+
+  // Expose globally so chat.js / session switch can call unmountDashboard
+  window._cbr = window._cbr || {};
+  window._cbr.mountDashboard   = mountDashboard;
+  window._cbr.unmountDashboard = unmountDashboard;
+
+  // ── Dashboard lifecycle: watch welcome-screen hidden class ──────────
+  const screen = document.getElementById('welcome-screen');
+  if (screen) {
+    // Initial mount if welcome-screen is visible
+    if (!screen.classList.contains('hidden')) {
+      mountDashboard();
+    }
+
+    // Watch for the .hidden toggle (set by hideWelcomeScreen / showWelcomeScreen
+    // in chatRenderer.js) and mount/unmount accordingly.
+    const welObs = new MutationObserver(() => {
+      if (screen.classList.contains('hidden')) {
+        unmountDashboard();
+      } else if (!document.getElementById('jx2-dashboard')) {
+        mountDashboard();
+      }
+    });
+    welObs.observe(screen, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  // ── Density: Notes pane ─────────────────────────────────────────────
+  // Notes is rendered dynamically — watch for #notes-pane to appear
+  const bodyObs = new MutationObserver(mutations => {
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (!(node instanceof Element)) continue;
+        // Notes pane
+        const notesPaneEl = node.id === 'notes-pane' ? node
+          : node.querySelector?.('#notes-pane');
+        if (notesPaneEl) {
+          const notesHeader = notesPaneEl.querySelector('.notes-pane-header');
+          if (notesHeader) injectNotesStrip(notesPaneEl).catch(() => {});
+        }
+
+        // Brain modal
+        const brainModal = node.id === 'memory-modal' ? node
+          : node.querySelector?.('#memory-modal');
+        if (brainModal && !brainModal.classList.contains('hidden')) {
+          const browsePanel = brainModal.querySelector('[data-memory-panel="browse"] .admin-card');
+          if (browsePanel) injectBrainStrip(browsePanel).catch(() => {});
+        }
+
+        // Calendar modal
+        const calModal = node.id === 'calendar-modal' ? node
+          : node.querySelector?.('#calendar-modal');
+        if (calModal) {
+          const calBody = calModal.querySelector('.modal-body, .modal-content');
+          if (calBody) injectCalendarStrip(calBody).catch(() => {});
+        }
+
+        // Email lib modal
+        const emailModal = node.id === 'email-lib-modal' ? node
+          : node.querySelector?.('#email-lib-modal');
+        if (emailModal) {
+          const emailList = emailModal.querySelector('.email-list, .modal-body');
+          if (emailList) injectEmailStrip(emailList).catch(() => {});
+        }
+      }
+    }
+  });
+  bodyObs.observe(document.body, { childList: true, subtree: true });
+
+  // ── Density: Brain modal (already in DOM on load) ───────────────────
+  const memModal = document.getElementById('memory-modal');
+  if (memModal) {
+    // Watch for when modal becomes visible (.hidden removed)
+    const memObs = new MutationObserver(() => {
+      if (!memModal.classList.contains('hidden')) {
+        setTimeout(() => {
+          const bp = memModal.querySelector('[data-memory-panel="browse"] .admin-card');
+          if (bp) injectBrainStrip(bp).catch(() => {});
+        }, 80);
+      }
+    });
+    memObs.observe(memModal, { attributes: true, attributeFilter: ['class'] });
+  }
 </script>
 </body>
 </html>

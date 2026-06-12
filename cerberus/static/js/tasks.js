@@ -8,6 +8,7 @@ import * as spinnerModule from './spinner.js';
 import { makeWindowDraggable } from './windowDrag.js';
 import { sortModelIds } from './modelSort.js';
 import { ordinalSuffix } from './util/ordinal.js';
+import { injectTasksOpsStrip } from './density.js';
 
 const API_BASE = window.location.origin;
 let _open = false;
@@ -732,6 +733,24 @@ function _renderList() {
     }
     titleRow.appendChild(actionsWrap);
 
+    // Phase D: HUD frame bracket corners on hover
+    card.classList.add('jx2-hud-frame');
+    if (typeof JX2 !== 'undefined') JX2.bracketCorners(card);
+
+    // Phase D: priority gauge (mini, 40px) based on task type + run frequency
+    const priorityScore = task.status === 'active'
+      ? Math.min(100, 40 + (task.run_count || 0) * 5)
+      : task.status === 'paused' ? 20 : 0;
+    const gaugeWrap = document.createElement('div');
+    gaugeWrap.className = 'jx2-gauge jx2-task-priority-gauge';
+    gaugeWrap.dataset.state = task.status === 'active' ? 'active'
+      : task.status === 'paused' ? 'idle' : 'disabled';
+    const gaugeLbl = document.createElement('div');
+    gaugeLbl.className = 'jx2-gauge__label';
+    gaugeLbl.textContent = 'PRI';
+    gaugeWrap.appendChild(gaugeLbl);
+    if (typeof JX2 !== 'undefined') JX2.gaugeInit(gaugeWrap, priorityScore);
+
     // Content area
     const content = document.createElement('div');
     content.style.cssText = 'flex:1;min-width:0;position:relative;top:1px;';
@@ -835,6 +854,8 @@ function _renderList() {
     _attachTaskLongPress(card, menuBtn);
 
     card.appendChild(content);
+    // Phase D: append mini priority gauge to card
+    card.appendChild(gaugeWrap);
     list.appendChild(card);
   }
   // Domino-in cascade on the first render-with-cards after opening — same
@@ -849,8 +870,15 @@ function _renderList() {
     void list.offsetWidth;  // force reflow so the class re-fires on re-add
     list.classList.add('tasks-just-opened');
     setTimeout(() => list.classList.remove('tasks-just-opened'), 900);
+    // Phase D: stagger-reveal task rows on first paint
+    if (typeof JX2 !== 'undefined') {
+      JX2.staggerReveal(list.querySelectorAll('.task-card'), 30);
+    }
   }
   _tasksCascadeNext = false;
+
+  // Phase D: inject ops-view strip (stats + donut + sparkline + filter)
+  injectTasksOpsStrip(list, _tasks);
 }
 
 function _btn(label, onClick) {
