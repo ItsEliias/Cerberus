@@ -1,0 +1,379 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/surfaces-phase-b.css
+ * Phase B part 1: Email, Brain, Calendar, Compare, Cookbook.
+ * Extends surfaces.css (Phase A). Same jx2- prefix + body.jx2-active gate.
+ * Density rule (frontend-design): Hero/Landing = ALL effects;
+ *   Shell chrome = MODERATE; Dense data = NONE (no scanlines on tables/grids).
+ * All selectors start with body.jx2-active for strict opt-in scoping.
+ * See surfaces-phase-b2.css for Research, Gallery, Notes, Tasks, Theme,
+ * Search, New-Chat hero, and global empty/loading/error states.
+ * ==================================================================== */
+
+/* ════════════════════════════════════════════════════════════════════
+ *  SURFACE 4: EMAIL
+ *  #email-lib-modal .modal-content already gets glass chrome from
+ *  Phase A. Extend: list rows, section headers, empty inbox HUD.
+ * ════════════════════════════════════════════════════════════════════ */
+
+body.jx2-active #email-section {
+  border-bottom: 1px solid var(--jx2-border-hairline);
+}
+
+/* Email list items */
+body.jx2-active .email-item {
+  border-left:   2px solid transparent;
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  transition:
+    background   var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .email-item:hover {
+  background:   rgba(192, 57, 43, 0.07) !important;
+  border-color: var(--jx2-border-glow);
+}
+
+body.jx2-active .email-item.email-unread {
+  border-left-color: var(--jx2-crimson-500);
+}
+
+body.jx2-active .email-item.email-selected,
+body.jx2-active .email-item[aria-selected="true"] {
+  background:   rgba(192, 57, 43, 0.12) !important;
+  border-color: var(--jx2-crimson-500);
+}
+
+/* Email folder select */
+body.jx2-active #email-folder-select {
+  background:    var(--jx2-surface-void) !important;
+  border:        1px solid var(--jx2-border-hairline) !important;
+  border-bottom: 1px solid var(--jx2-border-default) !important;
+  color:         var(--jx2-fg-secondary) !important;
+  font-family:   var(--jx2-font-mono);
+  font-size:     var(--jx2-text-caption);
+}
+
+/* Empty inbox */
+body.jx2-active .email-loading {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  padding:         var(--jx2-space-8) var(--jx2-space-4);
+  color:           var(--jx2-fg-muted);
+  font-family:     var(--jx2-font-mono);
+  font-size:       var(--jx2-text-caption);
+  letter-spacing:  var(--jx2-tracking-hud);
+  text-transform:  uppercase;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ *  SURFACE 5: BRAIN (Memory / #memory-modal)
+ *  Modal already has glass chrome. Extend: list items, empty state,
+ *  category chips.
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* Memory list items */
+body.jx2-active .memory-item {
+  border-left:   2px solid transparent;
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  transition:
+    background   var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .memory-item:hover {
+  background:   rgba(192, 57, 43, 0.07) !important;
+  border-color: var(--jx2-border-glow);
+}
+
+body.jx2-active .memory-item.memory-item-editing {
+  border-left-color: var(--jx2-crimson-500);
+  background:        rgba(192, 57, 43, 0.10) !important;
+}
+
+/* Memory category chips */
+body.jx2-active .memory-cat-chip {
+  background:     transparent;
+  border:         1px solid var(--jx2-border-hairline);
+  border-radius:  var(--jx2-radius-pill);
+  color:          var(--jx2-fg-muted);
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-label);
+  cursor:         pointer;
+  transition:
+    background   var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+    color        var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .memory-cat-chip:hover {
+  border-color: var(--jx2-border-default);
+  color:        var(--jx2-fg-secondary);
+}
+
+body.jx2-active .memory-cat-chip.active {
+  background:   rgba(192, 57, 43, 0.14) !important;
+  border-color: var(--jx2-crimson-500) !important;
+  color:        var(--jx2-fg-primary) !important;
+}
+
+/* Empty memory state */
+body.jx2-active .memory-empty {
+  color:          var(--jx2-fg-muted);
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-hud);
+  text-transform: uppercase;
+  text-align:     center;
+  padding:        var(--jx2-space-8) var(--jx2-space-4);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ *  SURFACE 6: CALENDAR (#calendar-modal .modal-content)
+ *  Grid stays legible (no scanlines on cells). Top bar + nav get JARVIS.
+ *  Empty calendar = HUD frame.
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* Calendar toolbar / nav bar */
+body.jx2-active .cal-toolbar {
+  background:    var(--jx2-surface-raised) !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cal-nav,
+body.jx2-active .cal-today-btn,
+body.jx2-active .cal-add-btn {
+  background:    transparent !important;
+  border:        1px solid var(--jx2-border-hairline) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color:         var(--jx2-fg-secondary) !important;
+  font-family:   var(--jx2-font-mono);
+  font-size:     var(--jx2-text-caption);
+  transition:
+    background   var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+    color        var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .cal-nav:hover,
+body.jx2-active .cal-today-btn:hover,
+body.jx2-active .cal-add-btn:hover {
+  background:   rgba(192, 57, 43, 0.10) !important;
+  border-color: var(--jx2-border-default) !important;
+  color:        var(--jx2-fg-primary) !important;
+}
+
+/* Calendar view toggle buttons */
+body.jx2-active .cal-view-btn {
+  border:        1px solid var(--jx2-border-hairline);
+  border-radius: var(--jx2-radius-sm);
+  color:         var(--jx2-fg-muted);
+  font-family:   var(--jx2-font-mono);
+  font-size:     var(--jx2-text-caption);
+  transition:
+    color        var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .cal-view-btn.active {
+  border-color: var(--jx2-crimson-500) !important;
+  color:        var(--jx2-fg-primary) !important;
+  background:   rgba(192, 57, 43, 0.12) !important;
+}
+
+/* Calendar grid — calm (dense data: hairline only, no scanlines) */
+body.jx2-active .cal-grid {
+  background: var(--jx2-surface-base) !important;
+}
+
+body.jx2-active .cal-day-cell {
+  border: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cal-day-cell:hover {
+  background: rgba(192, 57, 43, 0.04) !important;
+}
+
+body.jx2-active .cal-day-cell.today {
+  border-color: var(--jx2-crimson-500) !important;
+}
+
+/* Calendar empty state — HUD frame */
+body.jx2-active .cal-empty-state {
+  background:    var(--jx2-surface-raised);
+  border:        1px solid var(--jx2-border-hairline);
+  border-top:    1px solid var(--jx2-border-default);
+  border-radius: var(--jx2-radius-md);
+  box-shadow:    var(--jx2-glow-lift);
+  text-align:    center;
+  padding:       var(--jx2-space-8);
+}
+
+body.jx2-active .cal-empty-title {
+  font-family:    var(--jx2-font-display);
+  font-size:      var(--jx2-text-h3);
+  letter-spacing: var(--jx2-tracking-hud);
+  color:          var(--jx2-fg-primary);
+}
+
+body.jx2-active .cal-empty-msg {
+  font-family: var(--jx2-font-body);
+  font-size:   var(--jx2-text-body);
+  color:       var(--jx2-fg-secondary);
+}
+
+body.jx2-active .cal-btn-primary {
+  background:    var(--jx2-crimson-500) !important;
+  border-color:  var(--jx2-crimson-500) !important;
+  color:         #ffffff !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  font-family:   var(--jx2-font-mono);
+  transition:    background var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .cal-btn-primary:hover {
+  background: var(--jx2-crimson-400) !important;
+  box-shadow: 0 0 16px rgba(192, 57, 43, 0.35) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ *  SURFACE 7: COMPARE (.compare-grid / .compare-pane)
+ *  Each pane = glass panel + hairline crimson border.
+ *  Header row = section-header treatment.
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* Compare container */
+body.jx2-active .compare-active {
+  background: var(--jx2-surface-void) !important;
+}
+
+/* Compare header bar */
+body.jx2-active .compare-header-bar {
+  background:    var(--jx2-surface-raised) !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+  font-family:   var(--jx2-font-mono);
+}
+
+body.jx2-active .compare-header-bar button {
+  border:        1px solid var(--jx2-border-hairline);
+  border-radius: var(--jx2-radius-sm);
+  color:         var(--jx2-fg-secondary);
+  font-family:   var(--jx2-font-mono);
+  font-size:     var(--jx2-text-caption);
+  transition:
+    background   var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+    color        var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .compare-header-bar button:hover {
+  background:   rgba(192, 57, 43, 0.10) !important;
+  border-color: var(--jx2-border-default) !important;
+  color:        var(--jx2-fg-primary) !important;
+}
+
+/* Compare panes — glass panel with hairline crimson border */
+body.jx2-active .compare-pane {
+  background:              var(--jx2-surface-glass) !important;
+  backdrop-filter:         blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border:                  1px solid var(--jx2-border-hairline) !important;
+  border-top:              1px solid var(--jx2-border-default) !important;
+  border-radius:           var(--jx2-radius-md) !important;
+  box-shadow:              var(--jx2-glow-lift);
+}
+
+/* Compare pane headers */
+body.jx2-active .pane-header {
+  background:    var(--jx2-surface-raised) !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .pane-title {
+  font-family:    var(--jx2-font-mono) !important;
+  font-size:      var(--jx2-text-caption) !important;
+  letter-spacing: var(--jx2-tracking-label) !important;
+  color:          var(--jx2-fg-secondary) !important;
+}
+
+body.jx2-active .pane-action-btn {
+  border:        1px solid transparent;
+  border-radius: var(--jx2-radius-sm);
+  color:         var(--jx2-fg-muted);
+  transition:
+    background   var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .pane-action-btn:hover {
+  background:   rgba(192, 57, 43, 0.10) !important;
+  border-color: var(--jx2-border-hairline) !important;
+  color:        var(--jx2-fg-primary) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ *  SURFACE 8: COOKBOOK (#cookbook-modal .modal-content)
+ *  Modal gets glass chrome from Phase A. Extend: tabs, model rows,
+ *  dep tags.
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* Cookbook tabs */
+body.jx2-active .cookbook-tab {
+  border-bottom:  2px solid transparent;
+  color:          var(--jx2-fg-muted);
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-label);
+  transition:
+    color        var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .cookbook-tab:hover {
+  color: var(--jx2-fg-secondary);
+}
+
+body.jx2-active .cookbook-tab.active {
+  border-color: var(--jx2-crimson-500);
+  color:        var(--jx2-fg-primary) !important;
+}
+
+/* Cookbook model rows */
+body.jx2-active .memory-item.hwfit-row,
+body.jx2-active .hwfit-row {
+  border-left:   2px solid transparent;
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  transition:
+    background   var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .hwfit-row:hover {
+  background:   rgba(192, 57, 43, 0.07) !important;
+  border-color: var(--jx2-border-glow);
+}
+
+/* Cookbook dep tags */
+body.jx2-active .cookbook-dep-tag {
+  border:        1px solid var(--jx2-border-hairline);
+  border-radius: var(--jx2-radius-pill);
+  font-family:   var(--jx2-font-mono);
+  font-size:     var(--jx2-text-caption);
+  transition:    border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .cookbook-dep-installed {
+  border-color: rgba(34, 197, 94, 0.30) !important;
+  color:        var(--jx2-status-active) !important;
+}
+
+body.jx2-active .cookbook-dep-install {
+  border-color: var(--jx2-border-default) !important;
+  color:        var(--jx2-fg-secondary) !important;
+}
+
+body.jx2-active .cookbook-dep-install:hover {
+  border-color: var(--jx2-border-glow) !important;
+  color:        var(--jx2-fg-primary) !important;
+}

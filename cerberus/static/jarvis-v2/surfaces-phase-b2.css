@@ -1,0 +1,494 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/surfaces-phase-b2.css
+ * Phase B part 2: Deep Research, Gallery, Notes, Tasks, Theme, Search,
+ * New-Chat hero, global empty/loading/error primitives.
+ * Extends surfaces.css + surfaces-phase-b.css.
+ * All selectors gated with body.jx2-active.
+ * ==================================================================== */
+
+/* ── SURFACE 9: DEEP RESEARCH ────────────────────────────────────────*/
+
+body.jx2-active #research-overlay .modal-content {
+  background:              var(--jx2-surface-glass) !important;
+  backdrop-filter:         blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border:                  1px solid var(--jx2-border-default) !important;
+  border-top:              1px solid var(--jx2-border-glow) !important;
+}
+
+body.jx2-active .research-jobs-list .research-job-card {
+  border-left:   2px solid transparent;
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  transition:    background var(--jx2-dur-fast) var(--jx2-ease-out),
+                 border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .research-jobs-list .research-job-card:hover {
+  background:   rgba(192, 57, 43, 0.07) !important;
+  border-color: var(--jx2-border-glow);
+}
+
+body.jx2-active .research-job-header {
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-label);
+  color:          var(--jx2-fg-secondary);
+}
+
+body.jx2-active .research-jobs-list:empty::after {
+  content:        'No research sessions yet';
+  display:        block;
+  padding:        var(--jx2-space-12) var(--jx2-space-4);
+  text-align:     center;
+  color:          var(--jx2-fg-muted);
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-hud);
+  text-transform: uppercase;
+}
+
+body.jx2-active .research-job-action-btn {
+  border:        1px solid var(--jx2-border-hairline);
+  border-radius: var(--jx2-radius-sm);
+  color:         var(--jx2-fg-muted);
+  font-family:   var(--jx2-font-mono);
+  font-size:     var(--jx2-text-caption);
+  transition:    background var(--jx2-dur-fast) var(--jx2-ease-out),
+                 border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .research-job-action-btn:hover {
+  background:   rgba(192, 57, 43, 0.10) !important;
+  border-color: var(--jx2-border-default) !important;
+  color:        var(--jx2-fg-primary) !important;
+}
+
+/* ── SURFACE 10: GALLERY ─────────────────────────────────────────────*/
+
+body.jx2-active .gallery-toolbar {
+  background:    var(--jx2-surface-raised) !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .gallery-chip {
+  border:        1px solid var(--jx2-border-hairline);
+  border-radius: var(--jx2-radius-pill);
+  color:         var(--jx2-fg-muted);
+  font-family:   var(--jx2-font-mono);
+  font-size:     var(--jx2-text-caption);
+  transition:    background var(--jx2-dur-fast) var(--jx2-ease-out),
+                 border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .gallery-chip:hover {
+  border-color: var(--jx2-border-default);
+  color:        var(--jx2-fg-secondary);
+}
+
+body.jx2-active .gallery-chip.active {
+  background:   rgba(192, 57, 43, 0.14) !important;
+  border-color: var(--jx2-crimson-500) !important;
+  color:        var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .gallery-search {
+  background:    var(--jx2-surface-void) !important;
+  border:        1px solid var(--jx2-border-hairline) !important;
+  border-bottom: 1px solid var(--jx2-border-default) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color:         var(--jx2-fg-primary) !important;
+  font-family:   var(--jx2-font-mono);
+  caret-color:   var(--jx2-crimson-400);
+}
+
+body.jx2-active .gallery-search:focus {
+  border-color: var(--jx2-crimson-500) !important;
+  box-shadow:   var(--jx2-glow-focus) !important;
+  outline:      none !important;
+}
+
+/* Image tiles — no scanlines; glow border only on hover */
+body.jx2-active .gallery-tile {
+  border:        1px solid var(--jx2-border-hairline);
+  border-radius: var(--jx2-radius-sm);
+  overflow:      hidden;
+  transition:    border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+                 box-shadow   var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .gallery-tile:hover {
+  border-color: var(--jx2-border-glow) !important;
+  box-shadow:   0 0 16px rgba(192, 57, 43, 0.25) !important;
+}
+
+body.jx2-active .gallery-empty {
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  padding:        var(--jx2-space-12) var(--jx2-space-4);
+  color:          var(--jx2-fg-muted);
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-hud);
+  text-transform: uppercase;
+  border:         1px solid var(--jx2-border-hairline);
+  border-radius:  var(--jx2-radius-md);
+  background:     var(--jx2-surface-raised);
+}
+
+/* ── SURFACE 11: NOTES ───────────────────────────────────────────────*/
+
+body.jx2-active #notes-pane {
+  background:  var(--jx2-surface-base) !important;
+  border-left: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .notes-pane-header {
+  background:    var(--jx2-surface-raised) !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .notes-pane-title {
+  font-family:    var(--jx2-font-display) !important;
+  font-size:      var(--jx2-text-h3) !important;
+  letter-spacing: var(--jx2-tracking-hud) !important;
+  color:          var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .note-card {
+  border:        1px solid var(--jx2-border-hairline) !important;
+  border-left:   2px solid transparent !important;
+  border-radius: var(--jx2-radius-md) !important;
+  background:    var(--jx2-surface-raised) !important;
+  transition:    border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+                 box-shadow   var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .note-card:hover {
+  border-color:      var(--jx2-border-default) !important;
+  border-left-color: var(--jx2-border-glow) !important;
+  box-shadow:        var(--jx2-glow-panel-hover) !important;
+}
+
+body.jx2-active .note-card.note-card-reminder-due {
+  border-left-color: var(--jx2-status-idle) !important;
+}
+
+body.jx2-active .note-card.note-card-reminder-fired,
+body.jx2-active .note-card.note-card-reminder-fired-sticky {
+  border-left-color: var(--jx2-status-active) !important;
+  box-shadow:        0 0 12px rgba(34, 197, 94, 0.20) !important;
+}
+
+body.jx2-active .notes-header-text-btn {
+  border:        1px solid var(--jx2-border-hairline);
+  border-radius: var(--jx2-radius-sm);
+  color:         var(--jx2-fg-muted);
+  font-family:   var(--jx2-font-mono);
+  font-size:     var(--jx2-text-caption);
+  transition:    background var(--jx2-dur-fast) var(--jx2-ease-out),
+                 border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .notes-header-text-btn:hover {
+  background:   rgba(192, 57, 43, 0.10) !important;
+  border-color: var(--jx2-border-default) !important;
+  color:        var(--jx2-fg-secondary) !important;
+}
+
+/* ── SURFACE 12: TASKS ───────────────────────────────────────────────*/
+
+body.jx2-active .task-card {
+  border-left:   2px solid transparent !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+  transition:    background var(--jx2-dur-fast) var(--jx2-ease-out),
+                 border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .task-card:hover {
+  background:   rgba(192, 57, 43, 0.07) !important;
+  border-color: var(--jx2-border-glow);
+}
+
+body.jx2-active .task-active-badge {
+  background:    var(--jx2-status-active-tint) !important;
+  border:        1px solid rgba(34, 197, 94, 0.35) !important;
+  color:         var(--jx2-status-active) !important;
+  border-radius: var(--jx2-radius-pill) !important;
+  font-family:   var(--jx2-font-mono);
+  font-size:     var(--jx2-text-caption);
+}
+
+body.jx2-active .task-paused-badge {
+  background:    var(--jx2-status-idle-tint) !important;
+  border:        1px solid rgba(245, 158, 11, 0.35) !important;
+  color:         var(--jx2-status-idle) !important;
+  border-radius: var(--jx2-radius-pill) !important;
+  font-family:   var(--jx2-font-mono);
+  font-size:     var(--jx2-text-caption);
+}
+
+/* ── SURFACE 13: THEME ───────────────────────────────────────────────*/
+
+body.jx2-active #theme-popup {
+  background:              var(--jx2-surface-glass) !important;
+  backdrop-filter:         blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border:                  1px solid var(--jx2-border-default) !important;
+  border-top:              1px solid var(--jx2-border-glow) !important;
+  box-shadow:              var(--jx2-glow-lift), var(--jx2-glow-ambient) !important;
+}
+
+body.jx2-active #theme-tabs button {
+  border-bottom:  2px solid transparent;
+  color:          var(--jx2-fg-muted);
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-label);
+  transition:     color var(--jx2-dur-fast) var(--jx2-ease-out),
+                  border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active #theme-tabs button.active,
+body.jx2-active #theme-tabs button[aria-selected="true"] {
+  border-color: var(--jx2-crimson-500);
+  color:        var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .theme-swatch {
+  border:        1px solid var(--jx2-border-hairline);
+  border-radius: var(--jx2-radius-sm);
+  transition:    border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+                 box-shadow   var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .theme-swatch:hover { border-color: var(--jx2-border-default) !important; }
+
+body.jx2-active .theme-swatch.active {
+  border-color: var(--jx2-crimson-500) !important;
+  box-shadow:   0 0 12px rgba(192, 57, 43, 0.30) !important;
+}
+
+/* ── SURFACE 14: SEARCH ──────────────────────────────────────────────*/
+
+body.jx2-active #search-overlay { background: rgba(9, 9, 10, 0.72) !important; }
+
+body.jx2-active #search-overlay .search-panel,
+body.jx2-active #search-overlay > div {
+  background:              var(--jx2-surface-glass) !important;
+  backdrop-filter:         blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border:                  1px solid var(--jx2-border-default) !important;
+  border-top:              1px solid var(--jx2-border-glow) !important;
+  border-radius:           var(--jx2-radius-lg) !important;
+  box-shadow:              var(--jx2-glow-lift) !important;
+}
+
+body.jx2-active #search-input {
+  background:    var(--jx2-surface-void) !important;
+  border:        1px solid var(--jx2-border-hairline) !important;
+  border-bottom: 1px solid var(--jx2-border-default) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color:         var(--jx2-fg-primary) !important;
+  font-family:   var(--jx2-font-mono) !important;
+  caret-color:   var(--jx2-crimson-400);
+  transition:    border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+                 box-shadow   var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active #search-input:focus {
+  border-color: var(--jx2-crimson-500) !important;
+  box-shadow:   var(--jx2-glow-focus) !important;
+  outline:      none !important;
+}
+
+body.jx2-active .search-result-item {
+  border-left:   2px solid transparent;
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  transition:    background var(--jx2-dur-fast) var(--jx2-ease-out),
+                 border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .search-result-item:hover,
+body.jx2-active .search-result-item.highlighted {
+  background:   rgba(192, 57, 43, 0.08) !important;
+  border-color: var(--jx2-border-glow);
+}
+
+body.jx2-active .search-group-header {
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-hud);
+  color:          var(--jx2-crimson-300);
+  text-transform: uppercase;
+  border-bottom:  1px solid var(--jx2-border-hairline);
+}
+
+body.jx2-active .search-highlight {
+  background:    rgba(192, 57, 43, 0.25);
+  color:         var(--jx2-fg-primary);
+  border-radius: 2px;
+}
+
+body.jx2-active .search-empty {
+  color:          var(--jx2-fg-muted);
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-hud);
+  text-transform: uppercase;
+  text-align:     center;
+  padding:        var(--jx2-space-8) var(--jx2-space-4);
+}
+
+/* ── SURFACE 15: NEW CHAT HERO ───────────────────────────────────────*/
+
+body.jx2-active .new-chat-hero,
+body.jx2-active .welcome-view,
+body.jx2-active .chat-welcome {
+  position:        relative;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  min-height:      420px;
+  padding:         var(--jx2-space-12) var(--jx2-space-8);
+  overflow:        hidden;
+}
+
+body.jx2-active .new-chat-hero::before,
+body.jx2-active .welcome-view::before,
+body.jx2-active .chat-welcome::before {
+  content:        '';
+  position:       absolute;
+  top:            50%;
+  left:           50%;
+  transform:      translate(-50%, -50%);
+  width:          480px;
+  height:         480px;
+  background:     radial-gradient(circle, rgba(192, 57, 43, 0.14) 0%, transparent 68%);
+  pointer-events: none;
+  animation:      jx2-glow-breathe 5s ease-in-out infinite;
+  z-index:        0;
+}
+
+body.jx2-active .new-chat-hero::after,
+body.jx2-active .welcome-view::after,
+body.jx2-active .chat-welcome::after {
+  content:  '';
+  position: absolute;
+  inset:    0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent, transparent 2px,
+    rgba(192, 57, 43, 0.015) 2px, rgba(192, 57, 43, 0.015) 3px
+  );
+  pointer-events: none;
+  z-index:        0;
+}
+
+body.jx2-active .new-chat-hero > *,
+body.jx2-active .welcome-view > *,
+body.jx2-active .chat-welcome > * { position: relative; z-index: 1; }
+
+/* ── GLOBAL: EMPTY / LOADING / ERROR PRIMITIVES ──────────────────────*/
+
+body.jx2-active .jx2-spinner {
+  display:       inline-block;
+  width:         18px;
+  height:        18px;
+  border:        2px solid var(--jx2-border-hairline);
+  border-top:    2px solid var(--jx2-crimson-500);
+  border-radius: 50%;
+  animation:     jx2-spin var(--jx2-dur-dramatic) linear infinite;
+  flex-shrink:   0;
+}
+
+@keyframes jx2-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  body.jx2-active .jx2-spinner {
+    animation: none;
+    border-top-color: var(--jx2-crimson-500);
+  }
+}
+
+body.jx2-active .jx2-empty-hud {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--jx2-space-3);
+  padding:         var(--jx2-space-8) var(--jx2-space-4);
+  background:      var(--jx2-surface-raised);
+  border:          1px solid var(--jx2-border-hairline);
+  border-top:      1px solid var(--jx2-border-default);
+  border-radius:   var(--jx2-radius-md);
+  position:        relative;
+  overflow:        visible;
+}
+
+body.jx2-active .jx2-empty-hud::after {
+  content:  '';
+  position: absolute;
+  inset:    0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent, transparent 2px,
+    rgba(192, 57, 43, 0.018) 2px, rgba(192, 57, 43, 0.018) 3px
+  );
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+body.jx2-active .jx2-empty-hud__label {
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-hud);
+  color:          var(--jx2-fg-muted);
+  text-transform: uppercase;
+  position:       relative;
+  z-index:        1;
+}
+
+body.jx2-active .jx2-error-hud {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--jx2-space-4);
+  padding:         var(--jx2-space-12) var(--jx2-space-8);
+  background:      var(--jx2-surface-raised);
+  border:          1px solid var(--jx2-border-hairline);
+  border-top:      2px solid var(--jx2-status-alert);
+  border-radius:   var(--jx2-radius-md);
+  box-shadow:      0 0 0 1px rgba(239, 68, 68, 0.15), var(--jx2-glow-lift);
+}
+
+body.jx2-active .jx2-error-hud__code {
+  font-family:    var(--jx2-font-display);
+  font-size:      var(--jx2-text-h1);
+  font-weight:    var(--jx2-weight-h1);
+  letter-spacing: var(--jx2-tracking-hud);
+  color:          var(--jx2-status-alert);
+  text-shadow:    0 0 20px rgba(239, 68, 68, 0.40);
+}
+
+body.jx2-active .jx2-error-hud__message {
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-hud);
+  color:          var(--jx2-fg-muted);
+  text-transform: uppercase;
+}
+
+body.jx2-active .jx2-section-header {
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  font-weight:    600;
+  letter-spacing: var(--jx2-tracking-hud);
+  text-transform: uppercase;
+  color:          var(--jx2-fg-muted);
+  border-bottom:  1px solid var(--jx2-border-hairline);
+  padding-bottom: var(--jx2-space-2);
+  margin-bottom:  var(--jx2-space-3);
+}
