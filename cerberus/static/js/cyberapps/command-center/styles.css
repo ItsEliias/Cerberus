@@ -817,3 +817,6 @@
 
 /* Phase E4 council round-table — see styles-e4.css */
 @import './styles-e4.css';
+
+/* Phase E5 per-agent tasks — see styles-e5.css */
+@import './styles-e5.css';

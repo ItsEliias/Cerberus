@@ -21,6 +21,7 @@ import { openNewAgentModal } from './council-new-agent.js';
 import { openMessageDrawer } from './council-message-drawer.js';
 import { openCallView } from './council-call-view.js';
 import { openRoundTableModal } from './council-round-table.js';
+import { openTasksDrawer } from './council-tasks-drawer.js';
 
 const AGENTS_API = '/api/agents';
 
@@ -134,28 +135,53 @@ export async function loadCouncil(root) {
     }
     const data = await res.json();
     const raw = data.agents || [];
-    _members = raw.map(a => ({
-      id:            a.id,
-      name:          a.name || '',
-      role:          a.role || '—',
-      action:        a.current_action || 'Idle — awaiting task',
-      status:        a.status || 'idle',
-      score:         a.score ?? 0,
-      system_prompt: a.system_prompt || '',
-      model_alias:   a.model_alias || 'sonnet',
-      history:       _stableHistory(a.id || a.name || 'x'),
-    }));
+
+    // Fetch task counts for all agents in parallel
+    const countResults = await Promise.allSettled(
+      raw.map(a =>
+        fetch(`${AGENTS_API}/${encodeURIComponent(a.id)}/tasks/counts`, { credentials: 'same-origin' })
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      )
+    );
+
+    _members = raw.map((a, i) => {
+      const countsData = countResults[i].status === 'fulfilled' ? countResults[i].value : null;
+      const pending = countsData
+        ? (countsData.proposed || 0) + (countsData.in_progress || 0)
+        : 0;
+      return {
+        id:                a.id,
+        name:              a.name || '',
+        role:              a.role || '—',
+        action:            a.current_action || 'Idle — awaiting task',
+        status:            a.status || 'idle',
+        score:             a.score ?? 0,
+        system_prompt:     a.system_prompt || '',
+        model_alias:       a.model_alias || 'sonnet',
+        history:           _stableHistory(a.id || a.name || 'x'),
+        tasksPendingCount: pending,
+      };
+    });
+
     if (note) note.textContent = '';
     _renderCouncil(root);
     if (window.JX && typeof window.JX.staggerIn === 'function') {
       window.JX.staggerIn(container, '.cc-council-card', 0);
     }
     _wireButtons(root);
+    _listenTaskEvents(root);
   } catch (e) {
-    _members = DEMO_AGENTS.map(a => ({ ...a, history: _stableHistory(a.id), action: a.current_action || 'Idle' }));
+    _members = DEMO_AGENTS.map(a => ({
+      ...a,
+      history: _stableHistory(a.id),
+      action: a.current_action || 'Idle',
+      tasksPendingCount: 0,
+    }));
     if (note) note.textContent = `(demo) — API error: ${_esc(String(e))}`;
     _renderCouncil(root);
     _wireButtons(root);
+    _listenTaskEvents(root);
   }
 }
 
@@ -222,7 +248,10 @@ function _cardHtml(m) {
             <svg class="cc-council-spark" data-spark-id="${_esc(m.id)}"
               viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"></svg>
           </div>
-          <span class="cc-e1-tasks-badge" style="display:none">0 PENDING</span>
+          <span class="cc-e1-tasks-badge${m.tasksPendingCount > 0 ? '' : ' cc-e1-tasks-badge--zero'}"
+            data-tasks-agent-id="${_esc(m.id)}"
+            title="${m.tasksPendingCount > 0 ? 'Click to view tasks' : 'No pending tasks'}"
+            style="display:inline-flex">${m.tasksPendingCount > 0 ? m.tasksPendingCount + ' PENDING' : '0 PENDING'}</span>
         </div>
 
         <div class="cc-council-actions cc-e1-actions">
@@ -291,6 +320,15 @@ function _wireButtons(root) {
   if (!container) return;
 
   container.addEventListener('click', async e => {
+    // Badge click → open tasks drawer
+    const badge = e.target.closest('[data-tasks-agent-id]');
+    if (badge) {
+      const agentId = badge.dataset.tasksAgentId;
+      const member = _members.find(m => m.id === agentId);
+      if (member) openTasksDrawer(root, member);
+      return;
+    }
+
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     const { id, action } = btn.dataset;
@@ -479,6 +517,33 @@ function _showDetails(root, m) {
       }
     });
   }
+}
+
+// ---- Task events ----
+
+let _taskEventBound = false;
+
+function _onTasksChanged(e) {
+  const { agent_id, counts } = e.detail || {};
+  if (!agent_id || !counts) return;
+  const idx = _members.findIndex(m => m.id === agent_id);
+  if (idx === -1) return;
+  _members[idx].tasksPendingCount = (counts.proposed || 0) + (counts.in_progress || 0);
+  const badge = _councilRoot && _councilRoot.querySelector(
+    `[data-tasks-agent-id="${agent_id}"]`
+  );
+  if (badge) {
+    const n = _members[idx].tasksPendingCount;
+    badge.textContent = `${n} PENDING`;
+    badge.classList.toggle('cc-e1-tasks-badge--zero', n === 0);
+    badge.title = n > 0 ? 'Click to view tasks' : 'No pending tasks';
+  }
+}
+
+function _listenTaskEvents(root) {
+  if (_taskEventBound) return;
+  _taskEventBound = true;
+  document.addEventListener('cerberus-agent-tasks-changed', _onTasksChanged);
 }
 
 function _esc(s) {
