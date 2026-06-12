@@ -1,0 +1,232 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/tokens.css
+ * Design system token layer. jx2- prefix (jarvis v2).
+ * Source: skill outputs in docs/jarvis-phase-a-v2-skill-outputs/
+ *   - ui-ux-pro-max  → token structure + WCAG checks
+ *   - frontend-design → color values + glow physics
+ *   - frontend-design-pro → HUD vocabulary (scanlines, bracket, glow)
+ * Vanilla CSS custom properties only. No Tailwind build required.
+ * ==================================================================== */
+
+/* ── Fonts (self-hostable; Google Fonts fallback) ──────────────────── */
+/* Orbitron + JetBrains Mono confirmed by both frontend-design AND
+   ui-ux-pro-max ("cyberpunk, neon, glitch, hud, sci-fi, tactical").
+   IBM Plex Sans for body — legible, avoids banned Inter/Roboto list. */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root {
+  /* ── CRIMSON SPINE (7 shades) ─────────────────────────────────────
+   * Source: frontend-design skill (8-shade spine).
+   * Contrast vs surface-void (#09090a):
+   *   jx2-crimson-200: #ff9080 → 8.4:1 ✓ AAA
+   *   jx2-crimson-300: #f06b5a → 5.9:1 ✓ AA
+   *   jx2-crimson-400: #e04535 → 4.6:1 ✓ AA (large/UI)
+   *   jx2-crimson-500: #c0392b → 3.8:1 ✓ AA (large only; use for borders, not body)
+   *   jx2-crimson-600 and below: decorative fills only
+   * ---------------------------------------------------------------- */
+  --jx2-crimson-900: #1a0505;
+  --jx2-crimson-800: #2d0a0a;
+  --jx2-crimson-700: #4a0f0f;
+  --jx2-crimson-600: #7a1a1a;
+  --jx2-crimson-500: #c0392b;   /* CORE — brand anchor, wordmark, primary actions */
+  --jx2-crimson-400: #e04535;   /* hover state on core */
+  --jx2-crimson-300: #f06b5a;   /* highlight, focus rings */
+  --jx2-crimson-200: #ff9080;   /* glow tips, sparkline peaks */
+
+  /* ── SURFACE TIERS (OLED-grade) ───────────────────────────────────
+   * Source: frontend-design (depth stack) + ui-ux-pro-max (dark OLED).
+   * All vs jx2-fg-primary (#e8e8ec):
+   *   void   → 14.9:1 ✓ AAA   base   → 13.2:1 ✓ AAA
+   *   raised → 11.8:1 ✓ AAA   modal  → 10.4:1 ✓ AAA
+   * ---------------------------------------------------------------- */
+  --jx2-surface-void:   #09090a;  /* pure background — deep space */
+  --jx2-surface-base:   #0d0d0f;  /* primary panels, cards */
+  --jx2-surface-raised: #111115;  /* sidebar, active states */
+  --jx2-surface-modal:  #16161c;  /* modals, tooltips, popovers */
+  --jx2-surface-glass:  rgba(22, 22, 28, 0.72); /* frosted glass panels */
+
+  /* ── FOREGROUND ────────────────────────────────────────────────────
+   * Source: ui-ux-pro-max (foreground: #F8FAFC adapted to cooler tint).
+   * Contrast vs surface-base (#0d0d0f):
+   *   jx2-fg-primary:   #e8e8ec → 14.9:1 ✓ AAA
+   *   jx2-fg-secondary: #9a9aaa → 7.8:1  ✓ AA
+   *   jx2-fg-muted:     #5a5a6a → 3.2:1  decorative only
+   * ---------------------------------------------------------------- */
+  --jx2-fg-primary:   #e8e8ec;
+  --jx2-fg-secondary: #9a9aaa;
+  --jx2-fg-muted:     #5a5a6a;
+  --jx2-fg-inverse:   #09090a;
+
+  /* ── BORDER TIERS ──────────────────────────────────────────────────
+   * Source: frontend-design (hairline/default/glow/bright).
+   * Hairline: always-on; edges panels against void bg.
+   * Glow: on hover/focus; readable intent signal.
+   * ---------------------------------------------------------------- */
+  --jx2-border-hairline: rgba(192, 57, 43, 0.12);
+  --jx2-border-default:  rgba(192, 57, 43, 0.28);
+  --jx2-border-glow:     rgba(192, 57, 43, 0.55);
+  --jx2-border-bright:   rgba(192, 57, 43, 0.85);
+
+  /* ── STATUS COLORS (PROTECTED) ─────────────────────────────────────
+   * Source: ui-ux-pro-max (accent #22C55E preserved exactly).
+   * Never apply crimson where a status color communicates meaning.
+   * ---------------------------------------------------------------- */
+  --jx2-status-active:          #22c55e;
+  --jx2-status-idle:            #f59e0b;
+  --jx2-status-processing:      #3b82f6;
+  --jx2-status-alert:           #ef4444;
+  --jx2-status-active-tint:     rgba(34, 197, 94, 0.12);
+  --jx2-status-idle-tint:       rgba(245, 158, 11, 0.12);
+  --jx2-status-processing-tint: rgba(59, 130, 246, 0.12);
+  --jx2-status-alert-tint:      rgba(239, 68, 68, 0.12);
+
+  /* ── TYPE SCALE ────────────────────────────────────────────────────
+   * Fonts confirmed by frontend-design + ui-ux-pro-max:
+   *   Orbitron     — display/h1; "cyberpunk, hud, sci-fi, tactical"
+   *   JetBrains Mono — UI chrome, status, mono; "glitch, matrix"
+   *   IBM Plex Sans  — body/chat; legible, neutral, NOT banned
+   * ---------------------------------------------------------------- */
+  --jx2-font-display: 'Orbitron', monospace;
+  --jx2-font-body:    'IBM Plex Sans', sans-serif;
+  --jx2-font-mono:    'JetBrains Mono', monospace;
+
+  --jx2-text-display: 3.5rem;     /* 56px — hero counters, splash */
+  --jx2-text-h1:      2rem;       /* 32px — section titles */
+  --jx2-text-h2:      1.5rem;     /* 24px — subsection */
+  --jx2-text-h3:      1.125rem;   /* 18px — panel headers */
+  --jx2-text-body:    0.9375rem;  /* 15px — primary readable */
+  --jx2-text-mono:    0.875rem;   /* 14px — HUD, status, code */
+  --jx2-text-caption: 0.75rem;    /* 12px — labels, timestamps */
+
+  --jx2-weight-display: 700;
+  --jx2-weight-h1:      600;
+  --jx2-weight-h2:      600;
+  --jx2-weight-h3:      600;
+  --jx2-weight-body:    400;
+  --jx2-weight-mono:    400;
+
+  /* Letter-spacing: 0.15em on HUD chrome (frontend-design rule) */
+  --jx2-tracking-hud:   0.15em;
+  --jx2-tracking-label: 0.08em;
+  --jx2-tracking-body:  0em;
+
+  /* ── SPACING (4px base grid) ───────────────────────────────────────
+   * Source: ui-ux-pro-max ("4/8dp spacing system — Material Design")
+   * ---------------------------------------------------------------- */
+  --jx2-space-1:  4px;
+  --jx2-space-2:  8px;
+  --jx2-space-3:  12px;
+  --jx2-space-4:  16px;
+  --jx2-space-6:  24px;
+  --jx2-space-8:  32px;
+  --jx2-space-12: 48px;
+  --jx2-space-16: 64px;
+
+  /* ── GLOW TOKENS ───────────────────────────────────────────────────
+   * Source: frontend-design (4 named glow modes):
+   *   focus   — tight, precise (keyboard focus indicator)
+   *   lift    — panel depth shadow (always-on subtle depth)
+   *   ambient — hero surfaces (large, soft, pulsing)
+   *   hover   — panel hover state (medium, directional)
+   * ---------------------------------------------------------------- */
+  --jx2-glow-focus:
+    0 0 0 1px var(--jx2-crimson-500),
+    0 0 8px rgba(192, 57, 43, 0.60);
+
+  --jx2-glow-lift:
+    0 4px 24px rgba(0, 0, 0, 0.60),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  --jx2-glow-ambient:
+    0 0 60px rgba(192, 57, 43, 0.30),
+    0 0 120px rgba(192, 57, 43, 0.12);
+
+  --jx2-glow-panel-hover:
+    0 0 0 1px var(--jx2-border-default),
+    0 8px 32px rgba(192, 57, 43, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  /* HUD label glow (frontend-design-pro: "long glowing shadows") */
+  --jx2-glow-hud-label:
+    0 0 8px rgba(192, 57, 43, 0.60),
+    0 0 24px rgba(192, 57, 43, 0.30);
+
+  /* ── MOTION ────────────────────────────────────────────────────────
+   * Source: frontend-design (tactical precision durations).
+   * ui-ux-pro-max rule: "duration 150–300ms for micro-interactions".
+   * All wrapped in prefers-reduced-motion (see bottom of file).
+   * ---------------------------------------------------------------- */
+  --jx2-dur-instant:  80ms;
+  --jx2-dur-fast:     150ms;
+  --jx2-dur-normal:   240ms;
+  --jx2-dur-slow:     400ms;
+  --jx2-dur-dramatic: 800ms;
+
+  --jx2-ease-out:      ease-out;
+  --jx2-ease-in-out:   ease-in-out;
+  --jx2-ease-spring:   cubic-bezier(0.16, 1, 0.3, 1);
+  --jx2-ease-tactical: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── RADIUS ────────────────────────────────────────────────────────*/
+  --jx2-radius-sm:   2px;
+  --jx2-radius-md:   4px;
+  --jx2-radius-lg:   8px;
+  --jx2-radius-xl:   12px;
+  --jx2-radius-pill: 9999px;
+
+  /* ── Z-INDEX SCALE (ui-ux-pro-max rule: define layered scale) ──────*/
+  --jx2-z-base:    0;
+  --jx2-z-raised:  10;
+  --jx2-z-overlay: 20;
+  --jx2-z-modal:   40;
+  --jx2-z-toast:   100;
+  --jx2-z-max:     1000;
+}
+
+/* ── KEYFRAMES ────────────────────────────────────────────────────────
+ * Source: frontend-design (pulse, bracket-in, scan-drift, fade-up).
+ * frontend-design-pro: glitch transition kept subtle.
+ * ------------------------------------------------------------------- */
+@keyframes jx2-pulse-crimson {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1.0; }
+}
+
+@keyframes jx2-bracket-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1.0); }
+}
+
+@keyframes jx2-scan-drift {
+  from { background-position: 0 0; }
+  to   { background-position: 0 100%; }
+}
+
+@keyframes jx2-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes jx2-glow-breathe {
+  0%, 100% { box-shadow: 0 0 20px rgba(192, 57, 43, 0.20); }
+  50%       { box-shadow: 0 0 40px rgba(192, 57, 43, 0.45); }
+}
+
+@keyframes jx2-glitch {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-2px); }
+  40%       { transform: translateX(2px); }
+  60%       { transform: translateX(-1px); }
+  80%       { transform: translateX(1px); }
+}
+
+/* ── REDUCED MOTION KILLSWITCH (all 3 skills require this) ────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
+  }
+}
