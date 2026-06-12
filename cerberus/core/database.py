@@ -678,6 +678,45 @@ class Memory(Base):
         Index('ix_memories_session', 'session_id', 'timestamp'),  # Composite for session-based queries
     )
 
+class CerberusAgent(TimestampMixin, Base):
+    """Persistent agent persona with its own system prompt and invocation config."""
+    __tablename__ = "cerberus_agents"
+
+    id             = Column(String, primary_key=True, index=True)
+    name           = Column(String, nullable=False)
+    role           = Column(String, nullable=False, default="custom")
+    agent_type     = Column(String, nullable=False, default="general")
+    status         = Column(String, nullable=False, default="idle")   # active | idle | standby | alert
+    current_action = Column(String, nullable=True)
+    score          = Column(Integer, default=0)
+    system_prompt  = Column(Text, nullable=False, default="")
+    model_alias    = Column(String, nullable=False, default="sonnet")
+    owner          = Column(String, nullable=True, index=True)
+    last_active_at = Column(DateTime, nullable=True)
+    metadata_json  = Column(Text, nullable=True)                      # extensible JSON blob
+
+    __table_args__ = (
+        Index('ix_cerberus_agents_owner_name', 'owner', 'name', unique=True),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "role": self.role,
+            "agent_type": self.agent_type,
+            "status": self.status,
+            "current_action": self.current_action,
+            "score": self.score or 0,
+            "system_prompt": self.system_prompt or "",
+            "model_alias": self.model_alias or "sonnet",
+            "owner": self.owner,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "last_active_at": self.last_active_at.isoformat() if self.last_active_at else None,
+            "metadata_json": self.metadata_json,
+        }
+
+
 def _migrate_add_last_message_at_column():
     """Add last_message_at to sessions + backfill from the latest message
     timestamp per session (fallback to last_accessed / created_at when a

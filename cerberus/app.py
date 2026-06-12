@@ -140,6 +140,7 @@ _TIMEOUT_EXEMPT_PREFIXES = (
     "/api/cookbook/setup",  # remote pacman/apt installs
     "/api/upload",          # large files
     "/api/image",           # diffusion proxies (inpaint/harmonize/upscale/etc.) — own 120s httpx timeout
+    "/api/agents",          # /invoke sub-route streams via Claude Subscription subprocess
 )
 
 
@@ -763,6 +764,10 @@ app.include_router(setup_contacts_routes())
 
 from companion import setup_companion_routes
 app.include_router(setup_companion_routes())
+
+# Cerberus Agent personas (Council)
+from routes.cerberus_agent_routes import setup_cerberus_agent_routes
+app.include_router(setup_cerberus_agent_routes())
 
 # ========= ROUTES (kept in app.py) =========
 
