@@ -423,6 +423,182 @@
 .cc-chat-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .cc-chat-typing { font-size: 11px; opacity: 0.35; padding: 2px 0; }
 
+/* =====================================================================
+   ASSISTANT — VOICE BAR (Phase C Fix)
+   ===================================================================== */
+
+.cc-voice-bar {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 6px 16px 8px; border-top: 1px solid var(--cc-border); flex-shrink: 0;
+}
+
+.cc-waveform-wrap {
+  height: 24px; display: flex; align-items: center;
+}
+
+.cc-waveform-svg {
+  width: 200px; height: 24px; display: block;
+}
+
+.cc-wave-path { transition: d 0.08s ease; }
+
+.cc-voice-btns {
+  display: flex; gap: 8px;
+}
+
+.cc-voice-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 12px; border: 1px solid var(--cc-border);
+  background: transparent; color: var(--cc-fg);
+  cursor: pointer; font-family: inherit; font-size: 10px;
+  letter-spacing: 0.1em; border-radius: 2px;
+  transition: all 0.15s; user-select: none;
+}
+.cc-voice-btn:hover { border-color: var(--cc-crimson); color: var(--cc-crimson); }
+.cc-voice-btn.on {
+  background: var(--cc-crimson); border-color: var(--cc-crimson); color: #fff;
+  box-shadow: 0 0 8px var(--cc-crimson-glow);
+}
+.cc-voice-btn.recording {
+  background: var(--cc-crimson); border-color: var(--cc-crimson); color: #fff;
+  animation: cc-mic-pulse 0.6s ease-in-out infinite;
+}
+@keyframes cc-mic-pulse {
+  0%, 100% { box-shadow: 0 0 4px var(--cc-crimson-glow); }
+  50%       { box-shadow: 0 0 12px var(--cc-crimson-hot); }
+}
+
+.cc-voice-btn-icon { font-size: 13px; line-height: 1; }
+
+.cc-voice-error {
+  font-size: 10px; color: var(--cc-crit);
+  padding: 2px 0; letter-spacing: 0.04em;
+}
+
+/* =====================================================================
+   COUNCIL V2 — Agent Roster (Phase C Fix)
+   ===================================================================== */
+
+.cc-council-v2 { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.cc-council-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.cc-council-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--cc-crimson);
+}
+.cc-council-sub { opacity: 0.4; font-weight: 400; }
+
+.cc-council-count-chip {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  background: rgba(192,57,43,0.12); border: 1px solid rgba(192,57,43,0.35);
+  color: var(--cc-crimson); padding: 2px 8px; border-radius: 3px;
+}
+
+/* Filter tabs */
+.cc-council-filters { display: flex; gap: 4px; }
+.cc-filter-btn {
+  padding: 3px 10px; border: 1px solid var(--cc-border); background: transparent;
+  color: var(--cc-fg); font-family: inherit; font-size: 9px; letter-spacing: 0.1em;
+  cursor: pointer; border-radius: 2px; opacity: 0.5; transition: all 0.15s;
+}
+.cc-filter-btn:hover { opacity: 0.85; border-color: var(--cc-border); }
+.cc-filter-btn.active {
+  background: var(--cc-crimson); border-color: var(--cc-crimson); color: #fff; opacity: 1;
+}
+
+/* Agent cards */
+.cc-council-rows { display: flex; flex-direction: column; gap: 6px; }
+
+.cc-council-card {
+  position: relative; padding: 10px 12px;
+  background: rgba(0,0,0,0.22); border-radius: 4px;
+  border: 1px solid var(--cc-border);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.cc-council-card:hover {
+  border-color: rgba(192,57,43,0.4);
+  box-shadow: 0 0 10px rgba(192,57,43,0.15);
+}
+
+/* jx2-hud-frame bracket corners (reuse existing class, just size them) */
+.cc-council-card .jx2-bracket-tl,
+.cc-council-card .jx2-bracket-br {
+  position: absolute; width: 10px; height: 10px;
+  opacity: 0; transition: opacity 0.15s, transform 0.15s;
+}
+.cc-council-card .jx2-bracket-tl { top: 4px; left: 4px; border-top: 2px solid var(--cc-crimson); border-left: 2px solid var(--cc-crimson); }
+.cc-council-card .jx2-bracket-br { bottom: 4px; right: 4px; border-bottom: 2px solid var(--cc-crimson); border-right: 2px solid var(--cc-crimson); }
+.cc-council-card:hover .jx2-bracket-tl,
+.cc-council-card:hover .jx2-bracket-br { opacity: 1; }
+
+.cc-council-card-main {
+  display: grid; grid-template-columns: 20px 1fr auto;
+  gap: 10px; align-items: center;
+}
+
+/* Status dot */
+.cc-council-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  display: inline-block;
+}
+.cc-dot-active-ring { animation: cc-council-ripple 1.8s ease-out infinite; }
+.cc-dot-processing  { animation: cc-dot-pulse 0.75s ease-in-out infinite; }
+
+/* Agent info */
+.cc-council-card-info { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+
+.cc-council-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--cc-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.cc-council-role-lbl {
+  font-family: 'JetBrains Mono','Fira Code',monospace;
+  font-size: 9px; opacity: 0.45; letter-spacing: 0.06em;
+}
+
+.cc-council-action-lbl {
+  font-size: 10px; opacity: 0.35; font-style: italic;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Right column */
+.cc-council-card-right {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 5px; min-width: 120px;
+}
+
+.cc-council-score-chip {
+  font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 600;
+  padding: 1px 7px; border-radius: 3px;
+  border: 1px solid rgba(192,57,43,0.3);
+  background: rgba(192,57,43,0.08); color: var(--cc-crimson);
+}
+
+/* Sparkline */
+.cc-council-spark-wrap { width: 120px; height: 28px; overflow: hidden; }
+.cc-council-spark { width: 120px; height: 28px; display: block; overflow: visible; }
+
+/* Action buttons row */
+.cc-council-actions { display: flex; gap: 5px; }
+.cc-council-action-btn {
+  font-size: 9px; padding: 2px 7px; border: 1px solid var(--cc-border);
+  background: transparent; color: var(--cc-fg); cursor: pointer;
+  font-family: 'JetBrains Mono','Fira Code',monospace;
+  letter-spacing: 0.04em; border-radius: 2px; opacity: 0.7;
+  transition: all 0.15s; white-space: nowrap;
+}
+.cc-council-action-btn:hover { opacity: 1; border-color: var(--cc-crimson); color: var(--cc-crimson); }
+.cc-council-action-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.cc-action-activate { border-color: #2ecc71; color: #2ecc71; opacity: 0.8; }
+.cc-action-activate:hover { background: rgba(46,204,113,0.12); border-color: #2ecc71; color: #2ecc71; }
+.cc-action-idle     { border-color: var(--cc-border); }
+
 /* -- Theme / Motion -- */
 :root.light .cc-shell::before { display: none; }
 :root.light .cc-card          { background: rgba(0,0,0,0.04); }
