@@ -99,7 +99,7 @@
     });
     registry.forEach(function (app) {
       const btn = document.createElement('button');
-      btn.className = 'cyber-apps-pill';
+      btn.className = 'cyber-apps-pill jx-shimmer';
       btn.dataset.app = app.id;
       btn.title = app.name;
       btn.setAttribute('aria-label', app.name);
@@ -107,6 +107,10 @@
       btn.addEventListener('click', function () { _activate(app.id); });
       pillNav.appendChild(btn);
     });
+    // Stagger pill entrance
+    if (window.JX && typeof window.JX.staggerIn === 'function') {
+      window.JX.staggerIn(pillNav, '.cyber-apps-pill', 0);
+    }
   }
 
   function _esc(str) {
@@ -148,20 +152,39 @@
 
     // Mount
     if (typeof app.init === 'function') {
-      try { app.init(content, _buildCtx()); } catch (e) {
+      try {
+        app.init(content, _buildCtx());
+        // JARVIS: stagger-in top-level grid children after mount
+        if (window.JX && typeof window.JX.staggerIn === 'function') {
+          // Small rAF delay so app can finish synchronous render before we animate
+          requestAnimationFrame(function () {
+            window.JX.staggerIn(content, '.la-app-tile, .db-widget-card, .cc-ws-item, .la-slot-card', 0);
+          });
+        }
+      } catch (e) {
         content.textContent = 'Error loading ' + app.name + ': ' + (e && e.message ? e.message : String(e));
       }
     }
   }
 
   function _renderVaultPrompt(app, container) {
+    // Use the shared inline vault-gate form when available (loaded via index.html).
+    if (window.CyberAppsVaultGate && typeof window.CyberAppsVaultGate.render === 'function') {
+      window.CyberAppsVaultGate.render(container, function () {
+        // Vault is now unlocked — re-activate the app so it mounts.
+        _vaultUnlocked = true;
+        _activate(app.id);
+      });
+      return;
+    }
+    // Fallback: static placeholder if vault-gate.js not yet loaded.
     container.innerHTML =
       '<div class="cyber-apps-vault-gate">' +
         '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--red,#c0392b)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
           '<rect x="3" y="11" width="18" height="11" rx="2"/>' +
           '<path d="M7 11V7a5 5 0 0 1 10 0v4"/>' +
         '</svg>' +
-        '<p class="cyber-apps-vault-msg">This app requires vault unlock. Enter your master password in the vault prompt to continue.</p>' +
+        '<p class="cyber-apps-vault-msg">Vault unlock required. Reload the page to continue.</p>' +
       '</div>';
   }
 
@@ -170,6 +193,14 @@
   // -------------------------------------------------------------------------
   function _openPanel() {
     panel.style.display = 'block';
+    // JARVIS polish: trigger slide-in entrance
+    if (window.JX && typeof window.JX.panelEnter === 'function') {
+      window.JX.panelEnter(panel);
+    }
+    // Also apply scanlines class to content mount
+    if (content && !content.classList.contains('jx-scanlines')) {
+      content.classList.add('jx-scanlines');
+    }
     const chat = document.getElementById('chat-container');
     if (chat) chat.style.visibility = 'hidden';
     if (sidebarBtn) sidebarBtn.classList.add('active');
