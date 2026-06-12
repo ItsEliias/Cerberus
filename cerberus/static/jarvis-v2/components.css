@@ -1,0 +1,530 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/components.css
+ * Component class library. jx2- prefix.
+ * Depends on: tokens.css (loaded first).
+ * Source: frontend-design (component rules) + frontend-design-pro (HUD vocabulary).
+ * ui-ux-pro-max: all 6 states defined (default/hover/focus/active/disabled/error).
+ * ==================================================================== */
+
+/* ── GLASS PANEL (.jx2-glass-panel) ──────────────────────────────────
+ * Frosted glass surface. Used for modals, tooltips, floating panels.
+ * HUD vocabulary: hairline crimson border + top accent line.
+ * ------------------------------------------------------------------- */
+.jx2-glass-panel {
+  background:         var(--jx2-surface-glass);
+  backdrop-filter:    blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border:             1px solid var(--jx2-border-hairline);
+  border-top:         1px solid var(--jx2-border-default);
+  border-radius:      var(--jx2-radius-md);
+  box-shadow:         var(--jx2-glow-lift);
+  color:              var(--jx2-fg-primary);
+  font-family:        var(--jx2-font-body);
+  font-size:          var(--jx2-text-body);
+}
+
+/* ── HUD FRAME (.jx2-hud-frame) ──────────────────────────────────────
+ * The signature interaction from frontend-design skill:
+ * Bracket corners animate in on hover — "the suit is reading the element."
+ * Use on hero panels, empty states, feature highlights.
+ * frontend-design-pro vocabulary: bracket corners + scanline overlay.
+ * ------------------------------------------------------------------- */
+.jx2-hud-frame {
+  position:      relative;
+  background:    var(--jx2-surface-raised);
+  border:        1px solid var(--jx2-border-hairline);
+  border-top:    1px solid var(--jx2-border-default);
+  border-radius: var(--jx2-radius-md);
+  box-shadow:    var(--jx2-glow-lift);
+  overflow:      visible;
+}
+
+/* Scanline overlay — hero/HUD surfaces only (frontend-design-pro rule) */
+.jx2-hud-frame::after {
+  content:  '';
+  position: absolute;
+  inset:    0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(192, 57, 43, 0.025) 2px,
+    rgba(192, 57, 43, 0.025) 3px
+  );
+  border-radius: inherit;
+  pointer-events: none;
+  z-index:       0;
+}
+
+/* Bracket corners — top-left and bottom-right */
+.jx2-hud-frame .jx2-bracket-tl,
+.jx2-hud-frame .jx2-bracket-br {
+  position:   absolute;
+  width:      14px;
+  height:     14px;
+  opacity:    0;
+  transition:
+    opacity   var(--jx2-dur-fast) var(--jx2-ease-out),
+    transform var(--jx2-dur-fast) var(--jx2-ease-out);
+  z-index:    2;
+}
+
+.jx2-hud-frame .jx2-bracket-tl {
+  top:        -1px;
+  left:       -1px;
+  border-top: 2px solid var(--jx2-crimson-500);
+  border-left: 2px solid var(--jx2-crimson-500);
+  transform:  scale(0.8);
+}
+
+.jx2-hud-frame .jx2-bracket-br {
+  bottom:        -1px;
+  right:         -1px;
+  border-bottom: 2px solid var(--jx2-crimson-500);
+  border-right:  2px solid var(--jx2-crimson-500);
+  transform:     scale(0.8);
+}
+
+.jx2-hud-frame:hover .jx2-bracket-tl,
+.jx2-hud-frame:hover .jx2-bracket-br {
+  opacity:   1;
+  transform: scale(1);
+}
+
+/* ── PANEL STATES (.jx2-panel) ───────────────────────────────────────
+ * Source: ui-ux-pro-max (all 6 states: default/hover/focus/active/disabled/error).
+ * ------------------------------------------------------------------- */
+.jx2-panel {
+  background:    var(--jx2-surface-raised);
+  border:        1px solid var(--jx2-border-hairline);
+  border-top:    1px solid var(--jx2-border-default);
+  border-radius: var(--jx2-radius-md);
+  box-shadow:    var(--jx2-glow-lift);
+  color:         var(--jx2-fg-primary);
+  font-family:   var(--jx2-font-body);
+  font-size:     var(--jx2-text-body);
+  transition:
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+    box-shadow   var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+.jx2-panel:hover {
+  border-color: var(--jx2-border-default);
+  box-shadow:   var(--jx2-glow-panel-hover);
+}
+
+.jx2-panel:focus-within {
+  border-color: var(--jx2-border-glow);
+  box-shadow:   var(--jx2-glow-focus), var(--jx2-glow-lift);
+  outline:      none;
+}
+
+.jx2-panel[data-state="active"] {
+  border-top-color: var(--jx2-crimson-500);
+  box-shadow:       var(--jx2-glow-panel-hover);
+}
+
+.jx2-panel[data-state="disabled"] {
+  opacity:        0.4;
+  pointer-events: none;
+  filter:         grayscale(0.3);
+}
+
+.jx2-panel[data-state="error"] {
+  border-top-color: var(--jx2-status-alert);
+  box-shadow:       0 0 0 1px rgba(239, 68, 68, 0.30), var(--jx2-glow-lift);
+}
+
+/* ── BUTTON STATES (.jx2-btn) ────────────────────────────────────────
+ * Source: ui-ux-pro-max (6 states) + frontend-design (uppercase mono chrome).
+ * ui-ux-pro-max rule: cursor-pointer on all clickable elements.
+ * ------------------------------------------------------------------- */
+.jx2-btn {
+  display:        inline-flex;
+  align-items:    center;
+  gap:            var(--jx2-space-2);
+  padding:        var(--jx2-space-2) var(--jx2-space-4);
+  background:     transparent;
+  border:         1px solid var(--jx2-border-default);
+  border-radius:  var(--jx2-radius-sm);
+  color:          var(--jx2-fg-secondary);
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  font-weight:    var(--jx2-weight-mono);
+  letter-spacing: var(--jx2-tracking-label);
+  text-transform: uppercase;
+  cursor:         pointer;
+  white-space:    nowrap;
+  transition:
+    background   var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+    color        var(--jx2-dur-fast) var(--jx2-ease-out),
+    box-shadow   var(--jx2-dur-fast) var(--jx2-ease-out),
+    transform    var(--jx2-dur-instant) var(--jx2-ease-out);
+}
+
+.jx2-btn:hover {
+  background:   rgba(192, 57, 43, 0.12);
+  border-color: var(--jx2-border-glow);
+  color:        var(--jx2-fg-primary);
+  box-shadow:   0 0 12px rgba(192, 57, 43, 0.25);
+}
+
+.jx2-btn:focus-visible {
+  outline:      none;
+  box-shadow:   var(--jx2-glow-focus);
+  border-color: var(--jx2-crimson-500);
+  color:        var(--jx2-fg-primary);
+}
+
+.jx2-btn:active {
+  background:   rgba(192, 57, 43, 0.22);
+  border-color: var(--jx2-crimson-400);
+  transform:    translateY(1px);
+  box-shadow:   none;
+}
+
+.jx2-btn:disabled,
+.jx2-btn[aria-disabled="true"] {
+  opacity:        0.35;
+  pointer-events: none;
+  filter:         grayscale(0.4);
+}
+
+.jx2-btn[data-state="error"] {
+  border-color: var(--jx2-status-alert);
+  color:        var(--jx2-status-alert);
+}
+
+/* Primary variant — filled crimson */
+.jx2-btn--primary {
+  background:   var(--jx2-crimson-500);
+  border-color: var(--jx2-crimson-500);
+  color:        #ffffff;
+}
+
+.jx2-btn--primary:hover {
+  background:   var(--jx2-crimson-400);
+  border-color: var(--jx2-crimson-400);
+  color:        #ffffff;
+  box-shadow:   0 0 20px rgba(192, 57, 43, 0.45);
+}
+
+.jx2-btn--primary:active {
+  background: var(--jx2-crimson-600);
+  transform:  translateY(1px);
+  box-shadow: none;
+}
+
+/* Ghost variant — borderless, text only */
+.jx2-btn--ghost {
+  border-color: transparent;
+  color:        var(--jx2-fg-muted);
+}
+
+.jx2-btn--ghost:hover {
+  border-color: var(--jx2-border-hairline);
+  background:   rgba(192, 57, 43, 0.06);
+  color:        var(--jx2-fg-secondary);
+}
+
+/* ── INPUT STATES (.jx2-input) ───────────────────────────────────────
+ * Mono font for HUD authenticity. Void background (deepest surface).
+ * ------------------------------------------------------------------- */
+.jx2-input {
+  width:          100%;
+  padding:        var(--jx2-space-2) var(--jx2-space-3);
+  background:     var(--jx2-surface-void);
+  border:         1px solid var(--jx2-border-hairline);
+  border-bottom:  1px solid var(--jx2-border-default);
+  border-radius:  var(--jx2-radius-sm);
+  color:          var(--jx2-fg-primary);
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-mono);
+  line-height:    1.6;
+  caret-color:    var(--jx2-crimson-400);
+  transition:
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+    box-shadow   var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+.jx2-input::placeholder {
+  color: var(--jx2-fg-muted);
+}
+
+.jx2-input:hover {
+  border-color: var(--jx2-border-default);
+}
+
+.jx2-input:focus {
+  outline:      none;
+  border-color: var(--jx2-crimson-500);
+  box-shadow:   var(--jx2-glow-focus);
+}
+
+.jx2-input:disabled {
+  opacity:        0.4;
+  cursor:         not-allowed;
+  pointer-events: none;
+}
+
+.jx2-input[data-state="error"],
+.jx2-input:invalid {
+  border-color: var(--jx2-status-alert);
+  box-shadow:   0 0 0 1px rgba(239, 68, 68, 0.35);
+}
+
+/* ── LIST ITEM STATES (.jx2-list-item) ───────────────────────────────
+ * Left-border accent — the active-indicator that slides in like a HUD scan.
+ * ------------------------------------------------------------------- */
+.jx2-list-item {
+  display:        flex;
+  align-items:    center;
+  gap:            var(--jx2-space-3);
+  padding:        var(--jx2-space-2) var(--jx2-space-3);
+  border-left:    2px solid transparent;
+  border-radius:  0 var(--jx2-radius-sm) var(--jx2-radius-sm) 0;
+  color:          var(--jx2-fg-secondary);
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-mono);
+  letter-spacing: var(--jx2-tracking-label);
+  cursor:         pointer;
+  transition:
+    background    var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color  var(--jx2-dur-fast) var(--jx2-ease-out),
+    color         var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+.jx2-list-item:hover {
+  background:   rgba(192, 57, 43, 0.08);
+  border-color: var(--jx2-border-glow);
+  color:        var(--jx2-fg-primary);
+}
+
+.jx2-list-item:focus-visible {
+  outline:      none;
+  background:   rgba(192, 57, 43, 0.12);
+  border-color: var(--jx2-crimson-500);
+  box-shadow:   inset 0 0 0 1px rgba(192, 57, 43, 0.25);
+}
+
+.jx2-list-item[aria-selected="true"],
+.jx2-list-item[data-state="active"] {
+  background:   rgba(192, 57, 43, 0.14);
+  border-color: var(--jx2-crimson-500);
+  color:        var(--jx2-fg-primary);
+}
+
+.jx2-list-item[aria-disabled="true"] {
+  opacity:        0.35;
+  pointer-events: none;
+}
+
+.jx2-list-item[data-state="error"] {
+  border-color: var(--jx2-status-alert);
+  color:        var(--jx2-status-alert);
+}
+
+/* ── STAT CHIP (.jx2-stat-chip) ──────────────────────────────────────
+ * Status-aware pill chip. Status colors protected (ui-ux-pro-max rule).
+ * Processing state gets pulse animation.
+ * ------------------------------------------------------------------- */
+.jx2-stat-chip {
+  display:        inline-flex;
+  align-items:    center;
+  gap:            var(--jx2-space-1);
+  padding:        2px var(--jx2-space-2);
+  background:     rgba(192, 57, 43, 0.10);
+  border:         1px solid var(--jx2-border-hairline);
+  border-radius:  var(--jx2-radius-pill);
+  color:          var(--jx2-crimson-300);
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-hud);
+  white-space:    nowrap;
+  transition:
+    background var(--jx2-dur-fast) var(--jx2-ease-out),
+    box-shadow var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+.jx2-stat-chip:hover {
+  background: rgba(192, 57, 43, 0.18);
+  box-shadow: 0 0 8px rgba(192, 57, 43, 0.30);
+}
+
+.jx2-stat-chip[data-status="active"] {
+  background:   var(--jx2-status-active-tint);
+  border-color: rgba(34, 197, 94, 0.30);
+  color:        var(--jx2-status-active);
+}
+
+.jx2-stat-chip[data-status="idle"] {
+  background:   var(--jx2-status-idle-tint);
+  border-color: rgba(245, 158, 11, 0.30);
+  color:        var(--jx2-status-idle);
+}
+
+.jx2-stat-chip[data-status="processing"] {
+  background:   var(--jx2-status-processing-tint);
+  border-color: rgba(59, 130, 246, 0.30);
+  color:        var(--jx2-status-processing);
+  animation:    jx2-pulse-crimson 2s ease-in-out infinite;
+}
+
+.jx2-stat-chip[data-status="alert"] {
+  background:   var(--jx2-status-alert-tint);
+  border-color: rgba(239, 68, 68, 0.40);
+  color:        var(--jx2-status-alert);
+}
+
+.jx2-stat-chip[aria-disabled="true"] {
+  opacity:        0.35;
+  pointer-events: none;
+}
+
+/* Status dot — 6px circle for inline status indicators */
+.jx2-status-dot {
+  display:       inline-block;
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  flex-shrink:   0;
+}
+
+.jx2-status-dot[data-status="active"]     { background: var(--jx2-status-active); }
+.jx2-status-dot[data-status="idle"]       { background: var(--jx2-status-idle); }
+.jx2-status-dot[data-status="processing"] {
+  background: var(--jx2-status-processing);
+  animation:  jx2-pulse-crimson 2s ease-in-out infinite;
+}
+.jx2-status-dot[data-status="alert"]      { background: var(--jx2-status-alert); }
+
+/* ── GAUGE (.jx2-gauge) ───────────────────────────────────────────────
+ * SVG arc gauge. JS sets stroke-dashoffset to animate fill level.
+ * Drops filter drop-shadow on hover (frontend-design-pro glow physics).
+ * ------------------------------------------------------------------- */
+.jx2-gauge {
+  position:       relative;
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            var(--jx2-space-1);
+}
+
+.jx2-gauge__arc {
+  width:    80px;
+  height:   80px;
+  overflow: visible;
+}
+
+.jx2-gauge__track {
+  fill:         none;
+  stroke:       var(--jx2-border-hairline);
+  stroke-width: 4;
+}
+
+.jx2-gauge__fill {
+  fill:           none;
+  stroke:         var(--jx2-crimson-500);
+  stroke-width:   4;
+  stroke-linecap: round;
+  transition:     stroke-dashoffset var(--jx2-dur-slow) var(--jx2-ease-spring);
+}
+
+.jx2-gauge:hover .jx2-gauge__fill {
+  stroke: var(--jx2-crimson-400);
+  filter: drop-shadow(0 0 6px rgba(192, 57, 43, 0.60));
+}
+
+.jx2-gauge[data-state="active"]   .jx2-gauge__fill { stroke: var(--jx2-status-active); }
+.jx2-gauge[data-state="idle"]     .jx2-gauge__fill { stroke: var(--jx2-status-idle); }
+.jx2-gauge[data-state="alert"]    .jx2-gauge__fill { stroke: var(--jx2-status-alert); }
+.jx2-gauge[data-state="disabled"] .jx2-gauge__fill { stroke: var(--jx2-fg-muted); }
+
+.jx2-gauge__value {
+  position:       absolute;
+  top:            50%;
+  left:           50%;
+  transform:      translate(-50%, -50%);
+  font-family:    var(--jx2-font-display);
+  font-size:      1rem;
+  font-weight:    700;
+  color:          var(--jx2-fg-primary);
+  line-height:    1;
+}
+
+.jx2-gauge__label {
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-hud);
+  color:          var(--jx2-fg-secondary);
+  text-transform: uppercase;
+}
+
+/* ── HUD LABEL (.jx2-hud-label) ──────────────────────────────────────
+ * frontend-design-pro: "long glowing shadows" on HUD chrome labels.
+ * Used on stat headings, section IDs, system readouts.
+ * ------------------------------------------------------------------- */
+.jx2-hud-label {
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  font-weight:    500;
+  letter-spacing: var(--jx2-tracking-hud);
+  text-transform: uppercase;
+  color:          var(--jx2-crimson-300);
+  text-shadow:    var(--jx2-glow-hud-label);
+}
+
+/* ── SPARKLINE (.jx2-sparkline) ──────────────────────────────────────
+ * Inline SVG wrapper for telemetry sparklines.
+ * Peaks colored with jx2-crimson-200 (glow tips).
+ * ------------------------------------------------------------------- */
+.jx2-sparkline {
+  display: block;
+  width:   100%;
+  height:  32px;
+}
+
+.jx2-sparkline line,
+.jx2-sparkline polyline,
+.jx2-sparkline path {
+  stroke:       var(--jx2-crimson-500);
+  stroke-width: 1.5;
+  fill:         none;
+  transition:   stroke var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+.jx2-sparkline:hover line,
+.jx2-sparkline:hover polyline,
+.jx2-sparkline:hover path {
+  stroke: var(--jx2-crimson-300);
+  filter: drop-shadow(0 0 4px rgba(192, 57, 43, 0.50));
+}
+
+/* ── DIVIDER (.jx2-divider) ──────────────────────────────────────────*/
+.jx2-divider {
+  border:     none;
+  border-top: 1px solid var(--jx2-border-hairline);
+  margin:     var(--jx2-space-3) 0;
+}
+
+.jx2-divider--accent {
+  border-top-color: var(--jx2-border-default);
+}
+
+/* ── TOOLTIP (.jx2-tooltip) ──────────────────────────────────────────*/
+.jx2-tooltip {
+  position:      absolute;
+  z-index:       var(--jx2-z-overlay);
+  padding:       var(--jx2-space-1) var(--jx2-space-2);
+  background:    var(--jx2-surface-modal);
+  border:        1px solid var(--jx2-border-default);
+  border-radius: var(--jx2-radius-sm);
+  color:         var(--jx2-fg-secondary);
+  font-family:   var(--jx2-font-mono);
+  font-size:     var(--jx2-text-caption);
+  box-shadow:    var(--jx2-glow-lift);
+  white-space:   nowrap;
+  pointer-events: none;
+  animation:     jx2-fade-up var(--jx2-dur-fast) var(--jx2-ease-out);
+}

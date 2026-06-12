@@ -1,0 +1,399 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/surfaces.css
+ * Surface-level application: shell chrome, chat view, workspace tab.
+ * Depends on: tokens.css + components.css (loaded first).
+ * Source: frontend-design density rule (effects gated by surface type).
+ * jx2- prefix throughout.
+ * ==================================================================== */
+
+/* ── DENSITY RULE (from frontend-design skill) ────────────────────────
+ * Hero/Landing  — ALL effects (scanlines, bracket corners, ambient glow)
+ * Shell Chrome  — MODERATE (glow on active, hairline borders, top accent)
+ * Chat Panel    — MINIMAL (bubble borders, input focus glow, empty HUD)
+ * Dense Data    — NONE (pure surface tiers + hairline borders only)
+ * ------------------------------------------------------------------- */
+
+/* ════════════════════════════════════════════════════════════════════
+ *  SURFACE 1: SHELL CHROME
+ *  Sidebar + icon rail + top bar
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* Body background when jx2 active — OLED void */
+body.jx2-active {
+  background-color: var(--jx2-surface-void);
+}
+
+/* Sidebar override */
+body.jx2-active .sidebar,
+body.jx2-active #sidebar,
+body.jx2-active [class*="sidebar"] {
+  background:   var(--jx2-surface-raised) !important;
+  border-right: 1px solid var(--jx2-border-hairline) !important;
+}
+
+/* Sidebar header / wordmark area */
+body.jx2-active .sidebar-header,
+body.jx2-active .brand-header,
+body.jx2-active .sidebar > header {
+  border-bottom:  1px solid var(--jx2-border-hairline);
+  padding-bottom: var(--jx2-space-3);
+}
+
+/* Session list items — jx2-list-item treatment on existing elements */
+body.jx2-active .session-item,
+body.jx2-active .chat-session,
+body.jx2-active .sidebar-item {
+  border-left:    2px solid transparent;
+  color:          var(--jx2-fg-secondary);
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-mono);
+  letter-spacing: var(--jx2-tracking-label);
+  transition:
+    background   var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+    color        var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .session-item:hover,
+body.jx2-active .chat-session:hover,
+body.jx2-active .sidebar-item:hover {
+  background:   rgba(192, 57, 43, 0.08) !important;
+  border-color: var(--jx2-border-glow);
+  color:        var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .session-item.active,
+body.jx2-active .chat-session.active,
+body.jx2-active .sidebar-item.active,
+body.jx2-active .session-item[aria-selected="true"] {
+  background:   rgba(192, 57, 43, 0.14) !important;
+  border-color: var(--jx2-crimson-500) !important;
+  color:        var(--jx2-fg-primary) !important;
+}
+
+/* Top bar / app header */
+body.jx2-active .top-bar,
+body.jx2-active .app-header,
+body.jx2-active header.main-header {
+  background:    var(--jx2-surface-raised) !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+  box-shadow:    var(--jx2-glow-lift);
+}
+
+/* Icon rail buttons (sidebar icons) — ghost treatment */
+body.jx2-active .icon-rail button,
+body.jx2-active .nav-icon,
+body.jx2-active .sidebar-icon-btn {
+  color:         var(--jx2-fg-muted);
+  border-radius: var(--jx2-radius-md);
+  transition:
+    color      var(--jx2-dur-fast) var(--jx2-ease-out),
+    background var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .icon-rail button:hover,
+body.jx2-active .nav-icon:hover,
+body.jx2-active .sidebar-icon-btn:hover {
+  color:      var(--jx2-fg-primary);
+  background: rgba(192, 57, 43, 0.10);
+}
+
+body.jx2-active .icon-rail button.active,
+body.jx2-active .nav-icon.active,
+body.jx2-active .sidebar-icon-btn.active {
+  color:      var(--jx2-crimson-300);
+  background: rgba(192, 57, 43, 0.16);
+  box-shadow: var(--jx2-glow-focus);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ *  SURFACE 2: CHAT VIEW
+ *  Panel chrome + bubbles + input focus glow + empty welcome state
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* Chat panel background */
+body.jx2-active .chat-panel,
+body.jx2-active .messages-container,
+body.jx2-active .chat-view {
+  background: var(--jx2-surface-base) !important;
+}
+
+/* Chat bubbles — USER */
+body.jx2-active .user-message,
+body.jx2-active .message-user,
+body.jx2-active .bubble-user {
+  background:    var(--jx2-surface-raised) !important;
+  border:        1px solid var(--jx2-border-hairline) !important;
+  border-radius: var(--jx2-radius-lg) var(--jx2-radius-lg) var(--jx2-radius-sm) var(--jx2-radius-lg) !important;
+  color:         var(--jx2-fg-primary) !important;
+  font-family:   var(--jx2-font-body);
+}
+
+/* Chat bubbles — AI */
+body.jx2-active .ai-message,
+body.jx2-active .message-ai,
+body.jx2-active .bubble-ai,
+body.jx2-active .assistant-message {
+  background:    var(--jx2-surface-base) !important;
+  border:        1px solid var(--jx2-border-hairline) !important;
+  border-left:   2px solid var(--jx2-crimson-700) !important;
+  border-radius: var(--jx2-radius-lg) var(--jx2-radius-lg) var(--jx2-radius-lg) var(--jx2-radius-sm) !important;
+  color:         var(--jx2-fg-primary) !important;
+  font-family:   var(--jx2-font-body);
+}
+
+/* Input area */
+body.jx2-active .chat-input-area,
+body.jx2-active .prompt-area,
+body.jx2-active .input-container {
+  background:    var(--jx2-surface-raised) !important;
+  border-top:    1px solid var(--jx2-border-hairline) !important;
+}
+
+/* Chat textarea */
+body.jx2-active .chat-input,
+body.jx2-active textarea.prompt-input,
+body.jx2-active #chat-input {
+  background:   var(--jx2-surface-void) !important;
+  border:       1px solid var(--jx2-border-hairline) !important;
+  border-bottom: 1px solid var(--jx2-border-default) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color:        var(--jx2-fg-primary) !important;
+  font-family:  var(--jx2-font-body) !important;
+  caret-color:  var(--jx2-crimson-400);
+  transition:
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+    box-shadow   var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .chat-input:focus,
+body.jx2-active textarea.prompt-input:focus,
+body.jx2-active #chat-input:focus {
+  border-color: var(--jx2-crimson-500) !important;
+  box-shadow:   var(--jx2-glow-focus) !important;
+  outline:      none !important;
+}
+
+/* Send button */
+body.jx2-active .send-btn,
+body.jx2-active button[type="submit"].send,
+body.jx2-active #send-button {
+  background:   var(--jx2-crimson-500) !important;
+  border:       1px solid var(--jx2-crimson-500) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color:        #ffffff !important;
+  cursor:       pointer;
+  transition:
+    background var(--jx2-dur-fast) var(--jx2-ease-out),
+    box-shadow var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active .send-btn:hover,
+body.jx2-active button[type="submit"].send:hover,
+body.jx2-active #send-button:hover {
+  background: var(--jx2-crimson-400) !important;
+  box-shadow: 0 0 16px rgba(192, 57, 43, 0.45) !important;
+}
+
+/* Empty / welcome state — HUD frame treatment (MINIMAL per density rule) */
+.jx2-chat-empty {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--jx2-space-6);
+  padding:         var(--jx2-space-16) var(--jx2-space-8);
+  text-align:      center;
+}
+
+.jx2-chat-empty__orb {
+  position:      relative;
+  width:         80px;
+  height:        80px;
+  border-radius: 50%;
+  background:    radial-gradient(
+    circle at 35% 35%,
+    var(--jx2-crimson-400) 0%,
+    var(--jx2-crimson-600) 40%,
+    var(--jx2-crimson-800) 100%
+  );
+  box-shadow:
+    var(--jx2-glow-ambient),
+    inset 0 0 20px rgba(0, 0, 0, 0.40);
+  animation: jx2-glow-breathe 4s ease-in-out infinite;
+}
+
+.jx2-chat-empty__title {
+  font-family:    var(--jx2-font-display);
+  font-size:      var(--jx2-text-h2);
+  font-weight:    var(--jx2-weight-h2);
+  letter-spacing: var(--jx2-tracking-hud);
+  color:          var(--jx2-fg-primary);
+  text-shadow:    var(--jx2-glow-hud-label);
+}
+
+.jx2-chat-empty__sub {
+  font-family: var(--jx2-font-body);
+  font-size:   var(--jx2-text-body);
+  color:       var(--jx2-fg-secondary);
+  max-width:   320px;
+  line-height: 1.6;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ *  SURFACE 3: WORKSPACE TAB
+ *  Empty/landing → full HUD treatment
+ *  Populated → calm (dense data rule from frontend-design)
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* Workspace tab container */
+body.jx2-active .workspace-tab,
+body.jx2-active .tab-panel,
+body.jx2-active [data-tab-panel] {
+  background: var(--jx2-surface-base) !important;
+}
+
+/* Workspace tab headers / tab bar */
+body.jx2-active .tab-bar,
+body.jx2-active .tabs-header,
+body.jx2-active [role="tablist"] {
+  background:    var(--jx2-surface-raised) !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active [role="tab"],
+body.jx2-active .tab-btn {
+  font-family:    var(--jx2-font-mono);
+  font-size:      var(--jx2-text-caption);
+  letter-spacing: var(--jx2-tracking-label);
+  color:          var(--jx2-fg-muted);
+  border-bottom:  2px solid transparent;
+  transition:
+    color        var(--jx2-dur-fast) var(--jx2-ease-out),
+    border-color var(--jx2-dur-fast) var(--jx2-ease-out);
+}
+
+body.jx2-active [role="tab"]:hover,
+body.jx2-active .tab-btn:hover {
+  color: var(--jx2-fg-secondary);
+}
+
+body.jx2-active [role="tab"][aria-selected="true"],
+body.jx2-active .tab-btn.active {
+  color:        var(--jx2-fg-primary);
+  border-color: var(--jx2-crimson-500);
+}
+
+/* Workspace landing (empty) — full HUD treatment */
+.jx2-workspace-landing {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  min-height:      400px;
+  padding:         var(--jx2-space-12) var(--jx2-space-8);
+  position:        relative;
+  overflow:        hidden;
+}
+
+/* Ambient glow behind landing content */
+.jx2-workspace-landing::before {
+  content:       '';
+  position:      absolute;
+  top:           50%;
+  left:          50%;
+  transform:     translate(-50%, -50%);
+  width:         400px;
+  height:        400px;
+  background:    radial-gradient(
+    circle,
+    rgba(192, 57, 43, 0.12) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index:        0;
+}
+
+/* Scanlines on landing surface (hero-only per density rule) */
+.jx2-workspace-landing::after {
+  content:  '';
+  position: absolute;
+  inset:    0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(192, 57, 43, 0.018) 2px,
+    rgba(192, 57, 43, 0.018) 3px
+  );
+  pointer-events: none;
+  z-index:        0;
+}
+
+.jx2-workspace-landing > * {
+  position: relative;
+  z-index:  1;
+}
+
+/* Workspace populated — calm (dense data: NO extra effects) */
+body.jx2-active .workspace-content,
+body.jx2-active .editor-area,
+body.jx2-active .code-area {
+  background:  var(--jx2-surface-base) !important;
+  border:      1px solid var(--jx2-border-hairline) !important;
+  color:       var(--jx2-fg-primary) !important;
+  font-family: var(--jx2-font-mono) !important;
+}
+
+/* ── MODAL / DIALOG ───────────────────────────────────────────────────
+ * Glass panel treatment. Scrim at 50% black (ui-ux-pro-max rule).
+ * ------------------------------------------------------------------- */
+body.jx2-active .modal,
+body.jx2-active [role="dialog"] {
+  background: var(--jx2-surface-glass) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border:     1px solid var(--jx2-border-default) !important;
+  border-top: 1px solid var(--jx2-border-glow) !important;
+  box-shadow: var(--jx2-glow-lift), var(--jx2-glow-ambient) !important;
+}
+
+/* Modal scrim */
+body.jx2-active .modal-overlay,
+body.jx2-active .dialog-backdrop {
+  background: rgba(9, 9, 10, 0.65) !important;
+}
+
+/* ── SCROLLBAR STYLING ────────────────────────────────────────────────*/
+body.jx2-active ::-webkit-scrollbar {
+  width:  6px;
+  height: 6px;
+}
+
+body.jx2-active ::-webkit-scrollbar-track {
+  background: var(--jx2-surface-void);
+}
+
+body.jx2-active ::-webkit-scrollbar-thumb {
+  background:    var(--jx2-border-default);
+  border-radius: var(--jx2-radius-pill);
+}
+
+body.jx2-active ::-webkit-scrollbar-thumb:hover {
+  background: var(--jx2-border-glow);
+}
+
+/* ── SELECTION COLOR ──────────────────────────────────────────────────*/
+body.jx2-active ::selection {
+  background: rgba(192, 57, 43, 0.35);
+  color:      var(--jx2-fg-primary);
+}
+
+/* ── CODE BLOCKS (dense data — no effects, just tiers) ───────────────*/
+body.jx2-active pre,
+body.jx2-active code {
+  background:  var(--jx2-surface-void) !important;
+  border:      1px solid var(--jx2-border-hairline) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size:   var(--jx2-text-mono) !important;
+}
