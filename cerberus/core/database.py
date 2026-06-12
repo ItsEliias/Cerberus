@@ -717,6 +717,34 @@ class CerberusAgent(TimestampMixin, Base):
         }
 
 
+class CerberusAgentMessage(Base):
+    """Persistent message in a 1-on-1 conversation with a CerberusAgent."""
+    __tablename__ = "cerberus_agent_messages"
+
+    id       = Column(String, primary_key=True, index=True)
+    agent_id = Column(String, ForeignKey("cerberus_agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    owner    = Column(String, nullable=True, index=True)
+    role     = Column(String, nullable=False)   # 'user' | 'agent'
+    content  = Column(Text, nullable=False, default="")
+    created_at = Column(DateTime, default=utcnow_naive, nullable=False)
+
+    agent = relationship("CerberusAgent", backref=backref("messages", cascade="all, delete-orphan"))
+
+    __table_args__ = (
+        Index('ix_cerberus_agent_messages_agent_created', 'agent_id', 'created_at'),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "agent_id": self.agent_id,
+            "owner": self.owner,
+            "role": self.role,
+            "content": self.content,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 def _migrate_add_last_message_at_column():
     """Add last_message_at to sessions + backfill from the latest message
     timestamp per session (fallback to last_accessed / created_at when a
