@@ -74,6 +74,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         is_document_pdf_preview = path.startswith("/api/document/") and path.endswith("/render-pdf")
         # Visual report pages are self-contained HTML — need inline scripts + external images
         is_report = path.startswith("/api/research/report/")
+        # Command Center proxy: served inside the Cerberus sidebar iframe.
+        # Strip framing/CSP restrictions so the embedded React app can render.
+        is_command_center = path == "/command-center" or path.startswith("/command-center/")
+        # Command Center JARVIS React build (same-origin iframe in the rail overlay)
+        is_cc_app = path.startswith("/static/cc-app/")
 
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
@@ -101,6 +106,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # sandbox="allow-scripts" attribute provides isolation.
             # Don't overwrite the route's own restrictive CSP either.
             pass
+        elif is_command_center or is_cc_app:
+            # Command Center is embedded in the Cerberus sidebar overlay.
+            # Skip X-Frame-Options / frame-ancestors so the browser will
+            # actually render it. Applies to both the proxy route and the
+            # vendored React build at /static/cc-app/.
+            pass
         elif is_document_pdf_preview:
             response.headers["X-Frame-Options"] = "SAMEORIGIN"
             response.headers["Content-Security-Policy"] = (
@@ -123,7 +134,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "img-src 'self' data: blob:; "
                 "media-src 'self' blob:; "
                 "connect-src 'self'; "
-                "frame-src 'self'; "
+                # frame-src includes loopback ports for the CyberOS-Cerberus
+                # apps embedded in the sidebar (cyberlab-companion :8001,
+                # terminallink :8002). They run as separate same-host services
+                # and are loaded cross-origin in iframes from the Cerberus rail.
+                "frame-src 'self' http://127.0.0.1:8001 http://127.0.0.1:8002; "
                 "frame-ancestors 'none'"
             )
         return response

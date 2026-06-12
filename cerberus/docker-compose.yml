@@ -16,6 +16,11 @@ services:
       # land under /app/.local for the cerberus user. Persist them so a
       # container recreate does not silently remove installed serve engines.
       - ./data/local:/app/.local:z
+      # Claude Code OAuth state for the Claude (Subscription) provider.
+      # Bind-mounted from the host so a `claude` login done on the host
+      # carries into the container — no need to log in again per restart.
+      # Run `claude` on the host once to populate ~/.claude/ if empty.
+      - ${HOME}/.claude:/app/.claude:z
     extra_hosts:
       # Lets the container reach local services on the Docker host, including
       # Ollama at http://host.docker.internal:11434.

@@ -1,0 +1,293 @@
+/* Command Center — JARVIS aesthetic. Cerberus CSS vars, no hardcoded hex. */
+
+.cc-shell {
+  display: flex; flex-direction: column; height: 100%;
+  background: var(--bg, #1a1d23); color: var(--fg, #c5c9d0);
+  font-family: 'Fira Code','Courier New',monospace;
+  overflow: hidden; position: relative;
+}
+.cc-shell::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: repeating-linear-gradient(
+    to bottom, transparent 0px, transparent 3px,
+    rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px);
+}
+
+/* Brand bar */
+.cc-brand-bar {
+  display: flex; align-items: center; gap: 10px; padding: 8px 16px;
+  border-bottom: 1px solid var(--border, #3a2a2a); flex-shrink: 0;
+}
+.cc-brand-title { font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--red, #c0392b); }
+.cc-clock { margin-left: auto; font-size: 11px; opacity: 0.5; font-variant-numeric: tabular-nums; }
+.cc-refresh-btn {
+  font-size: 10px; padding: 2px 8px; border: 1px solid var(--border, #3a2a2a);
+  background: transparent; color: var(--fg, #c5c9d0); cursor: pointer;
+  letter-spacing: 0.08em; border-radius: 2px; opacity: 0.7; transition: opacity 0.15s;
+}
+.cc-refresh-btn:hover { opacity: 1; }
+
+/* Sub-tab nav */
+.cc-tab-nav {
+  display: flex; gap: 2px; padding: 6px 16px;
+  border-bottom: 1px solid var(--border, #3a2a2a); flex-shrink: 0;
+  overflow-x: auto; scrollbar-width: none;
+}
+.cc-tab-nav::-webkit-scrollbar { display: none; }
+.cc-tab-btn {
+  display: flex; align-items: center; gap: 5px; padding: 4px 10px;
+  border: 1px solid transparent; border-radius: 3px; background: transparent;
+  color: var(--fg, #c5c9d0); cursor: pointer; font-family: inherit;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  white-space: nowrap; opacity: 0.55; transition: all 0.15s;
+}
+.cc-tab-btn:hover { opacity: 0.85; border-color: var(--border, #3a2a2a); }
+.cc-tab-btn.active { background: var(--red, #c0392b); border-color: var(--red, #c0392b); color: #fff; opacity: 1; }
+.cc-tab-btn svg { flex-shrink: 0; }
+
+/* Tab content */
+.cc-tab-content { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; z-index: 0; }
+
+/* Shared */
+.cc-card { border: 1px solid var(--border, #3a2a2a); border-radius: 4px; padding: 10px 12px; background: rgba(0,0,0,0.2); }
+.cc-card-title { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.45; margin-bottom: 8px; }
+.cc-section-header { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.45; margin-bottom: 8px; }
+.cc-empty { opacity: 0.3; font-size: 11px; padding: 12px 0; text-align: center; }
+
+/* ======= COMMAND TAB ======= */
+.cc-command-tab { display: flex; flex-direction: column; height: 100%; }
+.cc-top-row { display: grid; grid-template-columns: 160px 1fr 1fr; gap: 10px; padding: 10px 16px; flex-shrink: 0; }
+
+/* Orb */
+.cc-orb-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.cc-orb { width: 56px; height: 56px; }
+.cc-orb-status { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
+.cc-orb-status.idle    { opacity: 0.5; }
+.cc-orb-status.active  { color: var(--red, #c0392b); }
+.cc-orb-status.degraded { color: #e67e22; }
+
+@keyframes cc-pulse { 0%,100%{opacity:.7} 50%{opacity:1} }
+@keyframes cc-glow-active {
+  0%,100%{filter:drop-shadow(0 0 4px var(--red,#c0392b))}
+  50%{filter:drop-shadow(0 0 12px var(--red,#c0392b))}
+}
+.cc-orb.idle    { animation: cc-pulse 3s ease-in-out infinite; }
+.cc-orb.active  { animation: cc-glow-active 1.5s ease-in-out infinite; }
+.cc-orb.degraded { filter: hue-rotate(30deg); animation: cc-pulse 2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .cc-orb { animation: none !important; filter: none !important; } }
+
+/* Swarm */
+.cc-swarm-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; text-align: center; }
+.cc-swarm-num { font-size: 20px; font-weight: 700; color: var(--red,#c0392b); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.cc-swarm-lbl { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.4; margin-top: 2px; }
+
+/* Vitals dials */
+.cc-vitals-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; align-items: center; }
+.cc-dial-wrap  { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.cc-dial-svg   { width: 48px; height: 32px; }
+.cc-dial-num   { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cc-dial-num.cpu     { color: #f1c40f; }
+.cc-dial-num.ram     { color: #3498db; }
+.cc-dial-num.disk    { color: #2ecc71; }
+.cc-dial-num.latency { color: #9b59b6; }
+.cc-dial-lbl { font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.4; }
+
+/* Telemetry */
+.cc-telemetry { padding: 8px 16px; border-top: 1px solid var(--border,#3a2a2a); flex-shrink: 0; }
+.cc-telemetry-header { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.45; margin-bottom: 6px; }
+.cc-sparklines { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.cc-spark-wrap { position: relative; }
+.cc-spark-label { position: absolute; top: 2px; left: 4px; font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.5; }
+.cc-spark-svg { width: 100%; height: 40px; display: block; overflow: visible; }
+
+/* Agents */
+.cc-agents { flex: 1; overflow-y: auto; padding: 8px 16px 12px; border-top: 1px solid var(--border,#3a2a2a); }
+.cc-agent-row {
+  display: grid; grid-template-columns: 12px 1fr 1fr auto;
+  gap: 8px; align-items: center; padding: 4px 0; font-size: 11px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.cc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.cc-dot.running { background: var(--red,#c0392b); box-shadow: 0 0 4px var(--red,#c0392b); }
+.cc-dot.active  { background: #2ecc71; }
+.cc-dot.standby { background: var(--fg,#c5c9d0); opacity: 0.25; }
+.cc-dot.idle    { background: #f39c12; }
+.cc-agent-name   { font-weight: 500; }
+.cc-agent-action { opacity: 0.45; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cc-agent-score  { font-size: 10px; opacity: 0.5; text-align: right; }
+
+/* ======= COUNCIL TAB ======= */
+.cc-council-tab { padding: 14px 16px; }
+.cc-council-row {
+  display: grid; grid-template-columns: 12px 120px 1fr auto auto;
+  gap: 10px; align-items: center; padding: 6px 0; font-size: 11px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.cc-council-role  { font-weight: 500; }
+.cc-council-type  { opacity: 0.45; font-size: 10px; }
+.cc-council-score { opacity: 0.5; font-size: 10px; }
+.cc-council-btn {
+  font-size: 9px; padding: 2px 7px; border: 1px solid var(--border,#3a2a2a);
+  background: transparent; color: var(--fg,#c5c9d0); cursor: pointer;
+  border-radius: 2px; font-family: inherit; letter-spacing: 0.06em; opacity: 0.7;
+}
+.cc-council-btn:hover { opacity: 1; border-color: var(--red,#c0392b); color: var(--red,#c0392b); }
+.cc-council-btn.active-btn { border-color: #2ecc71; color: #2ecc71; }
+.cc-council-note { font-size: 10px; opacity: 0.35; padding: 10px 0 0; font-style: italic; }
+
+/* ======= WORKSPACE TAB ======= */
+.cc-workspace-tab { padding: 14px 16px; }
+.cc-ws-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.cc-ws-item { display: flex; flex-direction: column; gap: 4px; }
+.cc-ws-item-row {
+  display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 11px;
+  border-bottom: 1px solid rgba(255,255,255,0.04); cursor: pointer;
+}
+.cc-ws-item-row:hover { opacity: 0.8; }
+.cc-ws-badge {
+  font-size: 8px; padding: 1px 5px; border-radius: 2px;
+  letter-spacing: 0.08em; text-transform: uppercase; flex-shrink: 0;
+}
+.cc-ws-badge.note   { background: rgba(52,152,219,0.25); color: #3498db; }
+.cc-ws-badge.task   { background: rgba(46,204,113,0.25); color: #2ecc71; }
+.cc-ws-badge.chat   { background: rgba(155,89,182,0.25); color: #9b59b6; }
+.cc-ws-badge.doc    { background: rgba(241,196,15,0.25); color: #f1c40f; }
+.cc-ws-badge.recipe { background: rgba(192,57,43,0.25);  color: var(--red,#c0392b); }
+.cc-ws-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-ws-meta  { font-size: 10px; opacity: 0.35; flex-shrink: 0; }
+
+/* ======= FINANCE TAB ======= */
+.cc-finance-tab { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.cc-finance-stub-banner {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  border: 1px solid rgba(241,196,15,0.4); border-radius: 3px;
+  background: rgba(241,196,15,0.05); font-size: 11px; color: #f1c40f;
+}
+.cc-finance-stub-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.cc-finance-stub-card {
+  border: 1px solid var(--border,#3a2a2a); border-radius: 4px; padding: 12px;
+  background: rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 4px;
+}
+.cc-finance-stub-label { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.35; }
+.cc-finance-stub-val { font-size: 18px; font-weight: 700; opacity: 0.2; color: #f1c40f; font-variant-numeric: tabular-nums; }
+.cc-finance-spark-placeholder {
+  height: 50px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 3px;
+  display: flex; align-items: center; justify-content: center; font-size: 10px; opacity: 0.25;
+}
+
+/* ======= ASSISTANT TAB ======= */
+.cc-assistant-tab { display: flex; flex-direction: column; height: 100%; }
+.cc-chat-history { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.cc-chat-msg { display: flex; flex-direction: column; gap: 3px; font-size: 12px; max-width: 85%; }
+.cc-chat-msg.user      { align-self: flex-end; align-items: flex-end; }
+.cc-chat-msg.assistant { align-self: flex-start; align-items: flex-start; }
+.cc-chat-bubble { padding: 6px 10px; border-radius: 4px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.cc-chat-msg.user .cc-chat-bubble { background: var(--red,#c0392b); color: #fff; }
+.cc-chat-msg.assistant .cc-chat-bubble { background: rgba(255,255,255,0.06); border: 1px solid var(--border,#3a2a2a); }
+.cc-chat-role { font-size: 9px; opacity: 0.35; letter-spacing: 0.08em; text-transform: uppercase; }
+.cc-chat-input-row { display: flex; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border,#3a2a2a); flex-shrink: 0; }
+.cc-chat-input {
+  flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--border,#3a2a2a);
+  color: var(--fg,#c5c9d0); padding: 6px 10px; font-family: inherit; font-size: 12px;
+  border-radius: 3px; resize: none; min-height: 36px; max-height: 120px;
+}
+.cc-chat-input:focus { outline: none; border-color: var(--red,#c0392b); }
+.cc-chat-send-btn { padding: 6px 14px; background: var(--red,#c0392b); border: none; color: #fff; cursor: pointer; font-family: inherit; font-size: 11px; border-radius: 3px; letter-spacing: 0.08em; }
+.cc-chat-send-btn:hover    { opacity: 0.85; }
+.cc-chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.cc-chat-typing { font-size: 11px; opacity: 0.4; padding: 2px 0; }
+
+/* Light theme */
+:root.light .cc-shell::before { display: none; }
+:root.light .cc-card { background: rgba(0,0,0,0.04); }
+
+/* ── JARVIS polish — Command Center augments ───────────────────────────────── */
+
+/* COMMAND tab: Cerberus Core card gets orb-class glow enhancement */
+#cc-orb-mount {
+  position: relative;
+  padding: 8px 0;
+}
+
+/* Stronger glow on vitals dials */
+.cc-dial-wrap {
+  position: relative;
+  transition: filter 0.3s ease;
+}
+.cc-dial-wrap:hover {
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+/* Swarm health numbers: number-tick class */
+.cc-swarm-num {
+  transition: color 0.2s ease;
+}
+
+/* Sparkline containers: cursor support */
+.cc-spark-wrap {
+  position: relative;
+  overflow: visible;
+}
+
+/* COMMAND tab card: edge glow on Cerberus Core */
+.cc-top-row > .cc-card:first-child {
+  border-color: color-mix(in srgb, var(--red, #c0392b) 40%, transparent);
+  box-shadow: 0 0 8px rgba(192, 57, 43, 0.45),
+              inset 0 0 12px rgba(192, 57, 43, 0.04);
+  transition: box-shadow 0.25s ease;
+}
+
+/* COUNCIL tab: stagger-in rows */
+.cc-council-row {
+  opacity: 1; /* will be set by jxStaggerIn */
+  transition: opacity 0.15s ease;
+}
+
+/* Council rows: scanning ring on active agents */
+.cc-council-row .cc-dot.active {
+  box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6);
+  animation: cc-council-ripple 1.8s ease-out infinite;
+}
+
+@keyframes cc-council-ripple {
+  0%   { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); }
+  70%  { box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+}
+
+/* WORKSPACE tab: edge glow on workspace items */
+.cc-ws-item-row {
+  border-radius: 2px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.cc-ws-item-row:hover {
+  box-shadow: 0 0 4px rgba(192, 57, 43, 0.3);
+  opacity: 1;
+}
+
+/* FINANCE tab: pulsing no-data badge */
+.cc-finance-stub-banner {
+  position: relative;
+}
+
+/* ASSISTANT tab: scanlines on chat history */
+.cc-chat-history {
+  position: relative;
+}
+.cc-chat-history::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: repeating-linear-gradient(
+    to bottom, transparent 0px, transparent 3px,
+    rgba(0,0,0,0.035) 3px, rgba(0,0,0,0.035) 4px
+  );
+}
+.cc-chat-history > * { position: relative; z-index: 1; }
+
+/* Reduced-motion overrides */
+:root.jx-reduced-motion .cc-council-row .cc-dot.active { animation: none; box-shadow: none; }
+:root.jx-reduced-motion .cc-dial-wrap:hover { filter: none; }
+:root.jx-reduced-motion .cc-top-row > .cc-card:first-child { box-shadow: none; }

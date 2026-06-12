@@ -18,7 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tmux \
     openssh-client \
     gosu \
+    bash \
     && rm -rf /var/lib/apt/lists/*
+
+# Claude Code CLI — used by the Claude (Subscription) provider in chat + code.
+# The Python provider spawns `claude -p` as a subprocess; OAuth state lives at
+# /home/<user>/.claude which is mounted from the host (see docker-compose.yml).
+RUN npm install -g @anthropic-ai/claude-code 2>&1 | tail -5
 
 WORKDIR /app
 

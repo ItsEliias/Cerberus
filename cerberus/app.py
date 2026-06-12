@@ -184,7 +184,17 @@ if AUTH_ENABLED:
         "/api/version",
         "/login",
     }
-    AUTH_EXEMPT_PREFIXES = ["/static"]
+    AUTH_EXEMPT_PREFIXES = [
+        "/static",
+        # Command Center is loaded in an iframe from the Cerberus sidebar.
+        # Chrome refuses to send SameSite=Lax session cookies on iframe
+        # navigations, so a cookie-gated route would 302 to /login and the
+        # browser would block framing it. The upstream React app is bound
+        # to localhost via the proxy and surfaces a view of data the parent
+        # Cerberus app already trusts; allowing the iframe path through the
+        # auth gate restores Chrome/Vivaldi parity with Safari.
+        "/command-center",
+    ]
     # Dynamic paths whose own handler proves identity via a path-embedded
     # secret instead of the session/bearer auth. The route handler at
     # routes/task_routes.py validates the per-task `webhook_token` itself
@@ -618,6 +628,10 @@ app.include_router(setup_copilot_routes())
 from routes.chatgpt_subscription_routes import setup_chatgpt_subscription_routes
 app.include_router(setup_chatgpt_subscription_routes())
 
+# Claude Subscription (subprocess adapter — interactive use only, not swarm)
+from routes.claude_subscription_routes import setup_claude_subscription_routes
+app.include_router(setup_claude_subscription_routes())
+
 # TTS
 from routes.tts_routes import setup_tts_routes
 app.include_router(setup_tts_routes(tts_service))
@@ -816,6 +830,57 @@ async def serve_login(request: Request):
     if not AUTH_ENABLED:
         return RedirectResponse(url="/", status_code=302)
     return _serve_html_with_nonce(request, abs_join(BASE_DIR, "static/login.html"))
+
+# ── Command Center proxy ─────────────────────────────────────────────────
+# Proxies http://host.docker.internal:7001 (CyberOS-Cerberus command-center
+# service) to /command-center on this origin so the iframe in the sidebar
+# is same-origin and browser content-blockers (Vivaldi, etc.) don't flag it.
+import httpx as _httpx
+_CC_UPSTREAM = "http://host.docker.internal:7001"
+_CC_CLIENT = _httpx.AsyncClient(base_url=_CC_UPSTREAM, timeout=15.0, follow_redirects=False)
+
+async def _proxy_command_center(request: Request, path: str = ""):
+    from fastapi import Response
+    upstream_path = "/" + path if path else "/"
+    if request.url.query:
+        upstream_path = f"{upstream_path}?{request.url.query}"
+    # Strip hop-by-hop + host headers before forwarding
+    _strip = {"host", "content-length", "connection", "accept-encoding"}
+    fwd_headers = {k: v for k, v in request.headers.items() if k.lower() not in _strip}
+    body = await request.body()
+    try:
+        upstream = await _CC_CLIENT.request(
+            request.method, upstream_path, headers=fwd_headers, content=body or None,
+        )
+    except _httpx.RequestError as e:
+        return Response(f"command-center upstream unreachable: {e}", status_code=502, media_type="text/plain")
+    _strip_resp = {"content-encoding", "transfer-encoding", "connection", "content-length",
+                   "x-frame-options", "content-security-policy"}
+    resp_headers = {k: v for k, v in upstream.headers.items() if k.lower() not in _strip_resp}
+    content = upstream.content
+    ctype = upstream.headers.get("content-type", "")
+    # The React app's HTML references its assets with absolute paths (e.g.
+    # /assets/index-XYZ.js, /shield.svg). When the browser sees those inside
+    # the iframe at /command-center, it resolves them against THIS origin
+    # (Cerberus) and 404s. Rewrite so they go back through the proxy.
+    if "text/html" in ctype.lower():
+        try:
+            import re as _re
+            html = content.decode("utf-8")
+            html = _re.sub(r'(\s(?:src|href)=["\'])/(?!command-center/)', r'\1/command-center/', html)
+            content = html.encode("utf-8")
+        except UnicodeDecodeError:
+            pass
+    return Response(content=content, status_code=upstream.status_code,
+                    headers=resp_headers, media_type=upstream.headers.get("content-type"))
+
+@app.api_route("/command-center", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
+async def command_center_root(request: Request):
+    return await _proxy_command_center(request, "")
+
+@app.api_route("/command-center/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
+async def command_center_path(request: Request, path: str):
+    return await _proxy_command_center(request, path)
 
 @app.get("/api/version")
 async def get_version():

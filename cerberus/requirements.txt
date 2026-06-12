@@ -49,3 +49,10 @@ opensandbox
 python-telegram-bot>=20.0
 # Discord adapter (Phase 3 gateway)
 discord.py>=2.0
+# PTY process management for TerminalLink native app (CyberOS migration).
+# Provides PtyProcess.spawn() — a clean cross-platform PTY wrapper that
+# lives entirely inside the Cerberus FastAPI process (no Node sidecar needed).
+ptyprocess
+# System metrics for Operations overview panel (CPU/RAM/disk).
+# Optional — Operations degrades gracefully to stdlib/resource if missing.
+psutil

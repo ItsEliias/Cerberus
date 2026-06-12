@@ -695,6 +695,13 @@
         <svg class="sidebar-action-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
         <span class="grow" style="position:relative;left:-1px;">Search</span>
       </div>
+      <div class="list-item" id="sidebar-command-center-btn" title="Open Command Center (JARVIS overview)" style="margin-top:6px;">
+        <svg class="sidebar-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" style="position:relative;left:-1px;">
+          <path d="M12 2 L19 5 V11 C19 16 12 22 12 22 C12 22 5 16 5 11 V5 Z"/>
+          <circle cx="12" cy="11" r="2.2" fill="currentColor" stroke="none"/>
+        </svg>
+        <span class="grow" style="position:relative;left:-1px;">Command Center</span>
+      </div>
       <!-- Assistant sidebar entry removed — its log + settings live inside
            the Tasks modal (Activity + Settings tabs). The backend
            assistant session is still maintained for log_to_assistant()
@@ -2156,6 +2163,24 @@
               <div id="adm-epList-api"></div>
             </div>
           </div>
+
+          <!-- Claude Subscription card — no API key needed; uses local claude CLI -->
+          <div class="admin-card" id="adm-claude-sub-card" style="margin-top:12px;">
+            <h2 style="display:flex;align-items:center;gap:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;opacity:0.6;flex-shrink:0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Claude (Subscription)
+              <span id="adm-claude-sub-badge" style="display:none;margin-left:4px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500;background:rgba(76,175,80,.15);color:#4caf50;border:1px solid rgba(76,175,80,.3);">Provisioned</span>
+            </h2>
+            <div class="admin-toggle-sub" style="margin-bottom:10px;">Local Claude Code subscription — uses your <code>claude</code> CLI OAuth. No API key required.</div>
+            <div id="adm-claude-sub-status" style="font-size:12px;margin-bottom:10px;padding:6px 8px;background:rgba(255,255,255,.03);border:1px solid var(--border,#3a2a2a);border-radius:4px;color:rgba(200,200,200,.7);">Checking preflight…</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <button class="admin-btn-add" id="adm-claude-sub-enable" disabled style="display:inline-flex;align-items:center;gap:5px;min-width:72px;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Enable
+              </button>
+              <button class="admin-btn-sm" id="adm-claude-sub-remove" style="display:none;color:var(--color-error,#c0392b);border-color:color-mix(in srgb,var(--color-error,#c0392b) 35%,transparent);">Remove</button>
+              <span id="adm-claude-sub-msg" style="font-size:11px;"></span>
+            </div>
+          </div>
         </div>
 
         <!-- ═══ TOOLS TAB ═══ -->
@@ -2355,6 +2380,57 @@
 <script type="module" src="/static/app.js"></script>  <!-- app.js must be LAST -->
 <script type="module" src="/static/js/init.js"></script>
 <script type="module" src="/static/js/a11y.js"></script>
+<!-- ===== Command Center Overlay Panel ===== -->
+<div id="command-center-panel" style="display:none; position:fixed; top:0; bottom:0; left:calc(var(--icon-rail-w, 48px) + var(--sidebar-w, 0px)); right:0; z-index:100; background:#000; transition:left 0.25s ease;">
+  <iframe id="command-center-iframe"
+    src="about:blank"
+    allow="clipboard-write; clipboard-read"
+    referrerpolicy="no-referrer"
+    style="border:none;width:100%;height:100%;background:#060708;display:block;"
+    title="Command Center">
+  </iframe>
+</div>
+<script nonce="{{CSP_NONCE}}">(function(){
+  var btn = document.getElementById('sidebar-command-center-btn');
+  var panel = document.getElementById('command-center-panel');
+  var iframe = document.getElementById('command-center-iframe');
+  var chat = document.getElementById('chat-container');
+  if (!btn || !panel || !iframe) return;
+  var CC_URL = location.origin + '/static/cc-app/index.html';
+  var _loaded = false;
+  function openCC(){
+    if (!_loaded) { iframe.src = CC_URL; _loaded = true; }
+    panel.style.display = 'block';
+    if (chat) chat.style.visibility = 'hidden';
+    btn.classList.add('active');
+  }
+  function closeCC(){
+    panel.style.display = 'none';
+    if (chat) chat.style.visibility = '';
+    btn.classList.remove('active');
+  }
+  btn.addEventListener('click', function(){
+    panel.style.display === 'block' ? closeCC() : openCC();
+  });
+  document.querySelectorAll('.sidebar .list-item').forEach(function(el){
+    if (el.id !== 'sidebar-command-center-btn') el.addEventListener('click', closeCC);
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && panel.style.display === 'block') {
+      closeCC();
+      sessionStorage.setItem('command-center-dismissed', '1');
+    }
+  });
+  // Auto-open on Cerberus root (within-session sticky dismiss)
+  var isRoot = (window.location.pathname === '/' || window.location.pathname === '');
+  if (isRoot && !sessionStorage.getItem('command-center-dismissed')) {
+    window.addEventListener('load', function(){ setTimeout(openCC, 50); }, {once: true});
+  }
+  // Mark dismissed when user explicitly closes
+  btn.addEventListener('click', function(){
+    if (panel.style.display !== 'block') sessionStorage.setItem('command-center-dismissed', '1');
+  });
+})();</script>
 <script nonce="{{CSP_NONCE}}">if('serviceWorker' in navigator){navigator.serviceWorker.register('/static/sw.js').catch(()=>{});}</script>
 </body>
 </html>
