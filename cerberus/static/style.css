@@ -2761,8 +2761,8 @@ body.bg-pattern-sparkles {
       bottom: calc(100% + 16px);
       right: 0;
       z-index: 250;
-      min-width: 260px;
-      max-width: 360px;
+      min-width: 420px;
+      max-width: 560px;
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 8px;
