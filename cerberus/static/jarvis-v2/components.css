@@ -164,10 +164,10 @@
 }
 
 .jx2-btn:hover {
-  background:   rgba(192, 57, 43, 0.12);
+  background:   color-mix(in srgb, var(--red, #c0392b) 12%, transparent);
   border-color: var(--jx2-border-glow);
   color:        var(--jx2-fg-primary);
-  box-shadow:   0 0 12px rgba(192, 57, 43, 0.25);
+  box-shadow:   0 0 12px color-mix(in srgb, var(--red, #c0392b) 25%, transparent);
 }
 
 .jx2-btn:focus-visible {
@@ -178,8 +178,8 @@
 }
 
 .jx2-btn:active {
-  background:   rgba(192, 57, 43, 0.22);
-  border-color: var(--jx2-crimson-400);
+  background:   color-mix(in srgb, var(--red, #c0392b) 22%, transparent);
+  border-color: var(--red, #e04535);
   transform:    translateY(1px);
   box-shadow:   none;
 }
@@ -207,7 +207,7 @@
   background:   var(--jx2-crimson-400);
   border-color: var(--jx2-crimson-400);
   color:        #ffffff;
-  box-shadow:   0 0 20px rgba(192, 57, 43, 0.45);
+  box-shadow:   0 0 20px color-mix(in srgb, var(--red, #c0392b) 45%, transparent);
 }
 
 .jx2-btn--primary:active {

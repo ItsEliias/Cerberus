@@ -259,6 +259,11 @@ export function applyColors(colors) {
   s.setProperty('--border', colors.border);
   if (colors.red) s.setProperty('--red', colors.red);
 
+  // Toggle .light on :root so light themes (e.g. cute, lavender, paper) get
+  // native light-mode form chrome instead of the default dark color-scheme.
+  const [, , bgL] = hexToHSL(colors.bg);
+  document.documentElement.classList.toggle('light', bgL >= 50);
+
   // Keep the mobile browser toolbar / status bar matched to the theme bg
   // (same as the early head-script does on first paint).
   const _mtc = document.querySelector('meta[name="theme-color"]');

@@ -62,10 +62,10 @@
    * Hairline: always-on; edges panels against void bg.
    * Glow: on hover/focus; readable intent signal.
    * ---------------------------------------------------------------- */
-  --jx2-border-hairline: rgba(192, 57, 43, 0.12);
-  --jx2-border-default:  rgba(192, 57, 43, 0.28);
-  --jx2-border-glow:     rgba(192, 57, 43, 0.55);
-  --jx2-border-bright:   rgba(192, 57, 43, 0.85);
+  --jx2-border-hairline: color-mix(in srgb, var(--red, #c0392b) 12%, transparent);
+  --jx2-border-default:  color-mix(in srgb, var(--red, #c0392b) 28%, transparent);
+  --jx2-border-glow:     color-mix(in srgb, var(--red, #c0392b) 55%, transparent);
+  --jx2-border-bright:   color-mix(in srgb, var(--red, #c0392b) 85%, transparent);
 
   /* ── STATUS COLORS (PROTECTED) ─────────────────────────────────────
    * Source: ui-ux-pro-max (accent #22C55E preserved exactly).
@@ -130,26 +130,26 @@
    *   hover   — panel hover state (medium, directional)
    * ---------------------------------------------------------------- */
   --jx2-glow-focus:
-    0 0 0 1px var(--jx2-crimson-500),
-    0 0 8px rgba(192, 57, 43, 0.60);
+    0 0 0 1px var(--red, #c0392b),
+    0 0 8px color-mix(in srgb, var(--red, #c0392b) 60%, transparent);
 
   --jx2-glow-lift:
     0 4px 24px rgba(0, 0, 0, 0.60),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
   --jx2-glow-ambient:
-    0 0 60px rgba(192, 57, 43, 0.30),
-    0 0 120px rgba(192, 57, 43, 0.12);
+    0 0 60px color-mix(in srgb, var(--red, #c0392b) 30%, transparent),
+    0 0 120px color-mix(in srgb, var(--red, #c0392b) 12%, transparent);
 
   --jx2-glow-panel-hover:
     0 0 0 1px var(--jx2-border-default),
-    0 8px 32px rgba(192, 57, 43, 0.18),
+    0 8px 32px color-mix(in srgb, var(--red, #c0392b) 18%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
   /* HUD label glow (frontend-design-pro: "long glowing shadows") */
   --jx2-glow-hud-label:
-    0 0 8px rgba(192, 57, 43, 0.60),
-    0 0 24px rgba(192, 57, 43, 0.30);
+    0 0 8px color-mix(in srgb, var(--red, #c0392b) 60%, transparent),
+    0 0 24px color-mix(in srgb, var(--red, #c0392b) 30%, transparent);
 
   /* ── MOTION ────────────────────────────────────────────────────────
    * Source: frontend-design (tactical precision durations).
@@ -208,8 +208,8 @@
 }
 
 @keyframes jx2-glow-breathe {
-  0%, 100% { box-shadow: 0 0 20px rgba(192, 57, 43, 0.20); }
-  50%       { box-shadow: 0 0 40px rgba(192, 57, 43, 0.45); }
+  0%, 100% { box-shadow: 0 0 20px color-mix(in srgb, var(--red, #c0392b) 20%, transparent); }
+  50%       { box-shadow: 0 0 40px color-mix(in srgb, var(--red, #c0392b) 45%, transparent); }
 }
 
 @keyframes jx2-glitch {
