@@ -57,7 +57,7 @@ body.jx2-active .sidebar-item {
 body.jx2-active .session-item:hover,
 body.jx2-active .chat-session:hover,
 body.jx2-active .sidebar-item:hover {
-  background:   rgba(192, 57, 43, 0.08) !important;
+  background:   color-mix(in srgb, var(--red, #c0392b) 8%, transparent) !important;
   border-color: var(--jx2-border-glow);
   color:        var(--jx2-fg-primary) !important;
 }
@@ -66,7 +66,7 @@ body.jx2-active .session-item.active,
 body.jx2-active .chat-session.active,
 body.jx2-active .sidebar-item.active,
 body.jx2-active .session-item[aria-selected="true"] {
-  background:   rgba(192, 57, 43, 0.14) !important;
+  background:   color-mix(in srgb, var(--red, #c0392b) 14%, transparent) !important;
   border-color: var(--jx2-crimson-500) !important;
   color:        var(--jx2-fg-primary) !important;
 }
@@ -95,14 +95,14 @@ body.jx2-active .icon-rail button:hover,
 body.jx2-active .nav-icon:hover,
 body.jx2-active .sidebar-icon-btn:hover {
   color:      var(--jx2-fg-primary);
-  background: rgba(192, 57, 43, 0.10);
+  background: color-mix(in srgb, var(--red, #c0392b) 10%, transparent);
 }
 
 body.jx2-active .icon-rail button.active,
 body.jx2-active .nav-icon.active,
 body.jx2-active .sidebar-icon-btn.active {
   color:      var(--jx2-crimson-300);
-  background: rgba(192, 57, 43, 0.16);
+  background: color-mix(in srgb, var(--red, #c0392b) 16%, transparent);
   box-shadow: var(--jx2-glow-focus);
 }
 
@@ -192,7 +192,7 @@ body.jx2-active .send-btn:hover,
 body.jx2-active button[type="submit"].send:hover,
 body.jx2-active #send-button:hover {
   background: var(--jx2-crimson-400) !important;
-  box-shadow: 0 0 16px rgba(192, 57, 43, 0.45) !important;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--red, #c0392b) 45%, transparent) !important;
 }
 
 /* Empty / welcome state — HUD frame treatment (MINIMAL per density rule) */
@@ -307,7 +307,7 @@ body.jx2-active .tab-btn.active {
   height:        400px;
   background:    radial-gradient(
     circle,
-    rgba(192, 57, 43, 0.12) 0%,
+    color-mix(in srgb, var(--red, #c0392b) 12%, transparent) 0%,
     transparent 70%
   );
   pointer-events: none;
@@ -323,8 +323,8 @@ body.jx2-active .tab-btn.active {
     0deg,
     transparent,
     transparent 2px,
-    rgba(192, 57, 43, 0.018) 2px,
-    rgba(192, 57, 43, 0.018) 3px
+    color-mix(in srgb, var(--red, #c0392b) 1.8%, transparent) 2px,
+    color-mix(in srgb, var(--red, #c0392b) 1.8%, transparent) 3px
   );
   pointer-events: none;
   z-index:        0;
@@ -388,7 +388,7 @@ body.jx2-active ::-webkit-scrollbar-thumb:hover {
 
 /* ── SELECTION COLOR ──────────────────────────────────────────────────*/
 body.jx2-active ::selection {
-  background: rgba(192, 57, 43, 0.35);
+  background: color-mix(in srgb, var(--red, #c0392b) 35%, transparent);
   color:      var(--jx2-fg-primary);
 }
 
