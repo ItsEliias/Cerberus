@@ -9,9 +9,73 @@
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg, #060708); }
       #cc-root { width: 100%; height: 100vh; overflow: hidden; }
+
+      /* Shield-and-code loader */
+      #cc-loader {
+        position: fixed; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; z-index: 9999;
+        background: var(--bg, #060708);
+        transition: opacity 0.4s ease;
+      }
+      #cc-loader.fade-out { opacity: 0; pointer-events: none; }
+      #cc-loader canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+      #cc-loader-shield {
+        position: relative; z-index: 2;
+        width: 80px; height: 92px;
+      }
+      #cc-loader-shield svg { width: 100%; height: 100%; }
+      #cc-loader-text {
+        position: relative; z-index: 2; margin-top: 20px;
+        font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+        font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+        color: var(--cc-crimson, #c0392b);
+        text-shadow: 0 0 8px var(--cc-crimson, #c0392b);
+        animation: cc-loader-blink 1.2s step-end infinite;
+      }
+      @keyframes cc-loader-blink {
+        0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #cc-loader { transition: none; }
+        #cc-loader-text { animation: none; }
+      }
     </style>
   </head>
   <body>
+    <!-- Shield-and-code loader — visible during module boot -->
+    <div id="cc-loader" role="status" aria-label="Loading Command Center">
+      <canvas id="cc-loader-rain" aria-hidden="true"></canvas>
+      <div id="cc-loader-shield">
+        <svg viewBox="0 0 100 115" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path id="cc-shield-path"
+            d="M50 5 L8 22 L8 55 C8 78 26 100 50 110 C74 100 92 78 92 55 L92 22 Z"
+            stroke="var(--cc-crimson,#c0392b)" stroke-width="3"
+            fill="none" stroke-linejoin="round"
+            stroke-dasharray="300" stroke-dashoffset="300">
+            <animate attributeName="stroke-dashoffset"
+              from="300" to="0" dur="1.2s" fill="freeze"
+              calcMode="spline" keySplines="0.4 0 0.2 1"/>
+          </path>
+          <!-- Three heads suggestion: triple arcs inside shield -->
+          <path d="M30 65 C30 50 40 42 50 42 C60 42 70 50 70 65"
+            stroke="var(--cc-crimson,#c0392b)" stroke-width="1.5"
+            fill="none" opacity="0.5"
+            stroke-dasharray="60" stroke-dashoffset="60">
+            <animate attributeName="stroke-dashoffset"
+              from="60" to="0" begin="0.8s" dur="0.5s" fill="freeze"/>
+          </path>
+          <path d="M22 72 C22 55 36 46 50 46 C64 46 78 55 78 72"
+            stroke="var(--cc-crimson,#c0392b)" stroke-width="1"
+            fill="none" opacity="0.3"
+            stroke-dasharray="80" stroke-dashoffset="80">
+            <animate attributeName="stroke-dashoffset"
+              from="80" to="0" begin="0.9s" dur="0.5s" fill="freeze"/>
+          </path>
+        </svg>
+      </div>
+      <div id="cc-loader-text">INITIALIZING CERBERUS</div>
+    </div>
+
     <div id="cc-root"></div>
     <script type="module">
       // Apply theme colors to this iframe's documentElement.
@@ -29,7 +93,6 @@
           s.setProperty('--cc-crimson',      c.red);
           s.setProperty('--cc-crimson-glow', `color-mix(in srgb,${c.red} 40%,transparent)`);
           s.setProperty('--cc-crimson-hot',  `color-mix(in srgb,${c.red} 85%,white)`);
-          // Animation tokens — derived locally if not provided in payload
           const r = c.red;
           const fg = c.fg || '#c5c9d0';
           const border = c.border || '#3a2a2a';
@@ -54,12 +117,57 @@
         if (e.data && e.data.type === 'cerberus-theme') _applyTheme(e.data.colors);
       });
 
+      // Code-rain canvas behind the shield loader
+      (function _bootRain() {
+        const canvas = document.getElementById('cc-loader-rain');
+        if (!canvas || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width  = window.innerWidth;
+        const H = canvas.height = window.innerHeight;
+        const CHARS = '01アイウエオCERBERUS</>{}[];';
+        const COL_W = 14;
+        const cols  = Math.ceil(W / COL_W);
+        const drops = Array.from({ length: cols }, () => Math.random() * -50);
+        let frame = 0;
+        function getAccent() {
+          return getComputedStyle(document.documentElement).getPropertyValue('--cc-crimson').trim() || '#c0392b';
+        }
+        function tick() {
+          if (!document.getElementById('cc-loader')) return;
+          frame++;
+          ctx.fillStyle = 'rgba(6,7,8,0.18)';
+          ctx.fillRect(0, 0, W, H);
+          const c = getAccent();
+          ctx.font = '11px "Courier New",monospace';
+          for (let i = 0; i < drops.length; i++) {
+            const ch = CHARS[Math.floor(Math.random() * CHARS.length)];
+            const x = i * COL_W;
+            const y = drops[i] * 14;
+            ctx.globalAlpha = 0.25 + 0.15 * Math.random();
+            ctx.fillStyle = c;
+            ctx.fillText(ch, x, y);
+            ctx.globalAlpha = 1;
+            if (y > H && Math.random() > 0.96) drops[i] = 0;
+            drops[i] += 0.6;
+          }
+          requestAnimationFrame(tick);
+        }
+        tick();
+      })();
+
       // Bootstrap the Command Center module
       window.CYBER_APPS_REGISTRY = [];
       window.JX = window.JX || {};
 
       const { init } = await import('/static/js/cyberapps/command-center/index.js');
       init(document.getElementById('cc-root'), {});
+
+      // Dismiss loader after init
+      const loader = document.getElementById('cc-loader');
+      if (loader) {
+        loader.classList.add('fade-out');
+        setTimeout(() => loader.remove(), 500);
+      }
     </script>
   </body>
 </html>

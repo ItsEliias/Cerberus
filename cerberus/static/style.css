@@ -169,7 +169,8 @@ html {
 /* Canvas-based effects — single source of truth for intensity */
 #synapse-canvas, #rain-canvas, #constellations-canvas,
 #perlin-flow-canvas, #petals-canvas, #sparkles-canvas,
-#embers-canvas {
+#embers-canvas, #aurora-canvas, #grid-pulse-canvas,
+#ember-glow-canvas, #paper-grain-canvas {
   opacity: var(--bg-effect-intensity, 1);
 }
 
@@ -185,7 +186,11 @@ body.bg-pattern-synapse {
 }
 body.bg-pattern-perlin-flow,
 body.bg-pattern-petals,
-body.bg-pattern-sparkles {
+body.bg-pattern-sparkles,
+body.bg-pattern-aurora,
+body.bg-pattern-grid-pulse,
+body.bg-pattern-ember-glow,
+body.bg-pattern-paper-grain {
   /* canvas-only backgrounds */
 }
 

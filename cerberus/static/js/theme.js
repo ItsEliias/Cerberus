@@ -53,18 +53,29 @@ const MAX_CUSTOM_THEMES = 8;
 
 // Default background patterns for built-in themes
 const THEME_DEFAULT_PATTERN = {
-  dark:       'none',
-  light:      'dots',
-  midnight:   'rain',
-  paper:      'dots',
-  cyberpunk:  'synapse',
-  retrowave:  'embers',
-  forest:     'petals',
-  ocean:      'constellations',
-  terminal:   'perlin-flow',
-  organs:     'rain',
-  ume:        'petals',
-  cute:       'sparkles',
+  dark:        'none',
+  light:       'dots',
+  midnight:    'rain',
+  paper:       'dots',
+  cyberpunk:   'synapse',
+  retrowave:   'embers',
+  forest:      'petals',
+  ocean:       'constellations',
+  terminal:    'perlin-flow',
+  organs:      'rain',
+  ume:         'petals',
+  cute:        'sparkles',
+  lavender:    'aurora',
+  gpt:         'grid-pulse',
+  copper:      'ember-glow',
+  claude:      'paper-grain',
+  // new themes
+  ember:       'embers',
+  abyss:       'constellations',
+  sentinel:    'synapse',
+  void:        'constellations',
+  'neon-noir': 'aurora',
+  slate:       'grid-pulse',
 };
 
 // Default effect colors for specific themes (overrides --fg)
@@ -73,6 +84,16 @@ const THEME_DEFAULT_EFFECT_COLOR = {
   organs:     '#451616',
   cute:       '#ff8cb8',
   ume:        '#f5a0c0',
+  // Mission 1.5 themes
+  lavender:   '#c4a0e8',
+  copper:     '#d4764e',
+  claude:     '#c6613f',
+  ember:      '#f0a060',
+  abyss:      '#4080b0',
+  sentinel:   '#60c060',
+  void:       '#8080c0',
+  'neon-noir':'#ff80d0',
+  slate:      '#7090b0',
 };
 
 // Default effect intensity (0..1) per theme. Any theme not listed defaults to 1.
@@ -283,6 +304,12 @@ export function applyColors(colors) {
   s.setProperty('--globe-wire',  `color-mix(in srgb,${_ccRed} 35%,transparent)`);
   s.setProperty('--globe-atmo',  `color-mix(in srgb,${_ccRed} 60%,transparent)`);
 
+  // Mirror prefers-reduced-motion as a class so CSS animations can key off it
+  document.documentElement.classList.toggle(
+    'reduced-motion',
+    !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  );
+
   // Broadcast to the Command Center iframe (different document, so CSS custom
   // properties don't propagate automatically — postMessage bridges the gap).
   try {
@@ -437,10 +464,14 @@ export function applyFontDensity(font, density) {
 const _BG_CLASSES = ['bg-pattern-dots',
   'bg-pattern-synapse', 'bg-pattern-rain', 'bg-pattern-constellations',
   'bg-pattern-perlin-flow',
-  'bg-pattern-petals', 'bg-pattern-sparkles', 'bg-pattern-embers'];
+  'bg-pattern-petals', 'bg-pattern-sparkles', 'bg-pattern-embers',
+  'bg-pattern-aurora', 'bg-pattern-grid-pulse',
+  'bg-pattern-ember-glow', 'bg-pattern-paper-grain'];
 const _CANVAS_PATTERNS = { synapse: _initSynapse, rain: _initRain, constellations: _initConstellations,
   'perlin-flow': _initPerlinFlow,
-  petals: _initPetals, sparkles: _initSparkles, embers: _initEmbers };
+  petals: _initPetals, sparkles: _initSparkles, embers: _initEmbers,
+  aurora: _initAurora, 'grid-pulse': _initGridPulse,
+  'ember-glow': _initEmberGlow, 'paper-grain': _initPaperGrain };
 
 export function applyBgEffectColor(color) {
   document.documentElement.style.setProperty('--bg-effect-color', color || '');
@@ -478,7 +509,7 @@ export function applyBgPattern(pattern) {
   const p = pattern || 'none';
   document.body.classList.remove(..._BG_CLASSES);
   // Clean up any canvas backgrounds
-  document.querySelectorAll('#synapse-canvas, #rain-canvas, #constellations-canvas, #perlin-flow-canvas, #petals-canvas, #sparkles-canvas, #embers-canvas').forEach(c => c.remove());
+  document.querySelectorAll('#synapse-canvas, #rain-canvas, #constellations-canvas, #perlin-flow-canvas, #petals-canvas, #sparkles-canvas, #embers-canvas, #aurora-canvas, #grid-pulse-canvas, #ember-glow-canvas, #paper-grain-canvas').forEach(c => c.remove());
   if (p !== 'none') document.body.classList.add('bg-pattern-' + p);
   if (_CANVAS_PATTERNS[p]) _CANVAS_PATTERNS[p]();
   // Hide sliders that do nothing on static patterns.
@@ -2087,6 +2118,295 @@ function _initEmbers() {
       }
     }
     ctx.globalCompositeOperation = 'source-over';
+  }
+  draw();
+}
+
+// ── Aurora — soft drifting colour bands (lavender, neon-noir) ──
+function _initAurora() {
+  if (document.getElementById('aurora-canvas')) return;
+  const canvas = document.createElement('canvas');
+  canvas.id = 'aurora-canvas';
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;';
+  canvas.setAttribute('aria-hidden', 'true');
+  document.body.prepend(canvas);
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let W, H, t = 0;
+  const BANDS = 4;
+
+  function resize() {
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  const _onResize = () => resize();
+  window.addEventListener('resize', _onResize);
+
+  function getColor() {
+    const s = getComputedStyle(document.documentElement);
+    return s.getPropertyValue('--bg-effect-color').trim() || s.getPropertyValue('--red').trim() || '#9b6dcc';
+  }
+  function rgba(hex, a) {
+    const { r, g, b } = hexToRgb(hex) || { r: 155, g: 109, b: 204 };
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function draw() {
+    if (!document.body.classList.contains('bg-pattern-aurora')) {
+      window.removeEventListener('resize', _onResize);
+      canvas.remove();
+      return;
+    }
+    requestAnimationFrame(draw);
+    const sz = _getEffectSize();
+    t += 0.003;
+    ctx.clearRect(0, 0, W, H);
+    const c = getColor();
+    for (let i = 0; i < BANDS; i++) {
+      const phase = (i / BANDS) * Math.PI * 2;
+      const cy = H * 0.3 + Math.sin(t + phase) * H * 0.22;
+      const grad = ctx.createRadialGradient(W * 0.5, cy, 0, W * 0.5, cy, W * 0.55 * sz);
+      const intensity = 0.04 + 0.02 * Math.sin(t * 0.7 + phase);
+      grad.addColorStop(0, rgba(c, intensity));
+      grad.addColorStop(0.5, rgba(c, intensity * 0.4));
+      grad.addColorStop(1, rgba(c, 0));
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+  draw();
+}
+
+// ── Grid Pulse — dim grid with occasional cell flash (gpt, slate) ──
+function _initGridPulse() {
+  if (document.getElementById('grid-pulse-canvas')) return;
+  const canvas = document.createElement('canvas');
+  canvas.id = 'grid-pulse-canvas';
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;';
+  canvas.setAttribute('aria-hidden', 'true');
+  document.body.prepend(canvas);
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const CELL = 32;
+  let W, H, cols, rows;
+  const pulses = [];
+  let t = 0;
+
+  function resize() {
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cols = Math.ceil(W / CELL); rows = Math.ceil(H / CELL);
+  }
+  resize();
+  const _onResize = () => resize();
+  window.addEventListener('resize', _onResize);
+
+  function getColor() {
+    const s = getComputedStyle(document.documentElement);
+    return s.getPropertyValue('--bg-effect-color').trim() || s.getPropertyValue('--fg').trim() || '#a0b0c0';
+  }
+  function rgba(hex, a) {
+    const { r, g, b } = hexToRgb(hex) || { r: 160, g: 176, b: 192 };
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function draw() {
+    if (!document.body.classList.contains('bg-pattern-grid-pulse')) {
+      window.removeEventListener('resize', _onResize);
+      canvas.remove();
+      return;
+    }
+    requestAnimationFrame(draw);
+    t++;
+    ctx.clearRect(0, 0, W, H);
+    const c = getColor();
+    const sz = _getEffectSize();
+    const lineAlpha = 0.04 * sz;
+
+    // Draw dim grid lines
+    ctx.strokeStyle = rgba(c, lineAlpha);
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    for (let cx = 0; cx <= cols; cx++) {
+      ctx.moveTo(cx * CELL, 0); ctx.lineTo(cx * CELL, H);
+    }
+    for (let ry = 0; ry <= rows; ry++) {
+      ctx.moveTo(0, ry * CELL); ctx.lineTo(W, ry * CELL);
+    }
+    ctx.stroke();
+
+    // Spawn a pulse occasionally
+    if (t % 18 === 0 && pulses.length < 12) {
+      pulses.push({ cx: Math.floor(Math.random() * cols), cy: Math.floor(Math.random() * rows), life: 0, maxLife: 55 });
+    }
+
+    // Draw cell pulses
+    for (let i = pulses.length - 1; i >= 0; i--) {
+      const p = pulses[i];
+      p.life++;
+      if (p.life > p.maxLife) { pulses.splice(i, 1); continue; }
+      const fade = 1 - p.life / p.maxLife;
+      ctx.fillStyle = rgba(c, 0.12 * fade * sz);
+      ctx.fillRect(p.cx * CELL + 1, p.cy * CELL + 1, CELL - 2, CELL - 2);
+    }
+  }
+  draw();
+}
+
+// ── Ember Glow — warm copper embers rising slowly (copper theme) ──
+function _initEmberGlow() {
+  if (document.getElementById('ember-glow-canvas')) return;
+  const canvas = document.createElement('canvas');
+  canvas.id = 'ember-glow-canvas';
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;';
+  canvas.setAttribute('aria-hidden', 'true');
+  document.body.prepend(canvas);
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let W, H;
+  const embers = [];
+  function makeEmber() {
+    return {
+      x: Math.random() * W,
+      y: H + Math.random() * 30,
+      vx: (Math.random() - 0.5) * 0.2,
+      vy: -0.15 - Math.random() * 0.4,  // slower than embers — more languid
+      r: 0.4 + Math.random() * 0.8,
+      life: 0,
+      maxLife: 340 + Math.random() * 280,
+      wobble: Math.random() * Math.PI * 2,
+      spark: false,
+    };
+  }
+  function resize() {
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (embers.length === 0) {
+      for (let i = 0; i < 45; i++) { const e = makeEmber(); e.y = Math.random() * H; e.life = Math.random() * e.maxLife; embers.push(e); }
+    }
+  }
+  resize();
+  const _onResize = () => resize();
+  window.addEventListener('resize', _onResize);
+  function getColor() {
+    const s = getComputedStyle(document.documentElement);
+    return s.getPropertyValue('--bg-effect-color').trim() || s.getPropertyValue('--fg').trim() || '#e8c39e';
+  }
+  function _rgba(hex, a) {
+    const { r, g, b } = hexToRgb(hex) || { r: 212, g: 118, b: 78 };
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  function draw() {
+    if (!document.body.classList.contains('bg-pattern-ember-glow')) { window.removeEventListener('resize', _onResize); canvas.remove(); return; }
+    requestAnimationFrame(draw);
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+    const color = getColor();
+    const sz = _getEffectSize();
+    for (let i = embers.length - 1; i >= 0; i--) {
+      const e = embers[i];
+      e.wobble += 0.018;
+      e.x += e.vx + Math.sin(e.wobble) * 0.4;
+      e.y += e.vy;
+      e.life++;
+      if (e.life > e.maxLife || e.y < -20) {
+        embers.splice(i, 1);
+        if (embers.length < 55) embers.push(makeEmber());
+        continue;
+      }
+      const lifeRatio = e.life / e.maxLife;
+      const fade = Math.min(1, Math.min(lifeRatio * 4, (1 - lifeRatio) * 3));
+      const r = e.r * sz;
+      const a = 0.42 * fade;
+      const g = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, r * 5);
+      g.addColorStop(0, _rgba(color, a));
+      g.addColorStop(0.4, _rgba(color, a * 0.25));
+      g.addColorStop(1, _rgba(color, 0));
+      ctx.fillStyle = g;
+      ctx.fillRect(e.x - r * 5, e.y - r * 5, r * 10, r * 10);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  draw();
+}
+
+// ── Paper Grain — subtle warm film noise texture (claude theme) ──
+function _initPaperGrain() {
+  if (document.getElementById('paper-grain-canvas')) return;
+  const canvas = document.createElement('canvas');
+  canvas.id = 'paper-grain-canvas';
+  canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0.35;';
+  canvas.setAttribute('aria-hidden', 'true');
+  document.body.prepend(canvas);
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let W, H;
+  // Offscreen grain tile — regenerated occasionally for animation effect
+  let grainTile = null;
+  let grainTimer = 0;
+  const GRAIN_INTERVAL = 3; // regen every N frames for subtle flicker
+
+  function resize() {
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    grainTile = null;
+  }
+  resize();
+  const _onResize = () => resize();
+  window.addEventListener('resize', _onResize);
+
+  function getColor() {
+    const s = getComputedStyle(document.documentElement);
+    return s.getPropertyValue('--bg-effect-color').trim() || s.getPropertyValue('--fg').trim() || '#f5f4f0';
+  }
+  function _rgba(hex, a) {
+    const { r, g, b } = hexToRgb(hex) || { r: 198, g: 97, b: 63 };
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function buildGrainTile() {
+    const TILE = 256;
+    const off = document.createElement('canvas');
+    off.width = TILE; off.height = TILE;
+    const offCtx = off.getContext('2d');
+    const imgData = offCtx.createImageData(TILE, TILE);
+    const data = imgData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const v = Math.floor(Math.random() * 255);
+      data[i] = v; data[i+1] = v; data[i+2] = v;
+      data[i+3] = Math.floor(Math.random() * 18); // very low alpha
+    }
+    offCtx.putImageData(imgData, 0, 0);
+    return off;
+  }
+
+  function draw() {
+    if (!document.body.classList.contains('bg-pattern-paper-grain')) { window.removeEventListener('resize', _onResize); canvas.remove(); return; }
+    requestAnimationFrame(draw);
+    grainTimer++;
+    if (!grainTile || grainTimer % GRAIN_INTERVAL === 0) {
+      grainTile = buildGrainTile();
+    }
+    const sz = _getEffectSize();
+    const intenCss = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bg-effect-intensity'));
+    const inten = isNaN(intenCss) ? 1 : intenCss;
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalAlpha = 0.18 * inten * sz;
+    // Tile the grain across the canvas
+    const TILE = 256;
+    for (let tx = 0; tx < W; tx += TILE) {
+      for (let ty = 0; ty < H; ty += TILE) {
+        ctx.drawImage(grainTile, tx, ty);
+      }
+    }
+    ctx.globalAlpha = 1;
   }
   draw();
 }

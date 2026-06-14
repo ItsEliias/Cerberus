@@ -264,17 +264,25 @@
     0 0 32px color-mix(in srgb, var(--red) 18%, transparent);
 }
 
-/* Wireframe SVG overlay — rotates */
+/* Wireframe SVG overlay — rotates with eased organic feel */
+/* --globe-rotation-duration can be set per-theme to vary speed */
+:root { --globe-rotation-duration: 18s; }
 .cc-globe-wire {
   position: absolute; inset: 0; border-radius: 50%;
   opacity: 0.28;
-  animation: cc-globe-spin 18s linear infinite;
+  animation: cc-globe-spin var(--globe-rotation-duration, 18s) cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 .cc-globe-wire svg { width: 100%; height: 100%; color: var(--cc-crimson); }
 
 @keyframes cc-globe-spin {
   from { transform: rotateY(0deg); }
   to   { transform: rotateY(360deg); }
+}
+
+/* Atmosphere breathing — subtle scale pulse on halo */
+@keyframes cc-atmo-breathe {
+  0%, 100% { transform: scale(1.0);   opacity: 0.6; }
+  50%       { transform: scale(1.08);  opacity: 0.95; }
 }
 
 /* Particles container */
@@ -290,11 +298,13 @@
   transform-origin: 0 0;
 }
 
-.cc-globe-p1 { animation: cc-orbit-a 8s  linear infinite; }
-.cc-globe-p2 { animation: cc-orbit-a 11s linear infinite 2.5s; opacity: 0.7; }
-.cc-globe-p3 { animation: cc-orbit-b 9s  linear infinite 1s; }
-.cc-globe-p4 { animation: cc-orbit-b 13s linear infinite 4s; opacity: 0.6; }
-.cc-globe-p5 { animation: cc-orbit-c 7.5s linear infinite 3s; }
+/* Eased orbits — cubic-bezier gives slight deceleration/acceleration
+   for an organic, living feel rather than mechanical constant-speed */
+.cc-globe-p1 { animation: cc-orbit-a 8s  cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+.cc-globe-p2 { animation: cc-orbit-a 11s cubic-bezier(0.4, 0, 0.6, 1) infinite 2.5s; opacity: 0.7; }
+.cc-globe-p3 { animation: cc-orbit-b 9s  cubic-bezier(0.35, 0.05, 0.65, 0.95) infinite 1s; }
+.cc-globe-p4 { animation: cc-orbit-b 13s cubic-bezier(0.35, 0.05, 0.65, 0.95) infinite 4s; opacity: 0.6; }
+.cc-globe-p5 { animation: cc-orbit-c 7.5s cubic-bezier(0.45, 0.1, 0.55, 0.9) infinite 3s; }
 
 @keyframes cc-orbit-a {
   from { transform: rotate(0deg)   translateX(46px) scale(0.9); }
@@ -327,16 +337,17 @@
 }
 .cc-globe-wrap.active .cc-globe-wire { animation-duration: 6s; opacity: 0.45; }
 .cc-globe-wrap.active .cc-globe-halo {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 50%, transparent), 0 0 30px color-mix(in srgb, var(--red) 35%, transparent);
-  animation: cc-globe-halo-pulse 1.8s ease-in-out infinite;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 50%, transparent), 0 0 30px var(--globe-atmo, color-mix(in srgb, var(--red) 35%, transparent));
+  animation: cc-globe-halo-pulse 1.8s ease-in-out infinite, cc-atmo-breathe 2.2s ease-in-out infinite;
 }
 .cc-globe-wrap.degraded .cc-globe-sphere {
   animation: cc-globe-idle 2.5s ease-in-out infinite;
   filter: hue-rotate(20deg);
 }
 .cc-globe-wrap.idle .cc-globe-halo {
-  animation: cc-globe-halo-pulse 3.5s ease-in-out infinite;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 30%, transparent), 0 0 16px color-mix(in srgb, var(--red) 15%, transparent);
+  /* Use atmosphere-breathe for organic scale + the existing halo pulse for opacity */
+  animation: cc-globe-halo-pulse 3.5s ease-in-out infinite, cc-atmo-breathe 4s ease-in-out infinite;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 30%, transparent), 0 0 16px var(--globe-atmo, color-mix(in srgb, var(--red) 15%, transparent));
 }
 .cc-globe-wrap.offline .cc-globe-halo { box-shadow: none; }
 
@@ -367,12 +378,14 @@
 .cc-orb-status.degraded { color: var(--cc-warn); }
 .cc-orb-status.offline  { opacity: 0.25; }
 
-/* Reduced motion */
+/* Reduced motion — pause all globe animations */
 @media (prefers-reduced-motion: reduce) {
   .cc-globe-wire, .cc-globe-p, .cc-globe-sphere, .cc-globe-halo {
     animation: none !important;
     filter: none !important;
   }
+  .cc-globe-wrap.idle .cc-globe-halo,
+  .cc-globe-wrap.active .cc-globe-halo { animation: none !important; }
 }
 
 /* =====================================================================
@@ -767,4 +780,33 @@
   .cc-loader-shield, .cc-loader-rain { animation: none !important; }
   .cc-card-orb { box-shadow: none; }
   .cc-loader { opacity: 0 !important; }
+}
+
+/* =====================================================================
+   KEYBOARD FOCUS RINGS (Phase 3 — CC button consistency)
+   All interactive CC elements get a visible :focus-visible ring using
+   the theme accent (--cc-crimson) so keyboard nav is always visible.
+   ===================================================================== */
+
+.cc-tab-btn:focus-visible,
+.cc-refresh-btn:focus-visible,
+.cc-chat-input:focus-visible,
+.cc-chat-send:focus-visible,
+.cc-action-btn:focus-visible,
+.cc-invoke-btn:focus-visible,
+.cc-invoke-input:focus-visible,
+.cc-overlay-prompt:focus-visible,
+.cc-detail-close:focus-visible,
+.cc-voice-btn:focus-visible {
+  outline: 2px solid var(--cc-crimson);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--cc-crimson-glow);
+}
+
+/* Ensure no accidental outline:none without a :focus-visible replacement */
+.cc-tab-btn:focus:not(:focus-visible),
+.cc-refresh-btn:focus:not(:focus-visible),
+.cc-action-btn:focus:not(:focus-visible),
+.cc-invoke-btn:focus:not(:focus-visible) {
+  outline: none;
 }
