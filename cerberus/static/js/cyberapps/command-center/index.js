@@ -14,16 +14,6 @@ import { buildFinanceTab, loadFinance }     from './finance.js';
 import { buildAssistantTab, initAssistant, destroyAssistant } from './assistant.js';
 import * as Poll from './poll.js';
 
-// Inject CSS
-(function injectCSS() {
-  const id = 'cc-styles-link';
-  if (document.getElementById(id)) return;
-  const link = document.createElement('link');
-  link.id = id;
-  link.rel = 'stylesheet';
-  link.href = '/static/js/cyberapps/command-center/styles.css';
-  document.head.appendChild(link);
-})();
 
 // ---- Tab config ----
 
