@@ -74,14 +74,14 @@ const GLOBE_HTML = `
   <div class="cc-globe-sphere">
     <div class="cc-globe-wire">
       <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
-        <ellipse cx="50" cy="50" rx="49" ry="10" fill="none" stroke="#c0392b" stroke-width="0.6"/>
-        <ellipse cx="50" cy="36" rx="42" ry="7"  fill="none" stroke="#c0392b" stroke-width="0.45"/>
-        <ellipse cx="50" cy="64" rx="42" ry="7"  fill="none" stroke="#c0392b" stroke-width="0.45"/>
-        <ellipse cx="50" cy="22" rx="28" ry="5"  fill="none" stroke="#c0392b" stroke-width="0.35"/>
-        <ellipse cx="50" cy="78" rx="28" ry="5"  fill="none" stroke="#c0392b" stroke-width="0.35"/>
-        <ellipse cx="50" cy="50" rx="9"  ry="49" fill="none" stroke="#c0392b" stroke-width="0.5"/>
-        <ellipse cx="50" cy="50" rx="49" ry="49" fill="none" stroke="#c0392b" stroke-width="0.5"/>
-        <ellipse cx="50" cy="50" rx="30" ry="49" fill="none" stroke="#c0392b" stroke-width="0.4"/>
+        <ellipse cx="50" cy="50" rx="49" ry="10" fill="none" stroke="currentColor" stroke-width="0.6"/>
+        <ellipse cx="50" cy="36" rx="42" ry="7"  fill="none" stroke="currentColor" stroke-width="0.45"/>
+        <ellipse cx="50" cy="64" rx="42" ry="7"  fill="none" stroke="currentColor" stroke-width="0.45"/>
+        <ellipse cx="50" cy="22" rx="28" ry="5"  fill="none" stroke="currentColor" stroke-width="0.35"/>
+        <ellipse cx="50" cy="78" rx="28" ry="5"  fill="none" stroke="currentColor" stroke-width="0.35"/>
+        <ellipse cx="50" cy="50" rx="9"  ry="49" fill="none" stroke="currentColor" stroke-width="0.5"/>
+        <ellipse cx="50" cy="50" rx="49" ry="49" fill="none" stroke="currentColor" stroke-width="0.5"/>
+        <ellipse cx="50" cy="50" rx="30" ry="49" fill="none" stroke="currentColor" stroke-width="0.4"/>
       </svg>
     </div>
     <div class="cc-globe-particles" aria-hidden="true">
@@ -133,7 +133,7 @@ function _updateDial(container, key, value, text) {
   const arcLen = Math.PI * 21; // radius=21
   if (arc) {
     const filled = ((pct / 100) * arcLen).toFixed(2);
-    const color = DIAL_COLORS[key] || '#c0392b';
+    const color = DIAL_COLORS[key] || getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b';
     arc.setAttribute('stroke', color);
     arc.setAttribute('stroke-dasharray', `${filled} ${(arcLen - filled).toFixed(2)}`);
     const cls = _thresholdClass(key, value);

@@ -22,7 +22,8 @@ const AGENTS_API = '/api/agents';
 
 // Status colours that align with jx2 vars
 const STATUS_COLOR = {
-  active: '#2ecc71', idle: '#e67e22', processing: '#c0392b',
+  active: '#2ecc71', idle: '#e67e22',
+  get processing() { return getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b'; },
   alert: '#e74c3c', standby: '#888',
 };
 

@@ -6,8 +6,8 @@
   --cc-void-mid:     #0d0f12;
   --cc-surface:      var(--bg, #1a1d23);
   --cc-crimson:      var(--red, #c0392b);
-  --cc-crimson-hot:  #e74c3c;
-  --cc-crimson-glow: rgba(192,57,43,0.4);
+  --cc-crimson-hot:  color-mix(in srgb, var(--red, #c0392b) 85%, white);
+  --cc-crimson-glow: color-mix(in srgb, var(--red, #c0392b) 40%, transparent);
   --cc-border:       var(--border, #3a2a2a);
   --cc-fg:           var(--fg, #c5c9d0);
   --cc-ok:           #27ae60;
@@ -50,7 +50,7 @@
   font-family: 'Orbitron', monospace;
   font-size: 11px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase;
   color: var(--cc-crimson);
-  text-shadow: 0 0 6px var(--cc-crimson-glow), 0 0 14px rgba(192,57,43,0.2);
+  text-shadow: 0 0 6px var(--cc-crimson-glow), 0 0 14px color-mix(in srgb, var(--red) 20%, transparent);
   animation: cc-glitch 32s steps(1) infinite;
 }
 
@@ -101,7 +101,7 @@
   border-color: var(--cc-crimson);
   color: var(--cc-crimson);
   opacity: 1;
-  box-shadow: 0 0 6px var(--cc-crimson-glow), inset 0 0 4px rgba(192,57,43,0.15);
+  box-shadow: 0 0 6px var(--cc-crimson-glow), inset 0 0 4px color-mix(in srgb, var(--red) 15%, transparent);
   font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
 }
 /* Match the original digital/monospace cadence for all sub-tab buttons */
@@ -124,12 +124,12 @@
 .cc-core-ring {
   width: 56px; height: 56px; border-radius: 50%;
   border: 2px solid var(--cc-crimson);
-  box-shadow: 0 0 14px var(--cc-crimson-glow), inset 0 0 12px rgba(192,57,43,0.25);
+  box-shadow: 0 0 14px var(--cc-crimson-glow), inset 0 0 12px color-mix(in srgb, var(--red) 25%, transparent);
   position: relative;
 }
 .cc-core-ring::before {
   content: ''; position: absolute; inset: -6px; border-radius: 50%;
-  border: 1px solid rgba(192,57,43,0.35);
+  border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
   animation: cc-core-pulse 2.6s ease-in-out infinite;
 }
 @keyframes cc-core-pulse {
@@ -159,7 +159,7 @@
 }
 .cc-hero-globe::before {
   content: ''; position: absolute; inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(192,57,43,0.06), transparent 70%);
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--red) 6%, transparent), transparent 70%);
   pointer-events: none;
 }
 .cc-hero-globe-stage {
@@ -220,8 +220,8 @@
 
 /* Cerberus Core card gets crimson edge glow */
 .cc-card-orb {
-  border-color: rgba(192,57,43,0.45);
-  box-shadow: 0 0 10px rgba(192,57,43,0.3), inset 0 0 14px rgba(192,57,43,0.04);
+  border-color: color-mix(in srgb, var(--red) 45%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--red) 30%, transparent), inset 0 0 14px color-mix(in srgb, var(--red) 4%, transparent);
   transition: box-shadow 0.35s ease;
 }
 
@@ -253,15 +253,15 @@
   position: relative; overflow: hidden;
   background: radial-gradient(
     ellipse at 33% 30%,
-    rgba(192,57,43,0.85) 0%,
+    color-mix(in srgb, var(--red) 85%, transparent) 0%,
     rgba(80,18,15,0.75) 35%,
     rgba(12,3,3,0.97) 70%,
     #060708 100%
   );
   box-shadow:
     inset -10px -10px 28px rgba(0,0,0,0.85),
-    inset 5px 5px 18px rgba(192,57,43,0.2),
-    0 0 32px rgba(192,57,43,0.18);
+    inset 5px 5px 18px color-mix(in srgb, var(--red) 20%, transparent),
+    0 0 32px color-mix(in srgb, var(--red) 18%, transparent);
 }
 
 /* Wireframe SVG overlay — rotates */
@@ -270,7 +270,7 @@
   opacity: 0.28;
   animation: cc-globe-spin 18s linear infinite;
 }
-.cc-globe-wire svg { width: 100%; height: 100%; }
+.cc-globe-wire svg { width: 100%; height: 100%; color: var(--cc-crimson); }
 
 @keyframes cc-globe-spin {
   from { transform: rotateY(0deg); }
@@ -284,9 +284,9 @@
 .cc-globe-p {
   position: absolute;
   width: 3px; height: 3px; border-radius: 50%;
-  background: #c0392b;
+  background: var(--red, #c0392b);
   top: 50%; left: 50%;
-  filter: drop-shadow(0 0 3px #e74c3c);
+  filter: drop-shadow(0 0 3px var(--cc-crimson-hot));
   transform-origin: 0 0;
 }
 
@@ -321,13 +321,13 @@
   animation: cc-globe-active 1.8s ease-in-out infinite;
   box-shadow:
     inset -10px -10px 28px rgba(0,0,0,0.7),
-    inset 5px 5px 18px rgba(192,57,43,0.4),
-    0 0 50px rgba(192,57,43,0.45),
-    0 0 100px rgba(192,57,43,0.2);
+    inset 5px 5px 18px color-mix(in srgb, var(--red) 40%, transparent),
+    0 0 50px color-mix(in srgb, var(--red) 45%, transparent),
+    0 0 100px color-mix(in srgb, var(--red) 20%, transparent);
 }
 .cc-globe-wrap.active .cc-globe-wire { animation-duration: 6s; opacity: 0.45; }
 .cc-globe-wrap.active .cc-globe-halo {
-  box-shadow: 0 0 0 2px rgba(192,57,43,0.5), 0 0 30px rgba(192,57,43,0.35);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 50%, transparent), 0 0 30px color-mix(in srgb, var(--red) 35%, transparent);
   animation: cc-globe-halo-pulse 1.8s ease-in-out infinite;
 }
 .cc-globe-wrap.degraded .cc-globe-sphere {
@@ -336,7 +336,7 @@
 }
 .cc-globe-wrap.idle .cc-globe-halo {
   animation: cc-globe-halo-pulse 3.5s ease-in-out infinite;
-  box-shadow: 0 0 0 2px rgba(192,57,43,0.3), 0 0 16px rgba(192,57,43,0.15);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 30%, transparent), 0 0 16px color-mix(in srgb, var(--red) 15%, transparent);
 }
 .cc-globe-wrap.offline .cc-globe-halo { box-shadow: none; }
 
@@ -465,13 +465,13 @@
 .cc-ws-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
 .cc-ws-item { display: flex; flex-direction: column; gap: 4px; }
 .cc-ws-item-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.04); cursor: pointer; border-radius: 2px; transition: background 0.15s ease, box-shadow 0.15s ease; }
-.cc-ws-item-row:hover { box-shadow: 0 0 5px rgba(192,57,43,0.25); opacity: 0.85; }
+.cc-ws-item-row:hover { box-shadow: 0 0 5px color-mix(in srgb, var(--red) 25%, transparent); opacity: 0.85; }
 .cc-ws-badge { font-size: 8px; padding: 1px 5px; border-radius: 2px; letter-spacing: 0.08em; text-transform: uppercase; flex-shrink: 0; }
 .cc-ws-badge.note   { background: rgba(52,152,219,0.25);  color: #3498db; }
 .cc-ws-badge.task   { background: rgba(46,204,113,0.25);  color: #2ecc71; }
 .cc-ws-badge.chat   { background: rgba(155,89,182,0.25);  color: #9b59b6; }
 .cc-ws-badge.doc    { background: rgba(241,196,15,0.25);  color: #f1c40f; }
-.cc-ws-badge.recipe { background: rgba(192,57,43,0.25);   color: var(--cc-crimson); }
+.cc-ws-badge.recipe { background: color-mix(in srgb, var(--red) 25%, transparent);   color: var(--cc-crimson); }
 .cc-ws-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cc-ws-meta  { font-size: 10px; opacity: 0.3; flex-shrink: 0; }
 
@@ -576,7 +576,7 @@
 .cc-council-count-chip {
   font-family: 'Orbitron', monospace;
   font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
-  background: rgba(192,57,43,0.12); border: 1px solid rgba(192,57,43,0.35);
+  background: color-mix(in srgb, var(--red) 12%, transparent); border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
   color: var(--cc-crimson); padding: 2px 8px; border-radius: 3px;
 }
 
@@ -602,8 +602,8 @@
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .cc-council-card:hover {
-  border-color: rgba(192,57,43,0.4);
-  box-shadow: 0 0 10px rgba(192,57,43,0.15);
+  border-color: color-mix(in srgb, var(--red) 40%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--red) 15%, transparent);
 }
 
 /* jx2-hud-frame bracket corners (reuse existing class, just size them) */
@@ -657,8 +657,8 @@
 .cc-council-score-chip {
   font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 600;
   padding: 1px 7px; border-radius: 3px;
-  border: 1px solid rgba(192,57,43,0.3);
-  background: rgba(192,57,43,0.08); color: var(--cc-crimson);
+  border: 1px solid color-mix(in srgb, var(--red) 30%, transparent);
+  background: color-mix(in srgb, var(--red) 8%, transparent); color: var(--cc-crimson);
 }
 
 /* Sparkline */
