@@ -51,6 +51,7 @@
 - Panels: hero globe + ambient canvas, system vitals (live), recent sessions, quick actions
 - First-run empty state with "Start your first chat" CTA
 - Chat remains one click away via CHAT button in header
+- `#rail-dashboard` shield button added to icon rail — `toggle()` from anywhere in the app
 
 ## Theme-reactivity proof
 Every new element reads only CSS custom properties (`var(--red)`, `var(--bg)`, etc.) or derives values via `getComputedStyle(documentElement).getPropertyValue('--red')` in canvas code. Switching themes → `applyColors()` → tokens update → all visuals re-colour without page reload.
