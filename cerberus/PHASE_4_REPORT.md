@@ -30,7 +30,23 @@ After `loadSessions()` resolves, if no URL route opener is set **and** `localSto
 - `window.dashModule` exposed globally so inline onclick handlers in first-run CTA can call `close()`
 - Dashboard does NOT replace the sidebar session list — it's a landing layer
 
-## Acceptance: Phase 1 QA checklist
+## Phase 4 Integration (completed this session)
+
+**static/index.html** — added `#rail-dashboard` shield icon button at the top of the icon rail (first button, above search). Uses the Cerberus shield SVG from the CC registration.
+
+**static/app.js** — added `rail-dashboard` click handler:
+```js
+const railDashBtn = el('rail-dashboard');
+if (railDashBtn) {
+  railDashBtn.addEventListener('click', () => dashboardModule.toggle());
+}
+```
+`toggle()` opens if closed, closes if open — so the rail button is a proper toggle.
+
+## Acceptance: Phase 4 QA checklist
 1. ✅ Renders — panel builds DOM and mounts to body
 2. ✅ Live re-colours on theme switch — all colours via `var(--red)`, `var(--bg)`, `var(--panel)`, `var(--border)`, `var(--fg)`; canvas reads via getComputedStyle
 3. ✅ Reduced-motion — `@media (prefers-reduced-motion: reduce)` disables canvas, globe, and panel animations
+4. ✅ Default landing — opens when no `lastSessionId` and no URL route
+5. ✅ Rail toggle — `#rail-dashboard` shield button in icon rail, calls `toggle()`
+6. ✅ Route — `/dashboard` URL path opens dashboard via `_routeOpen` map

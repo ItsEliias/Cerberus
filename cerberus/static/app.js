@@ -3409,6 +3409,12 @@ function startCerberusApp() {
     searchChatModule.init(API_BASE);
   }
 
+  // Dashboard rail button
+  const railDashBtn = el('rail-dashboard');
+  if (railDashBtn) {
+    railDashBtn.addEventListener('click', () => dashboardModule.toggle());
+  }
+
   // Search buttons — icon rail + sidebar
   const railSearchBtn = el('rail-search-btn');
   if (railSearchBtn) {
