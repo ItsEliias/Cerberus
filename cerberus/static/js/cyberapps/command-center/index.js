@@ -14,6 +14,15 @@ import { buildFinanceTab, loadFinance }     from './finance.js';
 import { buildAssistantTab, initAssistant, destroyAssistant } from './assistant.js';
 import * as Poll from './poll.js';
 
+// Inject CC stylesheet once — version param busts browser/SW cache on updates
+(function injectCSS() {
+  if (document.getElementById('cc-styles-link')) return;
+  const link = document.createElement('link');
+  link.id   = 'cc-styles-link';
+  link.rel  = 'stylesheet';
+  link.href = '/static/js/cyberapps/command-center/styles.css?v=353';
+  document.head.appendChild(link);
+})();
 
 // ---- Tab config ----
 
