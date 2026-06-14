@@ -254,8 +254,8 @@
   background: radial-gradient(
     ellipse at 33% 30%,
     color-mix(in srgb, var(--red) 85%, transparent) 0%,
-    rgba(80,18,15,0.75) 35%,
-    rgba(12,3,3,0.97) 70%,
+    color-mix(in srgb, var(--red) 30%, black) 35%,
+    color-mix(in srgb, var(--red) 5%, black) 70%,
     #060708 100%
   );
   box-shadow:

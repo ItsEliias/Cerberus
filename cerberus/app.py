@@ -769,6 +769,9 @@ app.include_router(setup_companion_routes())
 from routes.cerberus_agent_routes import setup_cerberus_agent_routes
 app.include_router(setup_cerberus_agent_routes())
 
+from routes.cyberapps_routes import router as cyberapps_router
+app.include_router(cyberapps_router)
+
 # ========= ROUTES (kept in app.py) =========
 
 def _serve_html_with_nonce(request: Request, file_path: str) -> HTMLResponse:

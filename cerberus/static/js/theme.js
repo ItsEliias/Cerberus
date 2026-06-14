@@ -259,6 +259,26 @@ export function applyColors(colors) {
   s.setProperty('--border', colors.border);
   if (colors.red) s.setProperty('--red', colors.red);
 
+  // Set CC accent tokens directly on documentElement as inline-style CSS custom
+  // properties. Inline styles beat author stylesheets in the cascade so these
+  // override the CC stylesheet's :root definitions without needing !important —
+  // the same trusted mechanism the early script uses for --bg/--fg/--red.
+  const _ccRed = colors.red || '#c0392b';
+  s.setProperty('--cc-crimson',      _ccRed);
+  s.setProperty('--cc-crimson-glow', `color-mix(in srgb,${_ccRed} 40%,transparent)`);
+  s.setProperty('--cc-crimson-hot',  `color-mix(in srgb,${_ccRed} 85%,white)`);
+  // Broadcast to the Command Center iframe (different document, so CSS custom
+  // properties don't propagate automatically — postMessage bridges the gap).
+  try {
+    const _ccFrame = document.getElementById('command-center-iframe');
+    if (_ccFrame && _ccFrame.contentWindow) {
+      _ccFrame.contentWindow.postMessage({
+        type: 'cerberus-theme',
+        colors: { bg: colors.bg, fg: colors.fg, panel: colors.panel, border: colors.border, red: _ccRed },
+      }, location.origin);
+    }
+  } catch (_) {}
+
   // Toggle .light on :root so light themes (e.g. cute, lavender, paper) get
   // native light-mode form chrome instead of the default dark color-scheme.
   const [, , bgL] = hexToHSL(colors.bg);

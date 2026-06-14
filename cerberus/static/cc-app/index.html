@@ -5,38 +5,52 @@
     <link rel="icon" type="image/svg+xml" href="/static/cc-app/shield.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CERBERUS — Command Center</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;900&family=JetBrains+Mono:wght@300;400;500;600&display=swap"
-      rel="stylesheet"
-    />
-    <!-- Phase C: vanilla JS command center (replaces deleted React bundle) -->
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      html, body { width: 100%; height: 100%; overflow: hidden; background: #060708; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg, #060708); }
       #cc-root { width: 100%; height: 100vh; overflow: hidden; }
     </style>
   </head>
   <body>
     <div id="cc-root"></div>
     <script type="module">
-      // Bootstrap: mount the command-center module into #cc-root
-      // Provide the CYBER_APPS_REGISTRY stub so index.js self-registers cleanly
-      window.CYBER_APPS_REGISTRY = [];
+      // Apply theme colors to this iframe's documentElement.
+      // CSS custom properties don't cross iframe boundaries, so we must
+      // re-apply them here from localStorage (same origin = same storage)
+      // and update them in real-time via postMessage from the parent frame.
+      function _applyTheme(c) {
+        const s = document.documentElement.style;
+        if (c.bg)     s.setProperty('--bg',             c.bg);
+        if (c.fg)     s.setProperty('--fg',             c.fg);
+        if (c.panel)  s.setProperty('--panel',          c.panel);
+        if (c.border) s.setProperty('--border',         c.border);
+        if (c.red) {
+          s.setProperty('--red',             c.red);
+          s.setProperty('--cc-crimson',      c.red);
+          s.setProperty('--cc-crimson-glow', `color-mix(in srgb,${c.red} 40%,transparent)`);
+          s.setProperty('--cc-crimson-hot',  `color-mix(in srgb,${c.red} 85%,white)`);
+        }
+      }
 
-      // JX stubs (effects.js functions referenced in existing code)
+      // Seed from localStorage (same origin as the parent page)
+      const _DEFAULT = { bg:'#1a1d23', fg:'#c5c9d0', panel:'#111111', border:'#3a2a2a', red:'#c0392b' };
+      try {
+        const saved = JSON.parse(localStorage.getItem('cerberus-theme'));
+        _applyTheme((saved && saved.colors) ? saved.colors : _DEFAULT);
+      } catch (_) { _applyTheme(_DEFAULT); }
+
+      // Real-time updates — parent calls postMessage whenever applyColors() runs
+      window.addEventListener('message', (e) => {
+        if (e.origin !== location.origin) return;
+        if (e.data && e.data.type === 'cerberus-theme') _applyTheme(e.data.colors);
+      });
+
+      // Bootstrap the Command Center module
+      window.CYBER_APPS_REGISTRY = [];
       window.JX = window.JX || {};
 
-      // Pass Cerberus CSS variables through — match the parent frame palette
-      document.documentElement.style.setProperty('--bg',     '#1a1d23');
-      document.documentElement.style.setProperty('--fg',     '#c5c9d0');
-      document.documentElement.style.setProperty('--red',    '#c0392b');
-      document.documentElement.style.setProperty('--border', '#3a2a2a');
-
       const { init } = await import('/static/js/cyberapps/command-center/index.js');
-      const root = document.getElementById('cc-root');
-      init(root, {});
+      init(document.getElementById('cc-root'), {});
     </script>
   </body>
 </html>
