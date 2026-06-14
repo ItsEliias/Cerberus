@@ -731,6 +731,9 @@
 /* -- Theme / Motion -- */
 :root.light .cc-shell::before { display: none; }
 :root.light .cc-card          { background: rgba(0,0,0,0.04); }
+
+/* Reduced motion — matches both legacy .jx-reduced-motion and new .reduced-motion class,
+   plus the standard @media query for browsers that honour the OS setting */
 :root.jx-reduced-motion .cc-globe-wire,
 :root.jx-reduced-motion .cc-globe-p,
 :root.jx-reduced-motion .cc-globe-sphere,
@@ -740,3 +743,28 @@
 :root.jx-reduced-motion .cc-dot.running { animation: none !important; }
 :root.jx-reduced-motion .cc-dial-wrap:hover { filter: none; }
 :root.jx-reduced-motion .cc-card-orb { box-shadow: none; }
+
+/* New .reduced-motion class set by theme.js when prefers-reduced-motion: reduce */
+.cc-shell .reduced-motion *,
+:root.reduced-motion .cc-globe-wire,
+:root.reduced-motion .cc-globe-p,
+:root.reduced-motion .cc-globe-sphere,
+:root.reduced-motion .cc-globe-halo,
+:root.reduced-motion .cc-brand-title,
+:root.reduced-motion .cc-arc-fill,
+:root.reduced-motion .cc-dot.running,
+:root.reduced-motion .cc-core-ring::before,
+:root.reduced-motion .cc-voice-btn.recording,
+:root.reduced-motion .cc-loader-shield,
+:root.reduced-motion .cc-loader-rain { animation: none !important; }
+:root.reduced-motion .cc-card-orb { box-shadow: none; }
+:root.reduced-motion .cc-loader { opacity: 0; }
+
+/* Standard media query — belt-and-suspenders for browsers/iframes */
+@media (prefers-reduced-motion: reduce) {
+  .cc-globe-wire, .cc-globe-p, .cc-globe-sphere, .cc-globe-halo,
+  .cc-brand-title, .cc-arc-fill, .cc-dot.running, .cc-core-ring::before,
+  .cc-loader-shield, .cc-loader-rain { animation: none !important; }
+  .cc-card-orb { box-shadow: none; }
+  .cc-loader { opacity: 0 !important; }
+}

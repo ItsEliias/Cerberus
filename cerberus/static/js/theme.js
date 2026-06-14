@@ -29,6 +29,13 @@ export const THEMES = {
                             inputBg: '#2f2f2f' } },
   claude:     { bg:'#262624', fg:'#f5f4f0', panel:'#30302e', border:'#4a4a47', red:'#c6613f' },
   cute:       { bg:'#fff0f5', fg:'#d4608a', panel:'#fff8fa', border:'#f0c0d0', red:'#ff6b9d' },
+  // Guardian-spectrum new themes
+  ember:      { bg:'#0f0805', fg:'#f0a060', panel:'#1a1008', border:'#4a2510', red:'#e05020' },
+  abyss:      { bg:'#020408', fg:'#6090b0', panel:'#050810', border:'#102030', red:'#3070a0' },
+  sentinel:   { bg:'#080c08', fg:'#80c080', panel:'#0a100a', border:'#204020', red:'#40a040' },
+  void:       { bg:'#050507', fg:'#9090b0', panel:'#090910', border:'#1a1a30', red:'#7070c0' },
+  'neon-noir':{ bg:'#080510', fg:'#ff80d0', panel:'#0d0818', border:'#301030', red:'#d040a0' },
+  slate:      { bg:'#1a1e26', fg:'#a0b0c0', panel:'#141820', border:'#303848', red:'#5080b0' },
 };
 
 const DEFAULT_THEME = 'dark';
@@ -267,6 +274,15 @@ export function applyColors(colors) {
   s.setProperty('--cc-crimson',      _ccRed);
   s.setProperty('--cc-crimson-glow', `color-mix(in srgb,${_ccRed} 40%,transparent)`);
   s.setProperty('--cc-crimson-hot',  `color-mix(in srgb,${_ccRed} 85%,white)`);
+
+  // Animation-specific tokens — every canvas/animation reads these instead of
+  // hardcoded hex. Pattern: getComputedStyle(documentElement).getPropertyValue('--glow').trim()
+  s.setProperty('--glow',        `color-mix(in srgb,${_ccRed} 25%,transparent)`);
+  s.setProperty('--grid-line',   `color-mix(in srgb,${colors.border || '#3a2a2a'} 30%,transparent)`);
+  s.setProperty('--particle',    `color-mix(in srgb,${colors.fg || '#c5c9d0'} 55%,transparent)`);
+  s.setProperty('--globe-wire',  `color-mix(in srgb,${_ccRed} 35%,transparent)`);
+  s.setProperty('--globe-atmo',  `color-mix(in srgb,${_ccRed} 60%,transparent)`);
+
   // Broadcast to the Command Center iframe (different document, so CSS custom
   // properties don't propagate automatically — postMessage bridges the gap).
   try {
@@ -274,7 +290,15 @@ export function applyColors(colors) {
     if (_ccFrame && _ccFrame.contentWindow) {
       _ccFrame.contentWindow.postMessage({
         type: 'cerberus-theme',
-        colors: { bg: colors.bg, fg: colors.fg, panel: colors.panel, border: colors.border, red: _ccRed },
+        colors: {
+          bg: colors.bg, fg: colors.fg, panel: colors.panel, border: colors.border, red: _ccRed,
+          // Animation tokens
+          glow: `color-mix(in srgb,${_ccRed} 25%,transparent)`,
+          gridLine: `color-mix(in srgb,${colors.border || '#3a2a2a'} 30%,transparent)`,
+          particle: `color-mix(in srgb,${colors.fg || '#c5c9d0'} 55%,transparent)`,
+          globeWire: `color-mix(in srgb,${_ccRed} 35%,transparent)`,
+          globeAtmo: `color-mix(in srgb,${_ccRed} 60%,transparent)`,
+        },
       }, location.origin);
     }
   } catch (_) {}
@@ -2102,6 +2126,21 @@ async function _initWithSync() {
     }
   } catch (e) { console.warn('Custom theme server sync failed:', e); }
   initThemeUI();
+}
+
+// Reduced-motion accessibility class — set on documentElement so both the
+// main page and any CSS targeting :root.reduced-motion can respond.
+// The CC iframe also checks this class via postMessage (see _applyTheme).
+// Canvas pattern: if (document.documentElement.classList.contains('reduced-motion')) return;
+function _applyReducedMotion() {
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.documentElement.classList.toggle('reduced-motion', prefersReduced);
+}
+_applyReducedMotion();
+try {
+  window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', _applyReducedMotion);
+} catch (_) {
+  // Older browsers: fire once is enough
 }
 
 if (document.readyState === 'loading') {

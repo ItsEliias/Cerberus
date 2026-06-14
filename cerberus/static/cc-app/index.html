@@ -29,6 +29,15 @@
           s.setProperty('--cc-crimson',      c.red);
           s.setProperty('--cc-crimson-glow', `color-mix(in srgb,${c.red} 40%,transparent)`);
           s.setProperty('--cc-crimson-hot',  `color-mix(in srgb,${c.red} 85%,white)`);
+          // Animation tokens — derived locally if not provided in payload
+          const r = c.red;
+          const fg = c.fg || '#c5c9d0';
+          const border = c.border || '#3a2a2a';
+          s.setProperty('--glow',        c.glow       || `color-mix(in srgb,${r} 25%,transparent)`);
+          s.setProperty('--grid-line',   c.gridLine   || `color-mix(in srgb,${border} 30%,transparent)`);
+          s.setProperty('--particle',    c.particle   || `color-mix(in srgb,${fg} 55%,transparent)`);
+          s.setProperty('--globe-wire',  c.globeWire  || `color-mix(in srgb,${r} 35%,transparent)`);
+          s.setProperty('--globe-atmo',  c.globeAtmo  || `color-mix(in srgb,${r} 60%,transparent)`);
         }
       }
 
