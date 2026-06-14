@@ -44,8 +44,10 @@ import spinnerModule from './js/spinner.js';
 import { initKeyboardShortcuts } from './js/keyboard-shortcuts.js';
 import { initSidebarLayout, syncRailSide } from './js/sidebar-layout.js';
 import { initSectionCollapse, initSectionDrag } from './js/section-management.js';
+import * as dashboardModule from './js/dashboard.js';
 
 const API_BASE = window.location.origin;
+window.dashModule = dashboardModule;
 window.themeModule = themeModule;
 window.sessionModule = sessionModule;
 window.uiModule = uiModule;
@@ -1040,10 +1042,11 @@ function initializeEventListeners() {
       setTimeout(_goFullscreen, 50);
       setTimeout(_goFullscreen, 200);
     },
-    '/memory':   () => document.getElementById('tool-memory-btn')?.click(),
-    '/gallery':  () => document.getElementById('tool-gallery-btn')?.click(),
-    '/tasks':    () => document.getElementById('tool-tasks-btn')?.click(),
-    '/library':  () => sessionModule && sessionModule.openLibrary && sessionModule.openLibrary(),
+    '/memory':    () => document.getElementById('tool-memory-btn')?.click(),
+    '/gallery':   () => document.getElementById('tool-gallery-btn')?.click(),
+    '/tasks':     () => document.getElementById('tool-tasks-btn')?.click(),
+    '/library':   () => sessionModule && sessionModule.openLibrary && sessionModule.openLibrary(),
+    '/dashboard': () => dashboardModule.open(),
   };
   const _opener = _routeOpen[urlPath];
   // Defer the opener — at this point in init, the modules whose handlers
@@ -3926,6 +3929,9 @@ function startCerberusApp() {
         if (window._cerberusRouteOpener) {
           try { window._cerberusRouteOpener(); } catch (_) {}
           window._cerberusRouteOpener = null;
+        } else if (!window.location.hash && !Storage.get('lastSessionId')) {
+          // No URL route and no last session — show dashboard as default landing
+          try { dashboardModule.open(); } catch (_) {}
         }
       });
   } else {
