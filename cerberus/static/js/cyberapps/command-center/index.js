@@ -20,7 +20,7 @@ import * as Poll from './poll.js';
   const link = document.createElement('link');
   link.id   = 'cc-styles-link';
   link.rel  = 'stylesheet';
-  link.href = '/static/js/cyberapps/command-center/styles.css?v=356';
+  link.href = '/static/js/cyberapps/command-center/styles.css?v=357';
   document.head.appendChild(link);
 })();
 

@@ -76,6 +76,7 @@
   transition: opacity 0.15s, border-color 0.15s, color 0.15s; font-family: inherit;
 }
 .cc-refresh-btn:hover { opacity: 1; border-color: var(--cc-crimson); color: var(--cc-crimson); }
+.cc-refresh-btn:focus-visible { outline: 2px solid var(--cc-crimson); outline-offset: 2px; opacity: 1; }
 
 /* =====================================================================
    SUB-TAB NAV
@@ -96,6 +97,10 @@
   white-space: nowrap; opacity: 0.5; transition: all 0.15s;
 }
 .cc-tab-btn:hover { opacity: 0.85; border-color: var(--cc-border); }
+.cc-tab-btn:focus-visible {
+  outline: 2px solid var(--cc-crimson); outline-offset: 2px; opacity: 1;
+  border-color: var(--cc-crimson);
+}
 .cc-tab-btn.active {
   background: rgba(0,0,0,0.55);
   border-color: var(--cc-crimson);
@@ -468,6 +473,7 @@
 .cc-council-score { opacity: 0.45; font-size: 10px; }
 .cc-council-btn { font-size: 9px; padding: 2px 7px; border: 1px solid var(--cc-border); background: transparent; color: var(--cc-fg); cursor: pointer; border-radius: 2px; font-family: inherit; letter-spacing: 0.06em; opacity: 0.7; transition: all 0.15s; }
 .cc-council-btn:hover { opacity: 1; border-color: var(--cc-crimson); color: var(--cc-crimson); }
+.cc-council-btn:focus-visible { outline: 2px solid var(--cc-crimson); outline-offset: 2px; opacity: 1; }
 .cc-council-btn.active-btn { border-color: #2ecc71; color: #2ecc71; }
 .cc-council-note { font-size: 10px; opacity: 0.3; padding: 10px 0 0; font-style: italic; }
 .cc-council-row .cc-dot.active { animation: cc-council-ripple 1.8s ease-out infinite; }
@@ -549,6 +555,7 @@
   transition: all 0.15s; user-select: none;
 }
 .cc-voice-btn:hover { border-color: var(--cc-crimson); color: var(--cc-crimson); }
+.cc-voice-btn:focus-visible { outline: 2px solid var(--cc-crimson); outline-offset: 2px; }
 .cc-voice-btn.on {
   background: var(--cc-crimson); border-color: var(--cc-crimson); color: #fff;
   box-shadow: 0 0 8px var(--cc-crimson-glow);
@@ -601,6 +608,7 @@
   cursor: pointer; border-radius: 2px; opacity: 0.5; transition: all 0.15s;
 }
 .cc-filter-btn:hover { opacity: 0.85; border-color: var(--cc-border); }
+.cc-filter-btn:focus-visible { outline: 2px solid var(--cc-crimson); outline-offset: 2px; opacity: 1; }
 .cc-filter-btn.active {
   background: var(--cc-crimson); border-color: var(--cc-crimson); color: #fff; opacity: 1;
 }
@@ -688,6 +696,7 @@
   transition: all 0.15s; white-space: nowrap;
 }
 .cc-council-action-btn:hover { opacity: 1; border-color: var(--cc-crimson); color: var(--cc-crimson); }
+.cc-council-action-btn:focus-visible { outline: 2px solid var(--cc-crimson); outline-offset: 2px; opacity: 1; }
 .cc-council-action-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .cc-action-activate { border-color: #2ecc71; color: #2ecc71; opacity: 0.8; }
 .cc-action-activate:hover { background: rgba(46,204,113,0.12); border-color: #2ecc71; color: #2ecc71; }
@@ -708,7 +717,8 @@
   color: var(--cc-fg); font-family: 'JetBrains Mono','Fira Code',monospace;
   font-size: 10px; padding: 4px 8px; border-radius: 2px; outline: none;
 }
-.cc-invoke-input:focus { border-color: #9b59b6; }
+.cc-invoke-input:focus { border-color: var(--cc-crimson); }
+.cc-invoke-input:focus-visible { outline: 2px solid var(--cc-crimson); outline-offset: 1px; }
 .cc-invoke-result {
   margin-top: 6px; font-size: 10px; opacity: 0.8; white-space: pre-wrap;
   max-height: 140px; overflow-y: auto; line-height: 1.5;
@@ -729,6 +739,10 @@
 .cc-overlay-title { font-family: 'Orbitron', 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.1em; color: var(--cc-crimson); }
 .cc-overlay-close { font-size: 9px; background: transparent; border: 1px solid var(--cc-border); color: var(--cc-fg); cursor: pointer; padding: 2px 8px; font-family: inherit; opacity: 0.6; }
 .cc-overlay-close:hover { opacity: 1; border-color: var(--cc-crimson); color: var(--cc-crimson); }
+.cc-overlay-close:focus-visible { outline: 2px solid var(--cc-crimson); outline-offset: 2px; opacity: 1; }
+.cc-chat-send-btn:focus-visible { outline: 2px solid var(--cc-crimson-hot); outline-offset: 2px; }
+.cc-chat-input:focus-visible { outline: none; border-color: var(--cc-crimson); }
+.cc-overlay-prompt:focus-visible { outline: none; border-color: var(--cc-crimson); }
 .cc-overlay-body { display: flex; flex-direction: column; gap: 8px; }
 .cc-overlay-row { display: flex; gap: 10px; align-items: flex-start; font-size: 11px; }
 .cc-overlay-lbl { min-width: 90px; opacity: 0.5; font-size: 10px; padding-top: 2px; }
