@@ -878,4 +878,244 @@
   /* Assistant voice bar — compact */
   .cc-voice-btn { font-size: 8px; padding: 4px 8px; }
   .cc-waveform-wrap { max-width: 120px; }
+
+  /* GATEWAY tab */
+  .cc-gw-form-grid { grid-template-columns: 1fr; }
+}
+
+/* =====================================================================
+   GATEWAY TAB
+   ===================================================================== */
+
+.cc-gw-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.cc-gw-section {
+  background: var(--cc-void-mid);
+  border: 1px solid var(--cc-border);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+/* Platform rows */
+.cc-gw-platforms {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.cc-gw-platform-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+}
+
+.cc-gw-pname {
+  flex: 1;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.cc-gw-pstatus {
+  font-size: 9px;
+  opacity: 0.5;
+  font-family: 'Orbitron', monospace;
+  white-space: nowrap;
+}
+
+/* Cron job rows */
+.cc-gw-jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cc-gw-empty {
+  font-size: 11px;
+  opacity: 0.4;
+  text-align: center;
+  padding: 10px 0;
+}
+
+.cc-gw-job-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--cc-border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  gap: 10px;
+}
+
+.cc-gw-job-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cc-gw-job-badge {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+}
+
+.cc-gw-job-active   { background: rgba(46,204,113,0.18); color: #2ecc71; }
+.cc-gw-job-disabled { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.35); }
+
+.cc-gw-job-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cc-gw-job-name {
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cc-gw-job-meta {
+  font-size: 9px;
+  opacity: 0.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cc-gw-job-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cc-gw-toggle-btn,
+.cc-gw-delete-btn {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  padding: 3px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--cc-border);
+  background: transparent;
+  color: var(--cc-fg);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.cc-gw-toggle-btn:hover { background: rgba(255,255,255,0.06); }
+.cc-gw-delete-btn:hover { background: rgba(192,57,43,0.25); color: #e74c3c; border-color: rgba(192,57,43,0.5); }
+
+/* Add button */
+.cc-gw-add-btn {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--cc-crimson);
+  background: transparent;
+  color: var(--cc-crimson-hot);
+  cursor: pointer;
+  transition: background 0.15s;
+  letter-spacing: 0.05em;
+}
+.cc-gw-add-btn:hover { background: var(--cc-crimson-glow); }
+
+/* Add job form */
+.cc-gw-form {
+  background: var(--cc-void-mid);
+  border: 1px solid var(--cc-border);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.cc-gw-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.cc-gw-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 9px;
+  opacity: 0.6;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cc-gw-form-wide { grid-column: 1 / -1; }
+
+.cc-gw-input {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 11px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--cc-border);
+  border-radius: 3px;
+  color: var(--cc-fg);
+  padding: 5px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cc-gw-input:focus { border-color: var(--cc-crimson); }
+
+.cc-gw-textarea { resize: vertical; min-height: 56px; }
+
+.cc-gw-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.cc-gw-cancel-btn,
+.cc-gw-save-btn {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  padding: 4px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s;
+  letter-spacing: 0.05em;
+}
+
+.cc-gw-cancel-btn {
+  border: 1px solid var(--cc-border);
+  background: transparent;
+  color: var(--cc-fg);
+}
+.cc-gw-cancel-btn:hover { background: rgba(255,255,255,0.06); }
+
+.cc-gw-save-btn {
+  border: 1px solid var(--cc-crimson);
+  background: var(--cc-crimson-glow);
+  color: var(--cc-crimson-hot);
+}
+.cc-gw-save-btn:hover { background: rgba(192,57,43,0.3); }
+
+.cc-gw-form-error {
+  font-size: 10px;
+  color: #e74c3c;
+  margin-top: 8px;
+  padding: 4px 6px;
+  background: rgba(231,76,60,0.08);
+  border-radius: 3px;
+  border: 1px solid rgba(231,76,60,0.3);
 }
