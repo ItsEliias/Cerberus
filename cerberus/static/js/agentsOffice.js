@@ -536,7 +536,7 @@ async function _reportAction(action, extra = {}) {
   const report = _findReport(_activeReportId);
 
   if (action === 'open_project' && extra.projectId) {
-    const hq = await import('./atlasProjectHQ.js');
+    const hq = await import('./cerberusProjectHQ.js');
     _closeReportModal();
     await hq.default.openProjectHQ(extra.projectId);
     return;
@@ -872,7 +872,7 @@ export async function closeActiveModal() {
   }
   const hq = _el('cerberus-project-hq');
   if (hq && !hq.classList.contains('hidden')) {
-    const mod = await import('./atlasProjectHQ.js');
+    const mod = await import('./cerberusProjectHQ.js');
     mod.default.closeProjectHQ?.();
     return true;
   }
