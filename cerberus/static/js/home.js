@@ -263,8 +263,10 @@ function _setCerberusView(view) {
     'cerberus-view-tool',
   );
   document.body.classList.add(`cerberus-view-${view}`);
-  document.body.classList.toggle('cerberus-home-active', view === 'home');
-  document.body.classList.toggle('cerberus-hub-active', view === 'home');
+  const homeActive = view === 'home';
+  document.body.classList.toggle('cerberus-home-active', homeActive);
+  document.body.classList.toggle('cerberus-hub-active', homeActive);
+  document.body.classList.toggle('cerberus-os', homeActive);
 }
 
 function _ensureHomeVisible() {

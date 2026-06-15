@@ -1503,3 +1503,141 @@ body.cerberus-setup-wizard-open #sidebar {
   font-size: 0.68rem;
   opacity: 0.9;
 }
+
+/* ── Default hidden — only reveal when cerberus home shell is active ── */
+#cerberus-os-backdrop,
+#cerberus-os-status-bar,
+#cerberus-power-links,
+#cerberus-globe-hit-layer,
+#cerberus-agents-office,
+#cerberus-agent-office-modal,
+#cerberus-setup-wizard {
+  display: none !important;
+}
+
+/* ── Base positioning (missing from odysseus style.css — was in atlas style.css) ── */
+#cerberus-os-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 120% 80% at 50% 40%, #0a1628 0%, #050a12 55%, #020508 100%);
+}
+
+#cerberus-os-status-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999990;
+  flex-direction: column;
+  border-bottom: 1px solid rgba(80, 200, 255, 0.18);
+  background: rgba(8, 18, 32, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+}
+
+.cerberus-os-status-ribbon {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding: 4px 14px;
+  min-height: 28px;
+  overflow-x: auto;
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+  color: rgba(200, 225, 255, 0.88);
+}
+
+.cerberus-os-status-sep {
+  opacity: 0.3;
+  user-select: none;
+}
+
+.cerberus-os-status-pill {
+  padding: 2px 8px;
+  border: 1px solid rgba(80, 200, 255, 0.2);
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(180, 210, 255, 0.75);
+  font-size: 0.6rem;
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.cerberus-os-status-pill[data-on="true"] {
+  border-color: rgba(80, 200, 255, 0.45);
+  color: rgba(120, 220, 255, 0.95);
+  background: rgba(80, 200, 255, 0.07);
+}
+
+.cerberus-os-status-meta {
+  font-size: 0.6rem;
+  color: rgba(180, 210, 255, 0.5);
+  white-space: nowrap;
+}
+
+.cerberus-os-status-wake {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border: 1px solid rgba(80, 200, 255, 0.2);
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(180, 210, 255, 0.75);
+  font-size: 0.6rem;
+  cursor: pointer;
+}
+
+.cerberus-voice-status-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(80, 200, 255, 0.5);
+  flex-shrink: 0;
+}
+
+#cerberus-power-links {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+#cerberus-globe-hit-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* ── Reveal when home is active ── */
+body.cerberus-home-active #cerberus-os-backdrop {
+  display: block !important;
+}
+
+body.cerberus-home-active #cerberus-os-status-bar {
+  display: flex !important;
+}
+
+body.cerberus-home-active #cerberus-power-links,
+body.cerberus-home-active #cerberus-globe-hit-layer {
+  display: block !important;
+}
+
+body.cerberus-home-active #cerberus-agents-office {
+  display: flex !important;
+}
+
+body.cerberus-home-active #cerberus-agent-office-modal:not(.hidden) {
+  display: flex !important;
+}
+
+body.cerberus-home-active #cerberus-setup-wizard:not(.hidden) {
+  display: flex !important;
+}
