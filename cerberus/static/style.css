@@ -8658,6 +8658,21 @@ body.hide-thinking .thinking-section { display: none !important; }
 }
 .cookbook-notif-active svg { opacity: 1 !important; }
 
+/* Command Center vitals alert badge */
+#sidebar-command-center-btn.cc-alert {
+  position: relative;
+}
+#sidebar-command-center-btn.cc-alert::after {
+  content: '';
+  position: absolute;
+  top: 50%; right: 8px; transform: translateY(-50%);
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #e67e22;
+  box-shadow: 0 0 0 2px var(--bg);
+  pointer-events: none;
+  animation: rail-notif-pulse 2s ease-in-out infinite;
+}
+
 /* Rail notification dot — pulsing indicator on icon-rail buttons */
 .icon-rail-btn.rail-notify {
   opacity: 1 !important;

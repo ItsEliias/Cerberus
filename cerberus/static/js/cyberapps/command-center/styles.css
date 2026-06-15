@@ -824,3 +824,48 @@
 .cc-invoke-btn:focus:not(:focus-visible) {
   outline: none;
 }
+
+/* =====================================================================
+   MOBILE RESPONSIVE  (≤ 640px)
+   Icon-rail on the left keeps the CC full-width, so the CC iframe itself
+   can be narrow. Collapse all multi-column grids to single column and
+   drop tab-button labels to icon-only to recover horizontal space.
+   ===================================================================== */
+
+@media (max-width: 640px) {
+  /* Brand bar — shrink title, hide refresh button */
+  .cc-brand-title { font-size: 9px; letter-spacing: 0.1em; }
+  .cc-refresh-btn { display: none; }
+
+  /* Tab nav — icon-only (hide text labels) */
+  .cc-tab-btn span { display: none; }
+  .cc-tab-btn { padding: 4px 8px; min-width: 32px; justify-content: center; }
+
+  /* COMMAND tab — stack top row */
+  .cc-top-row { grid-template-columns: 1fr; }
+
+  /* Swarm grid — 2 columns instead of 3 */
+  .cc-swarm-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Vitals row — 2 × 2 instead of 4 × 1 */
+  .cc-vitals-row { grid-template-columns: repeat(2, 1fr); }
+
+  /* Sparklines — single column */
+  .cc-sparklines { grid-template-columns: 1fr; }
+
+  /* WORKSPACE tab */
+  .cc-ws-grid { grid-template-columns: 1fr; }
+
+  /* FINANCE tab */
+  .cc-finance-stub-grid { grid-template-columns: 1fr; }
+
+  /* Hero globe — smaller on mobile */
+  .cc-hero-globe-stage { width: 160px; height: 160px; }
+  .cc-hero-globe-stage .cc-globe-wrap,
+  .cc-hero-globe-stage .cc-globe-sphere,
+  .cc-hero-globe-stage .cc-globe-wire { width: 148px !important; height: 148px !important; }
+
+  /* Assistant voice bar — compact */
+  .cc-voice-btn { font-size: 8px; padding: 4px 8px; }
+  .cc-waveform-wrap { max-width: 120px; }
+}

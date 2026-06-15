@@ -153,9 +153,11 @@ export function initAssistant(root) {
       micBtn.classList.remove('recording');
       _animateWave(root, false);
       stopRecording();
-      // voiceRecorder inserts transcript via insertTranscription into #message,
-      // but our input is #cc-chat-input — patch after small delay
-      setTimeout(() => _transferTranscript(input), 400);
+      // voiceRecorder inserts transcript into #message; transfer then auto-send
+      setTimeout(() => {
+        _transferTranscript(input);
+        setTimeout(() => { if (input.value.trim()) send(); }, 80);
+      }, 400);
     };
 
     micBtn.addEventListener('mousedown', startVoice);

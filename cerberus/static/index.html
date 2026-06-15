@@ -2448,6 +2448,12 @@
   btn.addEventListener('click', function(){
     if (panel.style.display !== 'block') sessionStorage.setItem('command-center-dismissed', '1');
   });
+  // Rail badge — CC iframe postMessages vitals alerts here
+  window.addEventListener('message', function(e) {
+    if (!e.data || e.data.type !== 'cc-badge') return;
+    if (panel.style.display === 'block') { btn.classList.remove('cc-alert'); return; }
+    e.data.level === 'warn' ? btn.classList.add('cc-alert') : btn.classList.remove('cc-alert');
+  });
 })();</script>
 <script nonce="{{CSP_NONCE}}">if('serviceWorker' in navigator){navigator.serviceWorker.register('/static/sw.js').catch(()=>{});}</script>
 <!-- jarvis-v2 init — activates body.jx2-active and wires bracket corner signature interaction -->

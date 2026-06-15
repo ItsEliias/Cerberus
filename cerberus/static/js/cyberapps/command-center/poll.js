@@ -30,9 +30,20 @@ async function _fetchVitals(cb) {
       fetch(`${BASE}/api/cyberapps/operations/vitals`),
       fetch(`${BASE}/api/cyberapps/operations/timeseries`),
     ]);
-    if (vr.ok && cb.onVitals)      cb.onVitals(await vr.json());
+    if (vr.ok) {
+      const v = await vr.json();
+      if (cb.onVitals) cb.onVitals(v);
+      _emitBadge(v);
+    }
     if (tr.ok && cb.onTimeseries)  cb.onTimeseries(await tr.json());
   } catch (e) { cb.onError && cb.onError(e); }
+}
+
+function _emitBadge(v) {
+  const warn = (v.cpu_percent > 80 || v.ram_percent > 80 || v.disk_percent > 90);
+  try {
+    window.parent.postMessage({ type: 'cc-badge', level: warn ? 'warn' : 'ok' }, window.location.origin || '*');
+  } catch (_) {}
 }
 
 async function _fetchAgents(cb) {
