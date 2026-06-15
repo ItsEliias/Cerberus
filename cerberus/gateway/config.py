@@ -26,6 +26,15 @@ Environment variables:
   DISCORD_ALLOWED_CHANNEL_IDS — Comma-separated channel IDs to respond in.
                                  Empty = all channels in allowed guilds.
 
+  SLACK_BOT_TOKEN         — Slack bot OAuth token (xoxb-...) from api.slack.com
+                            Leave empty to disable Slack.
+  SLACK_APP_TOKEN         — Slack app-level token (xapp-...) for Socket Mode
+                            Required when Slack is enabled.
+  SLACK_ALLOWED_TEAM_IDS     — Comma-separated workspace IDs (T...).
+                               Empty = all workspaces.
+  SLACK_ALLOWED_CHANNEL_IDS  — Comma-separated channel/DM IDs (C..., D...).
+                               Empty = all channels.
+
   GATEWAY_CRON_ENABLED    — Enable the cron scheduler (true/false)
                             Default: true
   GATEWAY_CRON_INTERVAL   — Seconds between scheduler ticks
@@ -102,6 +111,14 @@ def _parse_id_frozenset(env_var: str) -> frozenset:
         return frozenset()
 
 
+def _parse_str_frozenset(env_var: str) -> frozenset:
+    """Parse a comma-separated list of string IDs from an env var."""
+    raw = os.environ.get(env_var, "").strip()
+    if not raw:
+        return frozenset()
+    return frozenset(p.strip() for p in raw.split(",") if p.strip())
+
+
 @dataclass(frozen=True)
 class DiscordConfig:
     """Discord platform configuration."""
@@ -120,6 +137,29 @@ class DiscordConfig:
             bot_token=os.environ.get("DISCORD_BOT_TOKEN", "").strip(),
             allowed_guild_ids=_parse_id_frozenset("DISCORD_ALLOWED_GUILD_IDS"),
             allowed_channel_ids=_parse_id_frozenset("DISCORD_ALLOWED_CHANNEL_IDS"),
+        )
+
+
+@dataclass(frozen=True)
+class SlackConfig:
+    """Slack platform configuration (Socket Mode)."""
+
+    bot_token: str            # xoxb-...
+    app_token: str            # xapp-... (Socket Mode)
+    allowed_team_ids: frozenset    # workspace IDs; empty = all
+    allowed_channel_ids: frozenset  # channel/DM IDs; empty = all
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.bot_token.strip() and self.app_token.strip())
+
+    @classmethod
+    def from_env(cls) -> "SlackConfig":
+        return cls(
+            bot_token=os.environ.get("SLACK_BOT_TOKEN", "").strip(),
+            app_token=os.environ.get("SLACK_APP_TOKEN", "").strip(),
+            allowed_team_ids=_parse_str_frozenset("SLACK_ALLOWED_TEAM_IDS"),
+            allowed_channel_ids=_parse_str_frozenset("SLACK_ALLOWED_CHANNEL_IDS"),
         )
 
 
@@ -153,6 +193,7 @@ class GatewayConfig:
     cerberus: CerberusConfig
     telegram: TelegramConfig
     discord: DiscordConfig
+    slack: SlackConfig
     cron: CronConfig
 
     @classmethod
@@ -161,6 +202,7 @@ class GatewayConfig:
             cerberus=CerberusConfig.from_env(),
             telegram=TelegramConfig.from_env(),
             discord=DiscordConfig.from_env(),
+            slack=SlackConfig.from_env(),
             cron=CronConfig.from_env(),
         )
 
@@ -168,4 +210,5 @@ class GatewayConfig:
         return {
             "telegram": self.telegram.enabled,
             "discord": self.discord.enabled,
+            "slack": self.slack.enabled,
         }
