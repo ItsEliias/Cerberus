@@ -7,7 +7,7 @@
  * Self-registers with window.CYBER_APPS_REGISTRY using unshift() (priority: first).
  */
 
-import { buildCommandTab, applyVitals, applyTimeseries, applySwarm, applyAgents } from './command.js';
+import { buildCommandTab, applyVitals, applyTimeseries, applySwarm, applyAgents, applyGateway } from './command.js';
 import { buildCouncilTab, initCouncil, loadCouncil } from './council.js';
 import { buildWorkspaceTab, loadWorkspace } from './workspace.js';
 import { buildFinanceTab, loadFinance }     from './finance.js';
@@ -202,6 +202,10 @@ function _pollCallbacks(shell) {
     onAgents(agents) {
       const c = shell.querySelector('#cc-tab-content');
       if (_activeTab === 'command' && c) applyAgents(c, agents);
+    },
+    onGateway(gw) {
+      const c = shell.querySelector('#cc-tab-content');
+      if (_activeTab === 'command' && c) applyGateway(c, gw);
     },
     onError(e) { console.warn('[Command Center] poll error:', e); },
   };

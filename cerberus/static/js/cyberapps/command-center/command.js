@@ -260,6 +260,21 @@ export function buildCommandTab() {
       </div>
     </div>
   </div>
+  <div class="cc-card">
+    <div class="cc-card-title">Gateway</div>
+    <div class="cc-gw-list" id="cc-gw-list">
+      <div class="cc-gw-row" data-platform="telegram">
+        <span class="cc-dot cc-gw-dot" style="background:rgba(255,255,255,0.15)"></span>
+        <span class="cc-gw-name">Telegram</span>
+        <span class="cc-gw-status">—</span>
+      </div>
+      <div class="cc-gw-row" data-platform="discord">
+        <span class="cc-dot cc-gw-dot" style="background:rgba(255,255,255,0.15)"></span>
+        <span class="cc-gw-name">Discord</span>
+        <span class="cc-gw-status">—</span>
+      </div>
+    </div>
+  </div>
   <div class="cc-telemetry">
     <div class="cc-telemetry-header">Telemetry Feed</div>
     <div class="cc-sparklines" id="cc-sparklines">
@@ -327,4 +342,41 @@ function _esc(s) {
   const d = document.createElement('div');
   d.textContent = String(s);
   return d.innerHTML;
+}
+
+// ---- Gateway status ----
+
+const _GW_COLORS = {
+  active:        '#2ecc71',
+  idle:          '#f1c40f',
+  offline:       'rgba(192,57,43,0.6)',
+  unconfigured:  'rgba(255,255,255,0.15)',
+};
+
+function _gwRelative(iso) {
+  if (!iso) return 'never';
+  const delta = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (delta < 60)    return 'just now';
+  if (delta < 3600)  return `${Math.floor(delta / 60)}m ago`;
+  if (delta < 86400) return `${Math.floor(delta / 3600)}h ago`;
+  return `${Math.floor(delta / 86400)}d ago`;
+}
+
+export function applyGateway(root, gw) {
+  const platforms = (gw && gw.platforms) || [];
+  for (const p of platforms) {
+    const row = root.querySelector(`.cc-gw-row[data-platform="${p.name}"]`);
+    if (!row) continue;
+    const dot    = row.querySelector('.cc-gw-dot');
+    const status = row.querySelector('.cc-gw-status');
+    const color  = _GW_COLORS[p.status] || _GW_COLORS.unconfigured;
+    if (dot) {
+      dot.style.background  = color;
+      dot.style.boxShadow   = p.status === 'active' ? `0 0 5px ${color}` : 'none';
+    }
+    if (status) {
+      const rel = p.status === 'unconfigured' ? '—' : _gwRelative(p.last_seen);
+      status.textContent = p.status === 'unconfigured' ? 'off' : `${p.status} · ${rel}`;
+    }
+  }
 }

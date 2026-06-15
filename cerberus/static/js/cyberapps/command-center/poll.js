@@ -48,11 +48,13 @@ function _emitBadge(v) {
 
 async function _fetchAgents(cb) {
   try {
-    const [sr, ar] = await Promise.all([
+    const [sr, ar, gr] = await Promise.all([
       fetch(`${BASE}/api/cyberapps/operations/swarm`),
       fetch(`${BASE}/api/cyberapps/operations/agents`),
+      fetch(`${BASE}/api/cyberapps/operations/gateway`),
     ]);
     if (sr.ok && cb.onSwarm)   cb.onSwarm(await sr.json());
     if (ar.ok && cb.onAgents)  { const d = await ar.json(); cb.onAgents(d.agents || []); }
+    if (gr.ok && cb.onGateway) cb.onGateway(await gr.json());
   } catch (e) { cb.onError && cb.onError(e); }
 }
