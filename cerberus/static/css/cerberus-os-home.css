@@ -1,0 +1,1505 @@
+/* Cerberus OS Community — Central AI OS Homepage */
+
+body.cerberus-os.cerberus-hub-active {
+  overflow: hidden;
+  --cerberus-dock-h: 0px;
+  --cerberus-topbar-height: 28px;
+  --cerberus-node-accent: rgba(168, 228, 255, 0.96);
+  --cerberus-node-ring: rgba(120, 200, 255, 0.55);
+  --cerberus-hud-line: rgba(235, 245, 255, 0.72);
+}
+
+body.cerberus-os.cerberus-hub-active .cerberus-os-backdrop {
+  opacity: 1;
+  pointer-events: none;
+}
+
+body.cerberus-os .cerberus-mc-dock,
+body.cerberus-os .cerberus-os-status-ticker-wrap {
+  display: none !important;
+}
+
+/* ── Hub layout ── */
+.cerberus-home.cerberus-os-hub {
+  position: fixed;
+  inset: 0;
+  top: var(--cerberus-topbar-height, 28px);
+  overflow: hidden;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+/* ── Viewport-centered 3D globe stage ── */
+.cerberus-graph-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cerberus-graph-viewport--globe-drag {
+  cursor: grabbing;
+}
+
+body.cerberus-cursor-fx-on .cerberus-graph-viewport,
+body.cerberus-cursor-fx-on .cerberus-graph-viewport--globe-drag,
+body.cerberus-cursor-fx-on .cerberus-globe-hit-layer,
+body.cerberus-cursor-fx-on .cerberus-globe-hit-layer--dragging,
+body.cerberus-cursor-fx-on .cerberus-os-node-wrap--clickable,
+body.cerberus-cursor-fx-on .cerberus-brain-core,
+body.cerberus-cursor-fx-on .cerberus-modal-drag-handle,
+body.cerberus-cursor-fx-on #cerberus-modal-portal,
+body.cerberus-cursor-fx-on #cerberus-modal-portal * {
+  cursor: none !important;
+}
+
+body.cerberus-modal-dragging .cerberus-graph-viewport,
+body.cerberus-modal-dragging .cerberus-graph-viewport--globe-drag {
+  cursor: none !important;
+}
+
+.cerberus-globe-stage {
+  position: relative;
+  width: min(88vmin, 860px);
+  height: min(88vmin, 860px);
+  transform-origin: center center;
+  will-change: transform;
+  flex-shrink: 0;
+}
+
+body.cerberus-os .cerberus-globe-stage .cerberus-mc-globe-bg,
+body.cerberus-os .cerberus-globe-stage .cerberus-globe-shell,
+body.cerberus-os .cerberus-globe-stage #cerberus-core {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  transform: none !important;
+  opacity: 1 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cerberus-globe-stage .cerberus-core-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.cerberus-globe-stage .cerberus-node-connections {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.cerberus-globe-stage .cerberus-brain-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 64px;
+  height: 64px;
+  margin-left: -32px;
+  margin-top: -32px;
+  transform: none !important;
+  z-index: 3;
+  pointer-events: auto;
+  transition: opacity 0.45s ease, transform 0.45s ease, box-shadow 0.45s ease;
+  border: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgba(160, 100, 255, 0.28), rgba(40, 20, 80, 0.12));
+  color: rgba(200, 160, 255, 0.75);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: cerberus-brain-pulse 4s ease-in-out infinite;
+}
+
+.cerberus-globe-stage .cerberus-brain-core:hover,
+.cerberus-globe-stage .cerberus-brain-core:focus-visible {
+  color: rgba(230, 200, 255, 0.95);
+  background: radial-gradient(circle at 40% 35%, rgba(160, 100, 255, 0.45), rgba(60, 30, 100, 0.2));
+  box-shadow: 0 0 36px rgba(140, 80, 255, 0.55);
+  outline: none;
+}
+
+@keyframes cerberus-brain-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(140, 80, 255, 0.15); }
+  50% { box-shadow: 0 0 28px rgba(140, 80, 255, 0.35); }
+}
+
+/* Keep the brain behind focused nodes so it never blocks navigation. */
+.cerberus-globe-stage--node-focused .cerberus-brain-core {
+  opacity: 0.1;
+  transform: scale(0.5) !important;
+  pointer-events: none;
+  animation: none;
+  box-shadow: none;
+}
+
+.cerberus-globe-stage--node-focused #cerberus-core {
+  z-index: 0 !important;
+}
+
+.cerberus-globe-stage .cerberus-node-ring {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Node wrapper + labels (embedded on globe surface) */
+.cerberus-os-node-wrap {
+  position: absolute;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 4px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  will-change: transform, left, top, opacity;
+  padding: 6px;
+  margin: -6px;
+}
+
+.cerberus-os-node-wrap--clickable {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.cerberus-os-node-wrap--behind .cerberus-os-node-label {
+  opacity: 0.72;
+}
+
+.cerberus-os-node-wrap--front .cerberus-os-node {
+  box-shadow: 0 0 18px rgba(80, 200, 255, 0.25);
+}
+
+.cerberus-os-node-label {
+  display: block;
+  max-width: 110px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.25;
+  color: rgba(230, 242, 255, 0.95);
+  background: rgba(4, 10, 22, 0.72);
+  border: 1px solid rgba(120, 180, 255, 0.18);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.95);
+  transform-origin: center center;
+  margin-top: 2px;
+  backface-visibility: hidden;
+}
+
+.cerberus-os-node-wrap--sub .cerberus-os-node-label {
+  max-width: 96px;
+  font-size: 9px;
+  padding: 1px 6px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-weight: 500;
+}
+
+/* Sci-fi hex nodes — unified Atlas accent */
+.cerberus-os-node {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 92% 25%, 92% 75%, 50% 100%, 8% 75%, 8% 25%);
+  cursor: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cerberus-node-accent);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.22) 0%, rgba(80, 180, 255, 0.12) 38%, rgba(4, 12, 28, 0.55) 100%);
+  pointer-events: none;
+  touch-action: manipulation;
+  box-shadow: 0 0 12px rgba(100, 200, 255, 0.22), inset 0 0 10px rgba(120, 200, 255, 0.08);
+  transition: box-shadow 0.2s, filter 0.15s;
+}
+
+.cerberus-os-node--sub {
+  width: 30px;
+  height: 30px;
+}
+
+.cerberus-os-node::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  clip-path: polygon(50% 0%, 92% 25%, 92% 75%, 50% 100%, 8% 75%, 8% 25%);
+  border: 1px solid var(--cerberus-node-ring);
+  opacity: 0.55;
+  transition: opacity 0.2s, box-shadow 0.2s;
+  pointer-events: none;
+  animation: cerberus-node-ring-spin 12s linear infinite;
+}
+
+.cerberus-os-node::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  clip-path: polygon(50% 0%, 92% 25%, 92% 75%, 50% 100%, 8% 75%, 8% 25%);
+  background: radial-gradient(circle at 40% 32%, rgba(255, 255, 255, 0.14), transparent 68%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.cerberus-os-node svg {
+  width: 15px;
+  height: 15px;
+  position: relative;
+  z-index: 1;
+  color: var(--cerberus-node-accent);
+  filter: drop-shadow(0 0 5px rgba(140, 220, 255, 0.65));
+  opacity: 0.96;
+  pointer-events: none;
+}
+
+.cerberus-os-node--sub svg {
+  width: 11px;
+  height: 11px;
+}
+
+.cerberus-os-node-wrap--front .cerberus-os-node,
+.cerberus-os-node-wrap:hover .cerberus-os-node {
+  filter: brightness(1.22);
+  box-shadow: 0 0 18px rgba(120, 210, 255, 0.38), inset 0 0 12px rgba(140, 220, 255, 0.12);
+}
+
+.cerberus-os-node-wrap--front .cerberus-os-node::before,
+.cerberus-os-node-wrap:hover .cerberus-os-node::before {
+  opacity: 0.95;
+  box-shadow: 0 0 14px rgba(120, 200, 255, 0.35);
+}
+
+@keyframes cerberus-node-ring-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes cerberus-node-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.15); }
+}
+
+.cerberus-os-node--assistant,
+.cerberus-os-node--offices,
+.cerberus-os-node--projects,
+.cerberus-os-node--finance,
+.cerberus-os-node--tasks,
+.cerberus-os-node--tools {
+  color: var(--cerberus-node-accent);
+}
+
+/* Hover info HUD */
+.cerberus-node-hud {
+  position: fixed;
+  z-index: 999870;
+  max-width: 220px;
+  padding: 6px 10px;
+  transform: translate(-50%, calc(-100% - 8px));
+  pointer-events: none;
+  background: rgba(4, 10, 22, 0.82);
+  border: 1px solid rgba(180, 220, 255, 0.22);
+  border-radius: 2px;
+  box-shadow: 0 0 20px rgba(80, 160, 255, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.cerberus-node-hud.hidden {
+  display: none !important;
+}
+
+.cerberus-node-hud-title {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(220, 240, 255, 0.95);
+  margin-bottom: 3px;
+}
+
+.cerberus-node-hud-desc {
+  display: block;
+  font-size: 10px;
+  line-height: 1.35;
+  color: rgba(180, 210, 240, 0.82);
+}
+
+/* Live power lines: globe node → open modal */
+.cerberus-power-links {
+  position: fixed;
+  inset: 0;
+  z-index: 999880;
+  pointer-events: none;
+}
+
+/* Captures globe drag/zoom in empty space while modals are open (sits under the portal). */
+.cerberus-globe-hit-layer {
+  position: fixed;
+  top: var(--cerberus-topbar-height, 28px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999940;
+  pointer-events: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+body.cerberus-os .cerberus-globe-hit-layer.cerberus-globe-hit-layer--dragging {
+  cursor: grabbing;
+}
+
+body.cerberus-os.cerberus-hub-active .cerberus-home.cerberus-os-hub::after {
+  content: '';
+  position: absolute;
+  inset: 18px;
+  border: 1px solid rgba(100, 180, 255, 0.06);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cerberus-home-legacy { display: none !important; }
+
+/* ── Modal portal & backdrop ── */
+#cerberus-modal-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 999950;
+  pointer-events: none;
+}
+
+/* Wrapper shells must not block globe drag — only modal chrome captures clicks. */
+#cerberus-modal-portal > *:not(.hidden) {
+  pointer-events: none;
+}
+
+/* Modal shells are transparent to pointer events — only inner chrome is interactive. */
+body.cerberus-os .cerberus-shell-modal.cerberus-shell-modal--open,
+body.cerberus-os .cerberus-shell-panel.cerberus-shell-panel-active,
+body.cerberus-os .cerberus-os-panel.cerberus-shell-panel-active,
+body.cerberus-os .cerberus-project-hq:not(.hidden),
+body.cerberus-os #cerberus-modal-portal .cerberus-modal-placed,
+body.cerberus-os #cerberus-modal-portal .cerberus-modal-window {
+  pointer-events: none !important;
+}
+
+body.cerberus-os .cerberus-shell-modal .cerberus-shell-modal-header,
+body.cerberus-os .cerberus-shell-modal .cerberus-shell-modal-body,
+body.cerberus-os .cerberus-os-panel .cerberus-os-panel-header,
+body.cerberus-os .cerberus-os-panel.cerberus-shell-panel-active > *:not(.cerberus-os-panel-header),
+body.cerberus-os .cerberus-project-hq .cerberus-hq-header,
+body.cerberus-os .cerberus-project-hq .cerberus-project-hq-header,
+body.cerberus-os .cerberus-project-hq > *:not(.cerberus-hq-header):not(.cerberus-project-hq-header),
+body.cerberus-os #cerberus-modal-portal .notes-pane:not(.hidden),
+body.cerberus-os .modal.cerberus-overlay-modal:not(.hidden) > *,
+body.cerberus-os #tasks-modal.cerberus-overlay-modal:not(.hidden) > *,
+body.cerberus-os #cerberus-modal-portal #settings-modal:not(.hidden) .settings-modal-content,
+body.cerberus-os #cerberus-modal-portal .cerberus-modal-placed > *,
+body.cerberus-os #cerberus-modal-portal .cerberus-modal-window > * {
+  pointer-events: auto !important;
+}
+
+/* .cerberus-modal-placed uses display:flex !important — must not override .hidden */
+body.cerberus-os #cerberus-modal-portal > .hidden,
+body.cerberus-os .cerberus-modal-placed.hidden,
+body.cerberus-os .cerberus-modal-window.hidden,
+body.cerberus-os .cerberus-shell-modal.hidden,
+body.cerberus-os .cerberus-os-panel.hidden,
+body.cerberus-os .cerberus-project-hq.hidden,
+body.cerberus-os .notes-pane.hidden,
+body.cerberus-os .cerberus-overlay-modal.hidden {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+.cerberus-shell-modal-backdrop {
+  display: none !important;
+  pointer-events: none !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+/* Shell modals */
+.cerberus-shell-modal {
+  position: fixed;
+  z-index: 999900;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.96);
+  width: min(92vw, 1100px);
+  max-height: calc(100vh - 56px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(80, 200, 255, 0.22);
+  border-radius: 14px;
+  background: rgba(8, 14, 28, 0.72);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  overflow: hidden;
+}
+
+.cerberus-shell-modal.cerberus-shell-modal--open {
+  opacity: 1;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.cerberus-shell-modal--wide { width: min(96vw, 1280px); }
+.cerberus-shell-modal--full { width: min(98vw, 1400px); max-height: calc(100vh - 40px); }
+
+.cerberus-shell-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(80, 200, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.cerberus-shell-modal-title {
+  flex: 1;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(220, 235, 255, 0.95);
+}
+
+.cerberus-shell-modal-kicker {
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.cerberus-shell-modal-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(80, 200, 255, 0.2);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(200, 220, 255, 0.8);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.cerberus-shell-modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  min-height: 0;
+}
+
+/* Panel modals — viewport-centred until user drags or pins */
+body.cerberus-os #cerberus-modal-portal .cerberus-os-panel.cerberus-shell-panel-active:not(.cerberus-modal-placed),
+body.cerberus-os .cerberus-os-panel.cerberus-shell-panel-active:not(.cerberus-modal-placed) {
+  position: fixed !important;
+  z-index: 999900 !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+  width: min(96vw, 1280px) !important;
+  max-height: calc(100vh - 48px) !important;
+  height: auto !important;
+  display: flex !important;
+  flex-direction: column;
+  border: 1px solid rgba(80, 200, 255, 0.22);
+  border-radius: 14px;
+  background: rgba(8, 14, 28, 0.72) !important;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  inset: auto !important;
+  pointer-events: none !important;
+}
+
+body.cerberus-os .cerberus-os-panel.cerberus-shell-panel-active .cerberus-os-panel-header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(80, 200, 255, 0.12);
+}
+
+body.cerberus-os .cerberus-os-panel.cerberus-shell-panel-active > *:not(.cerberus-os-panel-header) {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Overlay modals — centred (tasks, calendar, etc.) */
+body.cerberus-os .modal.cerberus-overlay-modal:not(.hidden),
+body.cerberus-os #tasks-modal.cerberus-overlay-modal:not(.hidden),
+body.cerberus-os #memory-modal.cerberus-overlay-modal:not(.hidden) {
+  position: fixed !important;
+  inset: 0 !important;
+  top: var(--cerberus-topbar-height, 28px) !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+  z-index: 999950 !important;
+  background: transparent !important;
+  pointer-events: none !important;
+}
+
+body.cerberus-os .modal.cerberus-overlay-modal:not(.hidden) > *,
+body.cerberus-os #tasks-modal.cerberus-overlay-modal:not(.hidden) > * {
+  pointer-events: auto !important;
+}
+
+body.cerberus-os .modal.cerberus-overlay-modal .modal-content,
+body.cerberus-os #tasks-modal.cerberus-overlay-modal .modal-content,
+body.cerberus-os #tasks-modal.cerberus-overlay-modal .tasks-modal-content {
+  position: relative !important;
+  margin: 0 auto !important;
+  max-height: calc(100vh - 80px) !important;
+  width: min(96vw, 1100px) !important;
+  background: rgba(8, 14, 28, 0.72) !important;
+  backdrop-filter: blur(14px);
+}
+
+body.cerberus-os.cerberus-modal-open #cerberus-home {
+  filter: none;
+}
+
+/* Keep the globe interactive under the modal portal (portal itself is pointer-events: none). */
+body.cerberus-os.cerberus-hub-active.cerberus-modal-open #cerberus-home {
+  z-index: 999945;
+  pointer-events: none;
+}
+
+body.cerberus-os.cerberus-hub-active.cerberus-modal-open #cerberus-graph-viewport,
+body.cerberus-os.cerberus-hub-active.cerberus-modal-open .cerberus-os-node-wrap--clickable,
+body.cerberus-os.cerberus-hub-active.cerberus-modal-open .cerberus-brain-core {
+  pointer-events: auto;
+}
+
+/* Project HQ — centred modal window until placed */
+body.cerberus-os #cerberus-modal-portal .cerberus-project-hq:not(.hidden):not(.cerberus-modal-placed),
+body.cerberus-os .cerberus-project-hq.cerberus-shell-panel-active:not(.cerberus-modal-placed) {
+  position: fixed !important;
+  z-index: 999900 !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+  width: min(96vw, 900px) !important;
+  max-height: calc(100vh - 48px) !important;
+  height: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  inset: auto !important;
+  pointer-events: none !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+}
+
+body.cerberus-os .cerberus-modal-window.cerberus-modal-placed {
+  transform: none !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  inset: auto !important;
+}
+
+body.cerberus-os .cerberus-project-hq.cerberus-modal-placed,
+body.cerberus-os .cerberus-os-panel.cerberus-modal-placed,
+body.cerberus-os .cerberus-shell-modal.cerberus-modal-placed,
+body.cerberus-os .notes-pane.cerberus-notes-centered.cerberus-modal-placed {
+  position: fixed !important;
+  z-index: 999900 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  pointer-events: none !important;
+  border: 1px solid rgba(80, 200, 255, 0.22);
+  border-radius: 14px;
+  background: rgba(8, 14, 28, 0.72) !important;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  max-height: calc(100vh - 48px) !important;
+}
+
+body.cerberus-os .cerberus-project-hq-backdrop {
+  display: none !important;
+}
+
+body.cerberus-os .cerberus-project-hq-shell {
+  width: 100% !important;
+  max-height: calc(100vh - 48px) !important;
+  margin: 0 !important;
+}
+
+.cerberus-modal-pin-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid rgba(80, 200, 255, 0.25);
+  border-radius: 8px;
+  background: rgba(12, 24, 48, 0.5);
+  color: rgba(200, 220, 255, 0.75);
+  font-size: 0.95rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.cerberus-modal-pin-btn:hover {
+  border-color: rgba(80, 200, 255, 0.45);
+  color: rgba(220, 235, 255, 0.95);
+}
+
+.cerberus-modal-pin-btn--active {
+  border-color: rgba(255, 190, 60, 0.75);
+  color: rgba(255, 220, 120, 1);
+  background: rgba(255, 170, 30, 0.22);
+  box-shadow: 0 0 12px rgba(255, 180, 40, 0.25);
+}
+
+.cerberus-modal-pinned .cerberus-modal-drag-handle {
+  cursor: default !important;
+}
+
+.cerberus-modal-drag-handle {
+  user-select: none;
+}
+
+.cerberus-modal-window.cerberus-modal-dragging {
+  transition: none !important;
+}
+
+/* Notes — centred wide modal on Atlas hub until placed */
+body.cerberus-os #cerberus-modal-portal .notes-pane.cerberus-notes-centered:not(.cerberus-modal-placed),
+body.cerberus-os .notes-pane.cerberus-notes-centered:not(.cerberus-modal-placed) {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+  width: min(92vw, 1100px) !important;
+  max-width: min(92vw, 1100px) !important;
+  height: min(62vh, 520px) !important;
+  max-height: min(70vh, 560px) !important;
+  margin: 0 !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(80, 200, 255, 0.22) !important;
+  background: rgba(8, 14, 28, 0.72) !important;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45);
+  z-index: 999900 !important;
+}
+
+
+body.cerberus-os .notes-pane-backdrop.cerberus-notes-backdrop-hidden {
+  display: none !important;
+}
+
+/* Settings modal on Atlas hub */
+body.cerberus-os #cerberus-modal-portal #settings-modal:not(.hidden) {
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  pointer-events: none !important;
+  z-index: 999950 !important;
+}
+
+body.cerberus-os #cerberus-modal-portal #settings-modal .settings-modal-content {
+  pointer-events: auto !important;
+  background: rgba(8, 14, 28, 0.72) !important;
+  backdrop-filter: blur(14px);
+}
+
+body.cerberus-os .cerberus-project-hq-shell {
+  background: rgba(8, 14, 28, 0.72) !important;
+}
+
+/* Tools grid — centred content */
+.cerberus-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+}
+
+.cerberus-tools-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 110px;
+  padding: 16px 12px;
+  border: 1px solid rgba(80, 200, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(12, 24, 48, 0.4);
+  color: rgba(200, 225, 255, 0.9);
+  cursor: pointer;
+  text-align: center;
+}
+
+.cerberus-tools-tile svg {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  color: rgba(100, 200, 255, 0.9);
+}
+
+.cerberus-tools-tile-label {
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+/* Brain tabs */
+.cerberus-brain-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 16px 12px;
+  border-bottom: 1px solid rgba(80, 200, 255, 0.1);
+}
+
+.cerberus-brain-tab {
+  padding: 6px 12px;
+  border: 1px solid rgba(80, 200, 255, 0.15);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(180, 210, 255, 0.75);
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.cerberus-brain-tab.active {
+  border-color: rgba(140, 80, 255, 0.5);
+  background: rgba(140, 80, 255, 0.12);
+}
+
+.cerberus-brain-section { display: none; padding: 16px; min-height: 200px; }
+.cerberus-brain-section.active { display: block; }
+.cerberus-brain-placeholder { opacity: 0.55; font-size: 0.82rem; }
+
+/* Offices modal */
+.cerberus-offices-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 16px;
+  min-height: 400px;
+}
+
+.cerberus-offices-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-right: 1px solid rgba(80, 200, 255, 0.1);
+  padding-right: 12px;
+}
+
+.cerberus-offices-list { display: flex; flex-direction: column; gap: 4px; overflow: auto; }
+
+.cerberus-offices-item {
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(200, 220, 255, 0.85);
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.cerberus-offices-item:hover,
+.cerberus-offices-item.active {
+  border-color: rgba(180, 100, 255, 0.35);
+  background: rgba(140, 80, 255, 0.1);
+}
+
+.cerberus-offices-add-btn {
+  padding: 8px;
+  border: 1px dashed rgba(80, 200, 255, 0.25);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(140, 200, 255, 0.8);
+  cursor: pointer;
+  font-size: 0.72rem;
+}
+
+.cerberus-offices-prompt {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 8, 18, 0.55);
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+
+.cerberus-offices-prompt.hidden {
+  display: none !important;
+}
+
+.cerberus-offices-prompt-card {
+  width: min(92%, 380px);
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(80, 200, 255, 0.25);
+  background: rgba(8, 14, 28, 0.96);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.cerberus-offices-prompt-title {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  color: rgba(210, 230, 255, 0.95);
+}
+
+.cerberus-offices-prompt-label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  color: rgba(160, 190, 230, 0.75);
+}
+
+.cerberus-offices-prompt-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(80, 200, 255, 0.22);
+  background: rgba(12, 22, 42, 0.9);
+  color: rgba(220, 235, 255, 0.95);
+  font-size: 0.82rem;
+}
+
+.cerberus-offices-prompt-textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.cerberus-offices-prompt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cerberus-offices-prompt-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(80, 200, 255, 0.2);
+  background: rgba(12, 24, 48, 0.6);
+  color: rgba(200, 220, 255, 0.85);
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.cerberus-offices-prompt-btn--primary {
+  border-color: rgba(80, 200, 255, 0.45);
+  background: rgba(40, 100, 180, 0.35);
+  color: rgba(220, 240, 255, 0.95);
+}
+
+.cerberus-shell-modal-body {
+  position: relative;
+}
+
+.cerberus-offices-main { display: flex; flex-direction: column; gap: 14px; overflow: auto; }
+
+.cerberus-offices-office-header,
+.cerberus-offices-dept-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cerberus-offices-office-title { margin: 0; font-size: 1rem; }
+.cerberus-offices-dept { border: 1px solid rgba(80, 200, 255, 0.12); border-radius: 10px; padding: 12px; background: rgba(12, 24, 48, 0.35); }
+.cerberus-offices-dept-title { margin: 0; font-size: 0.85rem; color: rgba(180, 140, 255, 0.95); }
+.cerberus-offices-dept-desc, .cerberus-offices-dept-meta, .cerberus-offices-office-desc { font-size: 0.72rem; opacity: 0.6; margin: 4px 0 0; }
+
+.cerberus-offices-agent-card {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  margin-top: 8px;
+  border: 1px solid rgba(80, 200, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(8, 16, 32, 0.5);
+}
+
+.cerberus-offices-agent-card--sub { margin-left: 20px; opacity: 0.9; }
+
+.cerberus-offices-agent-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(140, 80, 255, 0.4), rgba(80, 200, 255, 0.3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.cerberus-offices-agent-info { flex: 1; min-width: 0; }
+.cerberus-offices-agent-name { font-size: 0.82rem; font-weight: 600; }
+.cerberus-offices-agent-role { font-size: 0.68rem; opacity: 0.65; }
+.cerberus-offices-tag { font-size: 0.58rem; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(80, 200, 255, 0.2); }
+.cerberus-offices-empty { opacity: 0.5; font-size: 0.82rem; text-align: center; padding: 24px; }
+
+.cerberus-entity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.cerberus-entity-action {
+  padding: 3px 8px;
+  border: 1px solid rgba(80, 200, 255, 0.2);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(180, 210, 255, 0.8);
+  font-size: 0.62rem;
+  cursor: pointer;
+}
+
+.cerberus-entity-action:hover {
+  border-color: rgba(140, 80, 255, 0.4);
+  background: rgba(140, 80, 255, 0.1);
+}
+
+body.cerberus-os .cerberus-os-status-bar { z-index: 999990; }
+
+body.cerberus-os.cerberus-hub-active #cerberus-agents-office:not(.cerberus-shell-panel-active) {
+  display: none !important;
+}
+
+.cerberus-finance-empty-banner {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px dashed rgba(80, 200, 255, 0.25);
+  text-align: center;
+}
+
+.cerberus-finance-empty-actions,
+.cerberus-projects-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.cerberus-ce-hidden { display: none !important; }
+
+/* CE Settings navigation */
+body.cerberus-os [data-settings-tab="search"],
+body.cerberus-os [data-settings-tab="integrations"],
+body.cerberus-os [data-settings-tab="reminders"],
+body.cerberus-os [data-settings-tab="shortcuts"] {
+  display: none !important;
+}
+
+body.cerberus-os [data-settings-tab="services"] span { font-size: 0; }
+body.cerberus-os [data-settings-tab="services"] span::after { content: 'General'; font-size: 13px; }
+body.cerberus-os [data-settings-tab="ai"] span { font-size: 0; }
+body.cerberus-os [data-settings-tab="ai"] span::after { content: 'AI'; font-size: 13px; }
+
+/* First-launch setup wizard */
+.cerberus-setup-wizard {
+  position: fixed;
+  inset: 0;
+  z-index: 1000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 8, 18, 0.92);
+  backdrop-filter: blur(12px);
+  padding: 24px;
+}
+
+.cerberus-setup-wizard.hidden {
+  display: none !important;
+}
+
+body.cerberus-setup-wizard-open {
+  overflow: hidden;
+}
+
+body.cerberus-setup-wizard-open #cerberus-home,
+body.cerberus-setup-wizard-open .cerberus-top-bar,
+body.cerberus-setup-wizard-open #sidebar {
+  pointer-events: none;
+}
+
+.cerberus-setup-wizard-card {
+  width: min(560px, 96vw);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 28px 32px 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(80, 200, 255, 0.25);
+  background: rgba(8, 14, 28, 0.88);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+}
+
+.cerberus-setup-progress-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+
+.cerberus-setup-progress-item {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(140, 170, 210, 0.45);
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.cerberus-setup-progress-item--active {
+  color: rgba(180, 230, 255, 0.95);
+  border-color: rgba(80, 200, 255, 0.35);
+  background: rgba(40, 90, 160, 0.25);
+}
+
+.cerberus-setup-progress-item--done {
+  color: rgba(120, 220, 160, 0.85);
+}
+
+.cerberus-setup-step-title {
+  margin: 0 0 14px;
+  font-size: 1.25rem;
+  color: rgba(220, 235, 255, 0.95);
+}
+
+.cerberus-setup-step[hidden] {
+  display: none !important;
+}
+
+.cerberus-setup-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(80, 200, 255, 0.12);
+}
+
+.cerberus-setup-primary-btn,
+.cerberus-setup-secondary-btn {
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cerberus-setup-primary-btn {
+  border: none;
+  background: linear-gradient(135deg, rgba(60, 140, 255, 0.9), rgba(100, 80, 255, 0.85));
+  color: #fff;
+}
+
+.cerberus-setup-primary-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.cerberus-setup-secondary-btn {
+  border: 1px solid rgba(80, 200, 255, 0.28);
+  background: rgba(12, 24, 48, 0.5);
+  color: rgba(200, 220, 255, 0.9);
+}
+
+.cerberus-setup-secondary-btn--disabled,
+.cerberus-setup-secondary-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cerberus-setup-storage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cerberus-setup-summary {
+  margin: 0 0 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.cerberus-setup-summary div {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.cerberus-setup-summary dt {
+  margin: 0;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(140, 180, 220, 0.7);
+}
+
+.cerberus-setup-summary dd {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(230, 240, 255, 0.95);
+  word-break: break-word;
+}
+
+.cerberus-setup-title {
+  margin: 0 0 6px;
+  font-size: 1.6rem;
+  color: rgba(220, 235, 255, 0.95);
+}
+
+.cerberus-setup-subtitle {
+  margin: 0 0 20px;
+  opacity: 0.7;
+}
+
+.cerberus-setup-label {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 0.85rem;
+  color: rgba(180, 210, 255, 0.85);
+}
+
+.cerberus-setup-sublabel {
+  margin: 8px 0 6px;
+  font-size: 0.78rem;
+  opacity: 0.65;
+}
+
+.cerberus-setup-hint {
+  margin: 0 0 4px;
+  font-size: 0.82rem;
+  color: rgba(120, 220, 160, 0.9);
+}
+
+.cerberus-setup-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(80, 200, 255, 0.22);
+  background: rgba(12, 24, 48, 0.6);
+  color: inherit;
+}
+
+.cerberus-setup-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cerberus-setup-radio-group label,
+.cerberus-setup-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.cerberus-setup-model-group {
+  margin-bottom: 8px;
+}
+
+.cerberus-setup-storage-path {
+  display: block;
+  margin: 6px 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(12, 24, 48, 0.5);
+  word-break: break-all;
+}
+
+.cerberus-setup-link-btn {
+  background: none;
+  border: none;
+  color: rgba(100, 200, 255, 0.9);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  margin-bottom: 12px;
+}
+
+.cerberus-setup-step .cerberus-setup-primary-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.cerberus-launcher-apps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.cerberus-launcher-app-card {
+  padding: 10px 12px;
+  border: 1px solid rgba(80, 200, 255, 0.15);
+  border-radius: 8px;
+}
+
+.cerberus-launcher-app-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cerberus-launcher-app-path,
+.cerberus-launcher-app-aliases {
+  font-size: 0.78rem;
+  opacity: 0.75;
+  word-break: break-all;
+}
+
+.cerberus-launcher-app-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.cerberus-launcher-bridge-status {
+  font-size: 0.82rem;
+  opacity: 0.8;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Cerberus OS stabilisation pass — unified window chrome, animations,
+   Voice Cheat Sheet + System Monitor, layering contract.
+
+   Layering (bottom → top):
+     particles backdrop < globe stage (z1) < connection canvas (z2) <
+     node ring (z8, wraps z10–110) < brain core (z20) <
+     modal band 999901–999944 (inside portal z999950) <
+     status bar 999990 < notifications 999999 < cursor glow (max int).
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Modal open animation (opacity/filter only: placed windows pin
+      transform with !important, animations must never fight that) ── */
+@keyframes cerberus-modal-in {
+  0%   { opacity: 0; filter: blur(6px) brightness(1.4); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; filter: blur(0) brightness(1); }
+}
+
+.cerberus-modal-window.cerberus-modal-anim-in {
+  animation: cerberus-modal-in 0.26s ease-out;
+}
+
+/* ── Minimised (collapsed-to-header) windows ── */
+.cerberus-modal-window.cerberus-modal-min {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: hidden !important;
+}
+
+.cerberus-modal-window.cerberus-modal-min > *:not(.cerberus-modal-drag-handle):not(:has(.cerberus-modal-drag-handle)),
+.cerberus-modal-window.cerberus-modal-min > :has(.cerberus-modal-drag-handle) > *:not(.cerberus-modal-drag-handle):not(:has(.cerberus-modal-drag-handle)) {
+  display: none !important;
+}
+
+.cerberus-modal-window.cerberus-modal-min .cerberus-modal-drag-handle {
+  border-bottom: none;
+}
+
+.cerberus-modal-min-btn {
+  font-weight: 700;
+}
+
+/* ── Node activation ping (used by _playActivation) ── */
+@keyframes cerberus-node-activate {
+  0%   { transform: translate(-50%, -50%) scale(1); }
+  35%  { transform: translate(-50%, -50%) scale(1.22); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes cerberus-node-activate-ring {
+  0%   { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  100% { box-shadow: 0 0 0 22px transparent; opacity: 0.9; }
+}
+
+.cerberus-os-node-wrap--activated {
+  animation: cerberus-node-activate 0.5s cubic-bezier(0.22, 1.4, 0.36, 1);
+}
+
+.cerberus-os-node-wrap--activated .cerberus-os-node::before {
+  animation: cerberus-node-activate-ring 0.5s ease-out;
+}
+
+/* ── Voice Command Cheat Sheet ── */
+.cerberus-cheatsheet-intro {
+  margin: 0 0 16px;
+  font-size: 0.82rem;
+  opacity: 0.75;
+  line-height: 1.5;
+}
+
+.cerberus-cheatsheet-group {
+  margin-bottom: 18px;
+  border: 1px solid rgba(80, 200, 255, 0.12);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: rgba(12, 24, 48, 0.3);
+}
+
+.cerberus-cheatsheet-group-title {
+  margin: 0 0 2px;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(140, 210, 255, 0.95);
+}
+
+.cerberus-cheatsheet-group-hint {
+  margin: 0 0 10px;
+  font-size: 0.7rem;
+  opacity: 0.55;
+}
+
+.cerberus-cheatsheet-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cerberus-cheatsheet-table td {
+  padding: 5px 8px;
+  border-top: 1px solid rgba(80, 200, 255, 0.07);
+  font-size: 0.78rem;
+  vertical-align: top;
+}
+
+.cerberus-cheatsheet-say {
+  width: 46%;
+  color: rgba(170, 230, 255, 0.95);
+  font-weight: 500;
+}
+
+.cerberus-cheatsheet-does {
+  opacity: 0.72;
+}
+
+/* ── System Monitor ── */
+.cerberus-sysmon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.cerberus-sysmon-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(80, 200, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(12, 24, 48, 0.35);
+}
+
+.cerberus-sysmon-label {
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.cerberus-sysmon-value {
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(210, 235, 255, 0.95);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.cerberus-sysmon-row[data-state="good"] .cerberus-sysmon-value { color: rgba(120, 230, 170, 0.95); }
+.cerberus-sysmon-row[data-state="warn"] .cerberus-sysmon-value { color: rgba(255, 200, 90, 0.95); }
+.cerberus-sysmon-row[data-state="bad"]  .cerberus-sysmon-value { color: rgba(255, 130, 120, 0.95); }
+.cerberus-sysmon-row[data-state="na"]   .cerberus-sysmon-value { opacity: 0.45; }
+
+.cerberus-sysmon-note {
+  margin: 14px 2px 0;
+  font-size: 0.7rem;
+  opacity: 0.5;
+}
+
+.cerberus-sysmon-note code {
+  font-size: 0.68rem;
+  opacity: 0.9;
+}

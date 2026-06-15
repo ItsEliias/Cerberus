@@ -778,8 +778,8 @@ app.include_router(gateway_router)
 from routes.cerberus_os_routes import setup_cerberus_routes
 app.include_router(setup_cerberus_routes())
 
-from routes.workspace_routes import router as workspace_router
-app.include_router(workspace_router)
+from routes.workspace_routes import setup_workspace_routes
+app.include_router(setup_workspace_routes())
 
 # ========= ROUTES (kept in app.py) =========
 

@@ -45,8 +45,16 @@ import { initKeyboardShortcuts } from './js/keyboard-shortcuts.js';
 import { initSidebarLayout, syncRailSide } from './js/sidebar-layout.js';
 import { initSectionCollapse, initSectionDrag } from './js/section-management.js';
 import * as dashboardModule from './js/dashboard.js';
+import homeModule from './js/home.js';
+import {
+  isCerberusHomeRoute,
+  isCerberusAgentsRoute,
+  isCerberusProjectsRoute,
+  isCerberusFinanceRoute,
+} from './js/cerberusShell.js';
 
 const API_BASE = window.location.origin;
+window.homeModule = homeModule;
 window.dashModule = dashboardModule;
 window.themeModule = themeModule;
 window.sessionModule = sessionModule;
@@ -1047,6 +1055,10 @@ function initializeEventListeners() {
     '/tasks':     () => document.getElementById('tool-tasks-btn')?.click(),
     '/library':   () => sessionModule && sessionModule.openLibrary && sessionModule.openLibrary(),
     '/dashboard': () => dashboardModule.open(),
+    '/home':     () => homeModule.showHome({ skipHistory: true }),
+    '/agents':   () => homeModule.showAgentsOffice({ skipHistory: true }),
+    '/projects': () => homeModule.showProjects({ skipHistory: true }),
+    '/finance':  () => homeModule.showFinance({ skipHistory: true }),
   };
   const _opener = _routeOpen[urlPath];
   // Defer the opener — at this point in init, the modules whose handlers
@@ -3913,6 +3925,26 @@ function startCerberusApp() {
   // Load initial data
   presetsModule.loadPresets(uiModule.showError);
 
+  // CerberusOS home shell — init event bindings and sub-modules
+  homeModule.initHome({
+    showToast: uiModule.showToast,
+    openAssistant: (prompt, opts) => {
+      const input = el('user-input') || document.querySelector('textarea.user-input, #message-input');
+      if (input && prompt) input.value = prompt;
+      if (opts?.submit) document.getElementById('send-btn')?.click();
+    },
+    defaultHome: false,
+  });
+
+  // Popstate — keep cerberus-os routes in sync with browser history
+  window.addEventListener('popstate', () => {
+    const path = window.location.pathname;
+    if (isCerberusHomeRoute(path)) { homeModule.showHome({ skipHistory: true }); return; }
+    if (isCerberusAgentsRoute(path)) { homeModule.showAgentsOffice({ skipHistory: true }); return; }
+    if (isCerberusProjectsRoute(path)) { homeModule.showProjects({ skipHistory: true }); return; }
+    if (isCerberusFinanceRoute(path)) { homeModule.showFinance({ skipHistory: true }); return; }
+  });
+
   if (sessionModule) {
     sessionModule.initDependencies({
       API_BASE: API_BASE,
@@ -3930,6 +3962,12 @@ function startCerberusApp() {
       .finally(() => {
         const loader = document.getElementById('app-loader');
         if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.remove(), 300); }
+        // Boot the CerberusOS globe if navigating to a home route
+        const _path = window.location.pathname;
+        if (isCerberusHomeRoute(_path) || isCerberusAgentsRoute(_path)
+            || isCerberusProjectsRoute(_path) || isCerberusFinanceRoute(_path)) {
+          try { homeModule.bootAtlasHome(); } catch (_) {}
+        }
         // Fire any URL route opener now that sessions + module wiring are
         // ready. Deferred from up top of init for exactly this reason.
         if (window._cerberusRouteOpener) {

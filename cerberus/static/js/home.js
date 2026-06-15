@@ -181,8 +181,8 @@ function _renderBriefing() {
 async function _speakBriefing() {
   const text = _briefingV2?.spoken || (_briefing && _briefing.text);
   if (!text) return;
-  if (window.atlasVoiceMode?.speakText) {
-    await window.atlasVoiceMode.speakText(text, { short: false });
+  if (window.cerberusVoiceMode?.speakText) {
+    await window.cerberusVoiceMode.speakText(text, { short: false });
     return;
   }
   if (window.speechSynthesis) {
@@ -253,7 +253,7 @@ function _setNavActive(view) {
   if (asstBtn) asstBtn.classList.toggle('active', view === 'assistant');
 }
 
-function _setAtlasView(view) {
+function _setCerberusView(view) {
   document.body.classList.remove(
     'cerberus-view-home',
     'cerberus-view-assistant',
@@ -270,7 +270,7 @@ function _setAtlasView(view) {
 function _ensureHomeVisible() {
   const home = _el('cerberus-home');
   if (home) home.classList.remove('hidden');
-  _setAtlasView('home');
+  _setCerberusView('home');
   _scheduleCoreStart();
 }
 
@@ -304,7 +304,7 @@ export function prefetchAtlasData() {
 
 async function _wipeCePersonalDataOnce() {
   // v4: also clears leftover project_summaries from pre-CE builds.
-  const flag = 'atlas_ce_personal_wiped_v4';
+  const flag = 'cerberus_ce_personal_wiped_v4';
   if (localStorage.getItem(flag) === '1') return;
   try {
     await fetch('/api/cerberus/ce/wipe-personal-data', { method: 'POST', credentials: 'same-origin' });
@@ -324,8 +324,8 @@ async function _wipeCePersonalDataOnce() {
 /** Refresh Atlas data after first-run setup completes. */
 export async function onSetupComplete() {
   try {
-    localStorage.removeItem('atlas_offices_v1');
-    localStorage.removeItem('atlas_offices_v2');
+    localStorage.removeItem('cerberus_offices_v1');
+    localStorage.removeItem('cerberus_offices_v2');
   } catch (_) {}
   _prefetchPromise = null;
   await prefetchAtlasData();
@@ -339,19 +339,19 @@ export function bootAtlasHome() {
   import('./windowResize.js').then((m) => m.clearWindowResizeLock?.()).catch(() => {});
   startCerberusBackdrop();
   prefetchAtlasData();
-  import('./atlasCursorFx.js').then((m) => m.default.initAtlasCursorFx?.());
+  import('./cerberusCursorFx.js').then((m) => m.default.initAtlasCursorFx?.());
 
   _active = true;
   _ensureHomeVisible();
   _setNavActive('home');
-  window.atlasHomeConversation?.onHomeShown?.();
+  window.cerberusHomeConversation?.onHomeShown?.();
 
   try {
     initCerberusGraph({ onNodeClick: (action) => openAtlasModal(action), projects: _projects });
     initCerberusPowerLinks();
     void cerberusShellModals.restoreSessionModals();
   } catch (err) {
-    console.error('[atlas] graph init failed:', err);
+    console.error('[cerberus] graph init failed:', err);
   }
 
   if (isCerberusFinanceRoute()) {
@@ -370,7 +370,7 @@ export function isHomeActive() {
 function _syncHomeHistory({ skipHistory = false, replace = false } = {}) {
   if (skipHistory) return;
   const url = cerberusHomeUrl();
-  const state = { atlasView: 'home' };
+  const state = { cerberusView: 'home' };
   if (window.location.pathname === url && !window.location.hash) return;
   if (replace) {
     history.replaceState(state, '', url);
@@ -381,7 +381,7 @@ function _syncHomeHistory({ skipHistory = false, replace = false } = {}) {
 
 export async function showHome({ skipHistory = false, replace = false } = {}) {
   _active = true;
-  window.atlasVoiceService?.onRouteChange?.('home');
+  window.cerberusVoiceService?.onRouteChange?.('home');
   document.title = 'Cerberus OS';
   _syncHomeHistory({ skipHistory, replace });
   _ensureHomeVisible();
@@ -429,7 +429,7 @@ async function _refreshDesktopControl() {
     if (folderBtn) folderBtn.disabled = !ready;
     if (testCursorBtn) testCursorBtn.disabled = !ready;
     if (testBrowserBtn) testBrowserBtn.disabled = !ready;
-    window._atlasDesktopHint = data.setup_hint || '';
+    window._cerberusDesktopHint = data.setup_hint || '';
   } catch (_) {}
 }
 
@@ -446,8 +446,8 @@ async function _desktopCommand(command, args = {}) {
 }
 
 function _openDesktopSetup() {
-  const hint = window._atlasDesktopHint || (
-    'Atlas runs inside Docker and cannot open Windows apps directly.\n\n'
+  const hint = window._cerberusDesktopHint || (
+    'Cerberus runs inside Docker and cannot open Windows apps directly.\n\n'
     + 'Configure launchable apps in Settings → Desktop Bridge, then enable desktop_commands_enabled '
     + 'and set bridge_url / bridge_token in desktop_permissions.json.'
   );
@@ -480,7 +480,7 @@ export async function showAssistantView({ dockId = 'assistant' } = {}) {
 export async function openAtlasModal(id) {
   _active = true;
   _ensureHomeVisible();
-  window.atlasVoiceService?.onRouteChange?.('home');
+  window.cerberusVoiceService?.onRouteChange?.('home');
   document.title = 'Cerberus OS';
   return cerberusShellModals.openShellModal(id);
 }
@@ -519,8 +519,8 @@ function _bindEvents() {
       const text = (cmdInput?.value || '').trim();
       if (!text) return;
       if (cmdInput) cmdInput.value = '';
-      if (window.atlasHomeConversation?.submitHomeMessage) {
-        await window.atlasHomeConversation.submitHomeMessage(text);
+      if (window.cerberusHomeConversation?.submitHomeMessage) {
+        await window.cerberusHomeConversation.submitHomeMessage(text);
       } else {
         _openAssistant(text, { submit: true, stayOnHome: true });
       }
@@ -605,12 +605,12 @@ export function initHome(deps = {}) {
   });
   cerberusProjectHQ.initAtlasProjectHQ({ showToast: deps.showToast });
   cerberusDesktopApps.initAtlasDesktopApps({ showToast: deps.showToast });
-  import('./atlasLauncherSettings.js').then((m) => m.default.initAtlasLauncherSettings({ showToast: deps.showToast }));
+  import('./cerberusLauncherSettings.js').then((m) => m.default.initAtlasLauncherSettings({ showToast: deps.showToast }));
   cerberusReasoningAudit.initAtlasReasoningAudit({ showToast: deps.showToast });
   cerberusActiveProject.initAtlasActiveProject({
     navigateAssistant: () => deps.openAssistant?.('', { submit: false }),
   });
-  window.atlasPipelineRefresh = () => cerberusPipelineModule.renderPipeline();
+  window.cerberusPipelineRefresh = () => cerberusPipelineModule.renderPipeline();
   _bindEvents();
   // Home shell boots from app.js _bootAtlasAfterSetup() after the setup wizard gate.
   if (deps.defaultHome && !deps.skipDefaultHome

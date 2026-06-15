@@ -4,7 +4,7 @@ import AtlasVoiceContext from './cerberusVoiceContext.js';
 import cerberusVoiceNavigation from './cerberusVoiceNavigation.js';
 import cerberusOverlayTools from './cerberusOverlayTools.js';
 import cerberusCalendarVoice from './cerberusCalendarVoice.js';
-import atlasNotesVoice from './atlasNotesVoice.js';
+import atlasNotesVoice from './cerberusNotesVoice.js';
 import cerberusPersonalisationVoice from './cerberusPersonalisationVoice.js';
 import cerberusPersonality from './cerberusPersonality.js';
 import { cmdHandled, cmdUnhandled } from './cerberusCommandResult.js';
