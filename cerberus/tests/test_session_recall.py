@@ -174,8 +174,8 @@ def test_recall_caps_at_two_sessions():
 
     blocks = _recall_blocks(preface)
     assert blocks
-    bullet_lines = [l for l in blocks[0].split("\n") if l.startswith("—")]
-    assert len(bullet_lines) <= 2
+    ref_lines = [l for l in blocks[0].split("\n") if l.startswith("[ref ")]
+    assert len(ref_lines) <= 2
 
 
 def test_recall_no_block_when_search_returns_nothing():
@@ -191,3 +191,61 @@ def test_recall_no_block_when_search_returns_nothing():
         )
 
     assert not _recall_blocks(preface)
+
+
+def test_recall_snippets_numbered_as_refs():
+    """Recalled snippets use [ref N] numbering for inline citation."""
+    proc = _make_processor()
+    sess = _make_session("current-s", history_count=1)
+
+    past1 = _make_result("past-1", "Session A", "snippet alpha")
+    past2 = _make_result("past-2", "Session B", "snippet beta")
+    with patch("src.session_search.search_session_messages", return_value=[past1, past2]):
+        preface, _, _ = _run_preface(
+            proc,
+            "How do I fix Python ImportError traceback error",
+            sess,
+        )
+
+    blocks = _recall_blocks(preface)
+    assert blocks
+    body = blocks[0]
+    assert "[ref 1]" in body
+    assert "[ref 2]" in body
+
+
+def test_recall_citation_hint_present():
+    """Block includes a citation instruction for the model."""
+    proc = _make_processor()
+    sess = _make_session("s", history_count=1)
+
+    past = _make_result("past-s", "A session", "some snippet")
+    with patch("src.session_search.search_session_messages", return_value=[past]):
+        preface, _, _ = _run_preface(
+            proc,
+            "How do I fix Python ImportError traceback error",
+            sess,
+        )
+
+    blocks = _recall_blocks(preface)
+    assert blocks
+    assert "cite" in blocks[0].lower() or "ref" in blocks[0]
+
+
+def test_recall_single_result_numbered_ref1():
+    """A single recall hit is labeled [ref 1], not [ref 0] or bullet."""
+    proc = _make_processor()
+    sess = _make_session("current-s", history_count=1)
+
+    past = _make_result("past-s", "Solo session", "only snippet")
+    with patch("src.session_search.search_session_messages", return_value=[past]):
+        preface, _, _ = _run_preface(
+            proc,
+            "How do I fix Python ImportError traceback error",
+            sess,
+        )
+
+    blocks = _recall_blocks(preface)
+    assert blocks
+    assert "[ref 1]" in blocks[0]
+    assert "[ref 0]" not in blocks[0]

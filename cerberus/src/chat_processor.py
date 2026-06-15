@@ -282,10 +282,13 @@ class ChatProcessor:
                     if len(_snippets) >= 2:
                         break
                 if _snippets:
-                    lines = ["Related content from past conversations:"]
-                    for r in _snippets:
+                    lines = [
+                        "Related content from past conversations "
+                        "(cite inline as [ref 1], [ref 2] … if you draw on these):",
+                    ]
+                    for i, r in enumerate(_snippets, 1):
                         text = (r.content_snippet or r.content or "")[:200].strip()
-                        lines.append(f'— "{text}" (from: {r.session_name})')
+                        lines.append(f'[ref {i}] "{text}" (from: {r.session_name})')
                     preface.append(untrusted_context_message(
                         "past session recall",
                         "\n".join(lines),
