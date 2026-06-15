@@ -3421,6 +3421,15 @@ function startCerberusApp() {
     searchChatModule.init(API_BASE);
   }
 
+  // CerberusOS home rail button
+  const railHomeBtn = el('rail-cerberus-home');
+  if (railHomeBtn) {
+    railHomeBtn.addEventListener('click', () => {
+      homeModule.bootAtlasHome();
+      homeModule.showHome();
+    });
+  }
+
   // Dashboard rail button
   const railDashBtn = el('rail-dashboard');
   if (railDashBtn) {
