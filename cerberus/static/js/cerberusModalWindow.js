@@ -115,7 +115,7 @@ function _isMin(el) {
 
 function _header(el) {
   return el.querySelector(
-    '.atlas-os-panel-header, .atlas-shell-modal-header, .atlas-project-hq-header, .atlas-hq-header, .modal-header, .atlas-agents-header, .notes-pane-header'
+    '.cerberus-os-panel-header, .cerberus-shell-modal-header, .cerberus-project-hq-header, .cerberus-hq-header, .modal-header, .cerberus-agents-header, .notes-pane-header'
   );
 }
 
@@ -130,9 +130,11 @@ function _applyRect(el, top, left, { width, height, centered = false } = {}) {
   if (centered) {
     el.classList.remove('cerberus-modal-placed');
     el.classList.add('cerberus-modal-centered');
-    el.style.removeProperty('top');
-    el.style.removeProperty('left');
-    el.style.removeProperty('transform');
+    // Set explicit inline centering — inset:auto !important (set above) would otherwise
+    // override the CSS top:50%/left:50% that shell modals rely on, placing them off-screen.
+    el.style.setProperty('top', '50%', 'important');
+    el.style.setProperty('left', '50%', 'important');
+    el.style.setProperty('transform', 'translate(-50%,-50%)', 'important');
   } else {
     el.classList.remove('cerberus-modal-centered');
     el.classList.add('cerberus-modal-placed');
@@ -236,7 +238,7 @@ function _persist(el, id) {
 /* ── header buttons (minimise / pin / close) ─────────────────────────── */
 
 function _updatePinButton(el, id) {
-  const btn = el.querySelector(`[data-atlas-modal-pin="${id}"]`);
+  const btn = el.querySelector(`[data-cerberus-modal-pin="${id}"]`);
   if (!btn) return;
   const pinned = _isPinned(el);
   btn.classList.toggle('cerberus-modal-pin-btn--active', pinned);
@@ -246,7 +248,7 @@ function _updatePinButton(el, id) {
 }
 
 function _updateMinButton(el, id) {
-  const btn = el.querySelector(`[data-atlas-modal-min="${id}"]`);
+  const btn = el.querySelector(`[data-cerberus-modal-min="${id}"]`);
   if (!btn) return;
   const min = _isMin(el);
   btn.setAttribute('aria-pressed', min ? 'true' : 'false');
@@ -300,7 +302,7 @@ function _ensureHeaderButtons(el, id) {
   };
 
   const closeBtn = header.querySelector(
-    '.atlas-shell-modal-close, .atlas-shell-panel-close, .atlas-project-hq-close, [data-hq-close], [data-shell-modal-close], .close-btn, .modal-close'
+    '.cerberus-shell-modal-close, .cerberus-shell-panel-close, .cerberus-project-hq-close, [data-hq-close], [data-shell-modal-close], .close-btn, .modal-close'
   );
   const insert = (btn) => {
     if (closeBtn?.parentElement === header || closeBtn?.parentElement) {
@@ -310,8 +312,8 @@ function _ensureHeaderButtons(el, id) {
     }
   };
 
-  if (!header.querySelector('[data-atlas-modal-min]')) {
-    const minBtn = mkBtn('cerberus-modal-pin-btn atlas-modal-min-btn', 'cerberusModalMin', 'Minimise window');
+  if (!header.querySelector('[data-cerberus-modal-min]')) {
+    const minBtn = mkBtn('cerberus-modal-pin-btn cerberus-modal-min-btn', 'cerberusModalMin', 'Minimise window');
     minBtn.textContent = '–';
     minBtn.title = 'Minimise window';
     insert(minBtn);
@@ -321,7 +323,7 @@ function _ensureHeaderButtons(el, id) {
     });
   }
 
-  if (!header.querySelector('[data-atlas-modal-pin]')) {
+  if (!header.querySelector('[data-cerberus-modal-pin]')) {
     const pinBtn = mkBtn('cerberus-modal-pin-btn', 'cerberusModalPin', 'Dock window');
     pinBtn.textContent = '📌';
     pinBtn.title = 'Dock window (lock position)';
@@ -546,7 +548,7 @@ window.addEventListener('resize', () => {
   if (_reclampTimer) return;
   _reclampTimer = window.setTimeout(() => {
     _reclampTimer = 0;
-    document.querySelectorAll('.atlas-modal-window.atlas-modal-placed:not(.hidden)').forEach((el) => {
+    document.querySelectorAll('.cerberus-modal-window.cerberus-modal-placed:not(.hidden)').forEach((el) => {
       const id = el.dataset.cerberusModalId;
       if (!id) return;
       const rect = el.getBoundingClientRect();

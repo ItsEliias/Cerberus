@@ -106,7 +106,7 @@ function _hidePortaledEl(el) {
   el.classList.add('hidden');
   el.classList.remove('cerberus-shell-panel-active', 'cerberus-shell-modal--open');
   el.setAttribute('aria-hidden', 'true');
-  el.querySelectorAll('.atlas-modal-window').forEach((child) => {
+  el.querySelectorAll('.cerberus-modal-window').forEach((child) => {
     cerberusModalWindow.deactivateAtlasModal(child);
     child.classList.add('hidden');
   });
@@ -168,7 +168,7 @@ function _sweepGhostPortalModals() {
   const portal = _el('cerberus-modal-portal');
   if (!portal) return;
 
-  portal.querySelectorAll('.hidden.atlas-modal-placed, .atlas-modal-window.hidden').forEach((el) => {
+  portal.querySelectorAll('.hidden.cerberus-modal-placed, .cerberus-modal-window.hidden').forEach((el) => {
     cerberusModalWindow.deactivateAtlasModal(el);
   });
 }
@@ -275,12 +275,12 @@ function _portalEl(el) {
 }
 
 function _ensurePanelCloseBtn(panel, modalKey) {
-  if (!panel || panel.querySelector('.atlas-shell-panel-close')) return;
-  const header = panel.querySelector('.atlas-os-panel-header, .atlas-hq-header, .atlas-agents-header');
+  if (!panel || panel.querySelector('.cerberus-shell-panel-close')) return;
+  const header = panel.querySelector('.cerberus-os-panel-header, .cerberus-hq-header, .cerberus-agents-header');
   if (!header) return;
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.className = 'cerberus-shell-modal-close atlas-shell-panel-close';
+  btn.className = 'cerberus-shell-modal-close cerberus-shell-panel-close';
   btn.setAttribute('aria-label', 'Close');
   btn.textContent = '×';
   btn.style.marginLeft = 'auto';
@@ -308,7 +308,7 @@ function _openPanelModal(id) {
 
   _portalEl(panel);
   panel.classList.remove('hidden');
-  panel.classList.add('cerberus-shell-panel-active');
+  panel.classList.add('cerberus-shell-panel-active', 'cerberus-shell-modal--open');
   panel.setAttribute('aria-hidden', 'false');
   _ensurePanelCloseBtn(panel, id);
   cerberusModalWindow.openAtlasModalWindow(panel, cfg.panelId);
@@ -342,10 +342,10 @@ function _openShellModal(id) {
 }
 
 function _activateBrainSection(sectionId) {
-  document.querySelectorAll('.atlas-brain-tab').forEach((tab) => {
+  document.querySelectorAll('.cerberus-brain-tab').forEach((tab) => {
     tab.classList.toggle('active', tab.dataset.brainSection === sectionId);
   });
-  document.querySelectorAll('.atlas-brain-section').forEach((sec) => {
+  document.querySelectorAll('.cerberus-brain-section').forEach((sec) => {
     sec.classList.toggle('active', sec.dataset.brainSection === sectionId);
   });
   if (sectionId === 'memory') {
@@ -390,6 +390,8 @@ export async function openShellModal(id) {
       _portalEl(tasksModal);
       tasksModal.classList.add('cerberus-overlay-modal');
       tasksModal.classList.remove('hidden');
+      const tasksContent = tasksModal.querySelector('.tasks-modal-content, .modal-content');
+      if (tasksContent) cerberusModalWindow.openAtlasModalWindow(tasksContent, 'tasks-modal');
       notifyModalOpened('tasks', tasksModal);
     }
     _showBackdrop();
@@ -563,7 +565,7 @@ function _renderBrainTabs() {
     if (s.id === 'reports') {
       return `<div class="cerberus-brain-section" data-brain-section="reports"><div id="cerberus-brain-reports-content"></div></div>`;
     }
-    return `<div class="cerberus-brain-section" data-brain-section="${s.id}"><p class="cerberus-brain-placeholder">${s.label} — connect backend data here. Atlas stores ${s.label.toLowerCase()} as the source of truth for agent context isolation.</p></div>`;
+    return `<div class="cerberus-brain-section" data-brain-section="${s.id}"><p class="cerberus-brain-placeholder">${s.label} — connect backend data here. Cerberus stores ${s.label.toLowerCase()} as the source of truth for agent context isolation.</p></div>`;
   }).join('');
 
   tabs.addEventListener('click', (e) => {
@@ -600,7 +602,7 @@ function _bindCloseButtons() {
     btn.dataset.bound = '1';
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const shell = btn.closest('.atlas-shell-modal');
+      const shell = btn.closest('.cerberus-shell-modal');
       const key = _shellModalKeyFromEl(shell);
       if (key) {
         closeShellModal(key);

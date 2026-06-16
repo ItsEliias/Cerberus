@@ -80,7 +80,7 @@ const DISPLAY_LABELS = {
 };
 
 const NODE_HINTS = {
-  assistant: { title: 'Assistant', desc: 'Chat with Atlas, run commands, and use voice control.' },
+  assistant: { title: 'Assistant', desc: 'Chat with Cerberus, run commands, and use voice control.' },
   offices: { title: 'Offices', desc: 'Organize departments, employees, and agent workspaces.' },
   projects: { title: 'Projects', desc: 'Browse indexed projects and open Project HQ.' },
   finance: { title: 'Finance', desc: 'Track income, expenses, goals, and financial reports.' },
@@ -508,34 +508,34 @@ function _buildGraphModel(mainOnly = CE_GRAPH_MAIN_ONLY) {
 }
 
 const _MODAL_CHROME_SEL = [
-  '.atlas-shell-modal-header',
-  '.atlas-shell-modal-body',
-  '.atlas-os-panel-header',
-  '.atlas-os-panel > :not(.atlas-os-panel-header)',
+  '.cerberus-shell-modal-header',
+  '.cerberus-shell-modal-body',
+  '.cerberus-os-panel-header',
+  '.cerberus-os-panel > :not(.cerberus-os-panel-header)',
   '.modal-content',
   '.settings-modal-content',
   '.tasks-modal-content',
   '.memory-modal-content',
   '.notes-pane',
-  '.atlas-project-hq',
-  '.atlas-hq-header',
-  '.atlas-project-hq-header',
-  '.atlas-agents-header',
+  '.cerberus-project-hq',
+  '.cerberus-hq-header',
+  '.cerberus-project-hq-header',
+  '.cerberus-agents-header',
 ].join(', ');
 
 const _GLOBE_SURFACE_SEL = [
-  '#atlas-graph-viewport',
-  '#atlas-globe-stage',
-  '.atlas-mc-globe-bg',
-  '#atlas-core',
-  '#atlas-core-canvas',
-  '#atlas-node-connections',
-  '#atlas-globe-hit-layer',
-  '#atlas-power-links',
+  '#cerberus-graph-viewport',
+  '#cerberus-globe-stage',
+  '.cerberus-mc-globe-bg',
+  '#cerberus-core',
+  '#cerberus-core-canvas',
+  '#cerberus-node-connections',
+  '#cerberus-globe-hit-layer',
+  '#cerberus-power-links',
 ].join(', ');
 
 function _clearStuckInteractionLocks() {
-  if (!document.querySelector('.atlas-modal-dragging')) {
+  if (!document.querySelector('.cerberus-modal-dragging')) {
     document.body.classList.remove('cerberus-modal-dragging');
   }
   if (!document.querySelector('.window-resizing')) {
@@ -546,7 +546,7 @@ function _clearStuckInteractionLocks() {
 function _modalInteractionActive() {
   return document.body.classList.contains('cerberus-modal-dragging')
     || document.body.classList.contains('window-resizing-active')
-    || !!document.querySelector('.atlas-modal-dragging')
+    || !!document.querySelector('.cerberus-modal-dragging')
     || !!document.querySelector('.window-resizing');
 }
 
@@ -576,16 +576,16 @@ function _canGlobeDragAt(clientX, clientY) {
   for (const el of stack) {
     if (!el) continue;
 
-    if (el.closest?.('.atlas-os-node-wrap--clickable, .atlas-brain-core')) return false;
+    if (el.closest?.('.cerberus-os-node-wrap--clickable, .cerberus-brain-core')) return false;
     if (el.closest?.('button, input, select, textarea, a, label, [contenteditable="true"]')) return false;
-    if (el.closest?.('#atlas-os-status-bar, #sidebar, #icon-rail, .atlas-top-bar')) return false;
+    if (el.closest?.('#cerberus-os-status-bar, #sidebar, #icon-rail, .cerberus-top-bar')) return false;
 
     const chrome = el.closest?.(_MODAL_CHROME_SEL);
     if (chrome && _isPointerInteractive(chrome)) return false;
 
-    if (el.closest?.('#atlas-modal-portal')) continue;
+    if (el.closest?.('#cerberus-modal-portal')) continue;
 
-    if (el.closest?.(_GLOBE_SURFACE_SEL) || el.closest?.('#atlas-home')) {
+    if (el.closest?.(_GLOBE_SURFACE_SEL) || el.closest?.('#cerberus-home')) {
       globeReachable = true;
       break;
     }
@@ -616,7 +616,7 @@ function _formatNodeLabel(node) {
 }
 
 function _updateGlobeScale() {
-  document.documentElement.style.setProperty('--atlas-graph-zoom', String(_zoom));
+  document.documentElement.style.setProperty('--cerberus-graph-zoom', String(_zoom));
 }
 
 function _zoomForKind(kind) {
@@ -758,10 +758,12 @@ function _rippleChildren(parentId) {
 
 function _activateNode(node) {
   if (!node) return;
+  _hideNodeHud();
+  _hoveredId = null;
   _noteInteraction();
   _playActivation(node.el);
   if (node.id === 'tools' || node.id === 'finance') _rippleChildren(node.id);
-  _animateGlobeFocus(node);
+  // Skip focus animation — modal DOM insertion conflicts with simultaneous RAF rotation
   try {
     const result = _onNodeClick?.(node.action, node);
     if (result && typeof result.catch === 'function') {
@@ -773,7 +775,7 @@ function _activateNode(node) {
 }
 
 function _nodeFromEvent(e) {
-  const wrap = e.target?.closest?.('.atlas-os-node-wrap');
+  const wrap = e.target?.closest?.('.cerberus-os-node-wrap');
   if (!wrap || !_ring?.contains(wrap)) return null;
   return _nodes.find((n) => n.id === wrap.dataset.nodeId) || null;
 }
@@ -814,8 +816,7 @@ function _bindRingEvents() {
     }
   });
   _ring.addEventListener('mouseout', (e) => {
-    const node = _nodeFromEvent(e);
-    if (node && _hoveredId === node.id) {
+    if (!e.relatedTarget?.closest?.('.cerberus-os-node-wrap')) {
       _hoveredId = null;
       _hideNodeHud();
     }
@@ -839,11 +840,11 @@ function _renderDomNodes() {
   const signature = _nodes.map((n) => `${n.id}${n.label}`).join('');
   if (signature === _domSignature && _ring.childElementCount === _nodes.length) {
     const byId = new Map(_nodes.map((n) => [n.id, n]));
-    _ring.querySelectorAll('.atlas-os-node-wrap').forEach((wrap) => {
+    _ring.querySelectorAll('.cerberus-os-node-wrap').forEach((wrap) => {
       const n = byId.get(wrap.dataset.nodeId);
       if (n) {
         n.el = wrap;
-        n.btn = wrap.querySelector('.atlas-os-node');
+        n.btn = wrap.querySelector('.cerberus-os-node');
       }
     });
     _markNodesDirty();
@@ -855,7 +856,7 @@ function _renderDomNodes() {
   _nodes.forEach((n) => {
     const isSub = n.kind !== 'main';
     const wrap = document.createElement('div');
-    wrap.className = `atlas-os-node-wrap${isSub ? ' atlas-os-node-wrap--sub' : ''}`;
+    wrap.className = `cerberus-os-node-wrap${isSub ? ' cerberus-os-node-wrap--sub' : ''}`;
     wrap.dataset.nodeId = n.id;
     wrap.setAttribute('role', 'button');
     wrap.setAttribute('tabindex', '0');
@@ -867,7 +868,7 @@ function _renderDomNodes() {
 
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `atlas-os-node atlas-os-node--${n.color}${isSub ? ' atlas-os-node--sub' : ''}`;
+    btn.className = `cerberus-os-node cerberus-os-node--${n.color}${isSub ? ' cerberus-os-node--sub' : ''}`;
     btn.setAttribute('aria-hidden', 'true');
     btn.tabIndex = -1;
     btn.innerHTML = n.icon;
@@ -1139,12 +1140,14 @@ function _animate(now) {
   _lastFrameAt = now;
 
   if (!_reducedMotion) {
-    const nx = _parX + (_parTX - _parX) * 0.055;
-    const ny = _parY + (_parTY - _parY) * 0.055;
-    if (Math.abs(nx - _parX) > 0.02 || Math.abs(ny - _parY) > 0.02) {
-      _parX = nx;
-      _parY = ny;
-      _applyTransform();
+    if (!_hoveredId) {
+      const nx = _parX + (_parTX - _parX) * 0.055;
+      const ny = _parY + (_parTY - _parY) * 0.055;
+      if (Math.abs(nx - _parX) > 0.02 || Math.abs(ny - _parY) > 0.02) {
+        _parX = nx;
+        _parY = ny;
+        _applyTransform();
+      }
     }
 
     if (!_globeDragging && !_focusAnim && !_modalInteractionActive()
@@ -1338,8 +1341,6 @@ export function initAtlasGraph({ onNodeClick, projects = [] } = {}) {
     brainBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      const brainNode = { ux: 0, uy: 0, uz: 1, kind: 'main', action: 'brain' };
-      _animateGlobeFocus(brainNode);
       try {
         const result = _onNodeClick?.('brain');
         if (result && typeof result.then === 'function') void result;
@@ -1372,6 +1373,19 @@ export function initAtlasGraph({ onNodeClick, projects = [] } = {}) {
   });
 
   window.addEventListener('cerberus-graph-changed', () => refreshAtlasGraph(_projects));
+
+  // When a modal closes, reset interaction timer so globe drift resumes immediately
+  // and clear any stuck HUD overlay.
+  let _wasModalOpen = false;
+  new MutationObserver(() => {
+    const isOpen = document.body.classList.contains('cerberus-modal-open');
+    if (_wasModalOpen && !isOpen) {
+      _lastInteractionAt = 0;
+      _hideNodeHud();
+      _hoveredId = null;
+    }
+    _wasModalOpen = isOpen;
+  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
   if (!_raf) _raf = requestAnimationFrame(_animate);
 
