@@ -4,6 +4,12 @@
 const PANEL_ID = 'cerberus-dashboard';
 let _rafId = null, _vitalsTimer = null, _agentsTimer = null, _usageRaf = null;
 
+function _getRgb() {
+  const c = getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b';
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(c);
+  return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : [192,57,43];
+}
+
 export function open() {
   if (document.getElementById(PANEL_ID)) return;
   _buildPanel();
@@ -173,25 +179,34 @@ function _buildPanel() {
             </button>
           </div>
         </div>
+
+        <!-- Session activity -->
+        <div class="dash-card dash-activity">
+          <div class="dash-card-title">SESSION ACTIVITY <span class="dash-mock-badge">7D</span></div>
+          <canvas id="dash-act-canvas" role="img" aria-label="Session activity past 7 days"></canvas>
+          <div class="dash-act-foot">
+            <span id="dash-act-total">0</span>
+            <span class="dash-usage-period">THIS WEEK</span>
+          </div>
+        </div>
       </div>
     </div>
   `.trim();
 
   document.body.appendChild(panel);
 
-  function _navClose(action) {
+  function _go(action) {
     _cleanup();
-    const el = document.getElementById(PANEL_ID);
-    if (el) { el.style.cssText += ';opacity:0;pointer-events:none;transition:opacity 0.12s ease'; }
-    setTimeout(() => { el?.remove(); action?.(); }, 140);
+    document.getElementById(PANEL_ID)?.remove();
+    action?.();
   }
 
-  panel.querySelector('#dash-close')?.addEventListener('click', () => _navClose(() => document.getElementById('rail-settings')?.click()));
-  panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _navClose(() => { window.history.replaceState({}, '', '/'); document.getElementById('rail-new-session')?.click(); }));
-  panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _navClose(() => { window.location.href = '/home'; }));
-  panel.querySelector('#dash-act-cc')?.addEventListener('click', () => _navClose(() => { window.history.replaceState({}, '', '/'); document.getElementById('sidebar-command-center-btn')?.click(); }));
-  panel.querySelector('#dash-act-notes')?.addEventListener('click', () => _navClose(() => { window.location.href = '/notes'; }));
-  panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => _navClose(() => { window.location.href = '/tasks'; }));
+  panel.querySelector('#dash-close')?.addEventListener('click', () => _go(() => document.getElementById('rail-settings')?.click()));
+  panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('rail-new-session')?.click(); }));
+  panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _go(() => { window.location.href = '/home'; }));
+  panel.querySelector('#dash-act-cc')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('sidebar-command-center-btn')?.click(); }));
+  panel.querySelector('#dash-act-notes')?.addEventListener('click', () => _go(() => { window.location.href = '/notes'; }));
+  panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => _go(() => { window.location.href = '/tasks'; }));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); }, { once: true });
   _tickClock(panel);
   _tickDatetime(panel);
@@ -268,11 +283,12 @@ async function _loadSessions() {
   const el = document.getElementById('dash-sessions-list');
   if (!el) return;
   try {
-    const res = await fetch('/api/sessions?limit=6', { credentials: 'same-origin' });
+    const res = await fetch('/api/sessions?limit=50', { credentials: 'same-origin' });
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     const sessions = Array.isArray(data) ? data : (data.sessions || []);
     _animCounter('dash-cnt-sessions', sessions.length);
+    _drawActivityChart(sessions);
     if (!sessions.length) {
       el.innerHTML = `<div class="dash-empty dash-first-run">
         <div class="dash-empty-icon">◈</div>
@@ -301,6 +317,7 @@ async function _loadSessions() {
     });
   } catch (e) {
     el.innerHTML = '<div class="dash-empty">Could not load sessions.</div>';
+    _drawActivityChart([]);
   }
 }
 
@@ -370,92 +387,72 @@ async function _loadAgents() {
   }
 }
 
-// ── Token usage chart (mock — FLAG 1: needs /api/usage/tokens) ──────
-
 function _drawUsageChart() {
   const canvas = document.getElementById('dash-usage-canvas');
   if (!canvas || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-
-  // Mock data — replace with real fetch once /api/usage/tokens exists
   const days = 14;
-  const mockData = Array.from({ length: days }, (_, i) => ({
-    day: i,
-    tokens: Math.round(4000 + Math.sin(i * 0.9) * 1800 + Math.random() * 1200),
-  }));
-  const total = mockData.reduce((s, d) => s + d.tokens, 0);
-  const totalEl = document.getElementById('dash-usage-total');
-  if (totalEl) _animCounter('dash-usage-total', Math.round(total / 1000), 'K');
-
-  const W = canvas.parentElement?.clientWidth || 220;
-  const H = 54;
+  const data = Array.from({length: days}, (_, i) => Math.round(4000 + Math.sin(i * 0.9) * 1800 + Math.random() * 1200));
+  const total = data.reduce((s, v) => s + v, 0);
+  if (document.getElementById('dash-usage-total')) _animCounter('dash-usage-total', Math.round(total / 1000), 'K');
+  const max = Math.max(...data);
+  const W = canvas.parentElement?.clientWidth || 220, H = 54;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = Math.floor(W * dpr);
-  canvas.height = Math.floor(H * dpr);
-  canvas.style.width = W + 'px';
-  canvas.style.height = H + 'px';
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  const pad = { l: 4, r: 4, t: 6, b: 4 };
-  const inner = { w: W - pad.l - pad.r, h: H - pad.t - pad.b };
-  const max = Math.max(...mockData.map(d => d.tokens));
-
-  function getColor() {
-    return getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b';
-  }
-  function hexToRgb(hex) {
-    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : [192,57,43];
-  }
-
+  canvas.width = Math.floor(W * dpr); canvas.height = Math.floor(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const [pl, pr, pt, pb] = [4, 4, 6, 4];
+  const iw = W - pl - pr, ih = H - pt - pb;
   let phase = 0;
   function draw() {
     if (!document.getElementById(PANEL_ID)) return;
-    phase += 0.018;
-    ctx.clearRect(0, 0, W, H);
-    const c = getColor();
-    const [r,g,b] = hexToRgb(c);
-
-    // Animated area path
-    const pts = mockData.map((d, i) => {
-      const x = pad.l + (i / (days - 1)) * inner.w;
-      const pulse = 1 + Math.sin(phase + i * 0.7) * 0.04;
-      const y = pad.t + inner.h - (d.tokens / max) * inner.h * pulse;
-      return [x, y];
-    });
-
-    // Fill
-    ctx.beginPath();
-    ctx.moveTo(pts[0][0], H - pad.b);
-    ctx.lineTo(pts[0][0], pts[0][1]);
-    pts.forEach(([x,y]) => ctx.lineTo(x, y));
-    ctx.lineTo(pts[pts.length-1][0], H - pad.b);
-    ctx.closePath();
-    const grad = ctx.createLinearGradient(0, pad.t, 0, H);
-    grad.addColorStop(0,   `rgba(${r},${g},${b},0.28)`);
-    grad.addColorStop(0.7, `rgba(${r},${g},${b},0.06)`);
-    grad.addColorStop(1,   `rgba(${r},${g},${b},0)`);
-    ctx.fillStyle = grad;
-    ctx.fill();
-
-    // Line
-    ctx.beginPath();
-    pts.forEach(([x,y], i) => i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
-    ctx.strokeStyle = `rgba(${r},${g},${b},0.75)`;
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-
-    // Leading dot
-    const [lx, ly] = pts[pts.length - 1];
-    ctx.beginPath();
-    ctx.arc(lx, ly, 2.5, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(${r},${g},${b},0.9)`;
-    ctx.fill();
-
+    phase += 0.018; ctx.clearRect(0, 0, W, H);
+    const [r, g, b] = _getRgb();
+    const pts = data.map((v, i) => [pl + (i/(days-1))*iw, pt + ih - (v/max)*ih*(1+Math.sin(phase+i*0.7)*0.04)]);
+    ctx.beginPath(); ctx.moveTo(pts[0][0], H-pb); ctx.lineTo(pts[0][0], pts[0][1]);
+    pts.forEach(([x,y]) => ctx.lineTo(x, y)); ctx.lineTo(pts[pts.length-1][0], H-pb); ctx.closePath();
+    const grd = ctx.createLinearGradient(0, pt, 0, H);
+    grd.addColorStop(0, `rgba(${r},${g},${b},0.28)`); grd.addColorStop(0.7, `rgba(${r},${g},${b},0.06)`); grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grd; ctx.fill();
+    ctx.beginPath(); pts.forEach(([x,y], i) => i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+    ctx.strokeStyle=`rgba(${r},${g},${b},0.75)`; ctx.lineWidth=1.5; ctx.lineJoin='round'; ctx.stroke();
+    const [lx,ly]=pts[pts.length-1]; ctx.beginPath(); ctx.arc(lx,ly,2.5,0,Math.PI*2);
+    ctx.fillStyle=`rgba(${r},${g},${b},0.9)`; ctx.fill();
     _usageRaf = requestAnimationFrame(draw);
   }
   draw();
+}
+
+function _drawActivityChart(sessions) {
+  const canvas = document.getElementById('dash-act-canvas');
+  if (!canvas) return;
+  const days = 7, now = Date.now();
+  const bins = Array.from({length: days}, () => 0);
+  sessions.forEach(s => {
+    const d = Math.floor((now - new Date(s.updated_at || s.created_at || 0).getTime()) / 86400000);
+    if (d >= 0 && d < days) bins[days - 1 - d]++;
+  });
+  const tot = document.getElementById('dash-act-total');
+  if (tot) tot.textContent = bins.reduce((s, v) => s + v, 0);
+  const max = Math.max(...bins, 1);
+  const W = canvas.parentElement?.clientWidth || 200, H = 56;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.cssText = `width:${W}px;height:${H}px;display:block`;
+  const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const [r, g, b] = _getRgb();
+  const bw = Math.max(4, Math.floor((W - 16) / days) - 3);
+  const sp = (W - 16 - bw * days) / Math.max(1, days - 1);
+  const lbls = ['S','M','T','W','T','F','S'];
+  const today = new Date().getDay();
+  bins.forEach((v, i) => {
+    const bh = Math.max(2, (v / max) * (H - 18));
+    const x = 8 + i * (bw + sp);
+    ctx.fillStyle = `rgba(${r},${g},${b},${0.2 + (v / max) * 0.65})`;
+    ctx.fillRect(x, H - 10 - bh, bw, bh);
+    ctx.fillStyle = `rgba(${r},${g},${b},0.3)`;
+    ctx.font = '7px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(lbls[(today - (days - 1 - i) + 7) % 7], x + bw / 2, H - 1);
+  });
 }
 
 function _setVital(key, val, unit) {
@@ -475,7 +472,6 @@ function _cleanup() {
   if (_usageRaf)    { cancelAnimationFrame(_usageRaf); _usageRaf = null; }
   if (_vitalsTimer) { clearInterval(_vitalsTimer); _vitalsTimer = null; }
   if (_agentsTimer) { clearInterval(_agentsTimer); _agentsTimer = null; }
-  _canvas = null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
