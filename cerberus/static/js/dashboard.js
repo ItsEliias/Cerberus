@@ -205,13 +205,9 @@ function _buildPanel() {
     action?.();
   }
 
-  // Settings — open then lift above dashboard (z-index 250 < dashboard 4500)
+  // Settings — close dashboard first so settings isn't obscured by it
   panel.querySelector('#dash-close')?.addEventListener('click', () => {
-    import('./settings.js').then(m => {
-      m.default.open();
-      const modal = document.getElementById('settings-modal');
-      if (modal) modal.style.setProperty('z-index', '5500', 'important');
-    });
+    _go(() => import('./settings.js').then(m => m.default.open()));
   });
   // Notes — open overlay then raise above dashboard
   panel.querySelector('#dash-act-notes')?.addEventListener('click', () => {
