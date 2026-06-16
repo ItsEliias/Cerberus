@@ -1,15 +1,8 @@
-/**
- * dashboard.js — Cerberus post-login landing screen
- * Full-page overlay composited of read-only panels from existing data.
- * All colours via CSS custom properties — theme-reactive by construction.
- */
+// dashboard.js — Cerberus post-login landing screen
+// All colours via CSS custom properties — theme-reactive by construction.
 
 const PANEL_ID = 'cerberus-dashboard';
-let _canvas = null;
-let _rafId  = null;
-let _vitalsTimer = null;
-
-// ── Public API ──────────────────────────────────────────────────────
+let _rafId = null, _vitalsTimer = null, _agentsTimer = null, _usageRaf = null;
 
 export function open() {
   if (document.getElementById(PANEL_ID)) return;
@@ -21,17 +14,10 @@ export function open() {
 export function close() {
   _cleanup();
   const el = document.getElementById(PANEL_ID);
-  if (el) {
-    el.classList.add('dash-leaving');
-    setTimeout(() => el.remove(), 320);
-  }
+  if (el) { el.classList.add('dash-leaving'); setTimeout(() => el.remove(), 320); }
 }
 
-export function toggle() {
-  document.getElementById(PANEL_ID) ? close() : open();
-}
-
-// ── Build DOM ───────────────────────────────────────────────────────
+export function toggle() { document.getElementById(PANEL_ID) ? close() : open(); }
 
 function _buildPanel() {
   const panel = document.createElement('div');
@@ -93,6 +79,20 @@ function _buildPanel() {
           <div class="dash-hero-text">
             <div class="dash-hero-greeting">GUARDIAN ONLINE</div>
             <div class="dash-hero-sub" id="dash-datetime"></div>
+            <div class="dash-counters">
+              <div class="dash-counter-item">
+                <span class="dash-counter-val" id="dash-cnt-sessions">—</span>
+                <span class="dash-counter-lbl">SESSIONS</span>
+              </div>
+              <div class="dash-counter-item">
+                <span class="dash-counter-val" id="dash-cnt-agents">—</span>
+                <span class="dash-counter-lbl">AGENTS</span>
+              </div>
+              <div class="dash-counter-item">
+                <span class="dash-counter-val" id="dash-cnt-status">—</span>
+                <span class="dash-counter-lbl">STATUS</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -118,6 +118,24 @@ function _buildPanel() {
           <div class="dash-card-title">RECENT SESSIONS</div>
           <div id="dash-sessions-list" class="dash-sessions-list">
             <div class="dash-empty">Loading…</div>
+          </div>
+        </div>
+
+        <!-- Active agents -->
+        <div class="dash-card dash-agents">
+          <div class="dash-card-title">ACTIVE AGENTS</div>
+          <div id="dash-agents-list" class="dash-agents-list">
+            <div class="dash-empty">Loading…</div>
+          </div>
+        </div>
+
+        <!-- Token usage — mock until /api/usage/tokens exists (FLAG 1) -->
+        <div class="dash-card dash-usage">
+          <div class="dash-card-title">TOKEN USAGE <span class="dash-mock-badge">PREVIEW</span></div>
+          <canvas id="dash-usage-canvas" aria-label="Token usage chart" role="img"></canvas>
+          <div class="dash-usage-foot">
+            <span id="dash-usage-total">—</span>
+            <span class="dash-usage-period">THIS MONTH</span>
           </div>
         </div>
 
@@ -159,28 +177,15 @@ function _buildPanel() {
 
   document.body.appendChild(panel);
 
-  // Wire close / actions
   panel.querySelector('#dash-close')?.addEventListener('click', close);
-  panel.querySelector('#dash-act-chat')?.addEventListener('click', () => {
-    close();
-    setTimeout(() => document.getElementById('rail-new-session')?.click(), 100);
-  });
-  panel.querySelector('#dash-act-cc')?.addEventListener('click', () => {
-    close();
-    setTimeout(() => document.getElementById('command-center-btn')?.click() || document.querySelector('[data-section="command-center"] .section-header-flex')?.click(), 100);
-  });
+  panel.querySelector('#dash-act-chat')?.addEventListener('click', () => { close(); setTimeout(() => document.getElementById('rail-new-session')?.click(), 100); });
+  panel.querySelector('#dash-act-cc')?.addEventListener('click', () => { close(); setTimeout(() => document.getElementById('sidebar-command-center-btn')?.click(), 100); });
   panel.querySelector('#dash-act-notes')?.addEventListener('click', () => { close(); setTimeout(() => window.location.href = '/notes', 80); });
   panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => { close(); setTimeout(() => document.getElementById('tool-tasks-btn')?.click(), 80); });
-
-  // Close on Escape
-  const _onKey = (e) => { if (e.key === 'Escape') close(); };
-  document.addEventListener('keydown', _onKey, { once: true });
-
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); }, { once: true });
   _tickClock(panel);
   _tickDatetime(panel);
 }
-
-// ── Clock & datetime ────────────────────────────────────────────────
 
 function _tickClock(panel) {
   const el = panel.querySelector('#dash-clock');
@@ -195,8 +200,7 @@ function _tickClock(panel) {
 
 function _tickDatetime(panel) {
   const el = panel.querySelector('#dash-datetime');
-  if (!el) return;
-  el.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
+  if (el) el.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
 }
 
 // ── Globe animation ─────────────────────────────────────────────────
@@ -248,8 +252,10 @@ function _startGlobeAnimation() {
 // ── Data loading ────────────────────────────────────────────────────
 
 async function _loadData() {
-  await Promise.all([_loadSessions(), _loadVitals()]);
-  _vitalsTimer = setInterval(_loadVitals, 8000);
+  await Promise.all([_loadSessions(), _loadVitals(), _loadAgents()]);
+  _vitalsTimer  = setInterval(_loadVitals,  8000);
+  _agentsTimer  = setInterval(_loadAgents, 12000);
+  _drawUsageChart();
 }
 
 async function _loadSessions() {
@@ -260,6 +266,7 @@ async function _loadSessions() {
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     const sessions = Array.isArray(data) ? data : (data.sessions || []);
+    _animCounter('dash-cnt-sessions', sessions.length);
     if (!sessions.length) {
       el.innerHTML = `<div class="dash-empty dash-first-run">
         <div class="dash-empty-icon">◈</div>
@@ -301,12 +308,150 @@ async function _loadVitals() {
     _setVital('disk', v.disk_percent ?? -1, '%');
     _setVital('lat',  v.latency_ms   ?? -1, 'ms');
     const status = document.getElementById('dash-status-text');
+    const cpu = v.cpu_percent ?? 0;
     if (status) {
-      const cpu = v.cpu_percent ?? 0;
       status.textContent = cpu > 85 ? 'HIGH LOAD' : cpu > 60 ? 'ACTIVE' : 'ONLINE';
       status.dataset.level = cpu > 85 ? 'warn' : 'ok';
     }
+    const cntStatus = document.getElementById('dash-cnt-status');
+    if (cntStatus) cntStatus.textContent = cpu > 85 ? 'HIGH' : cpu > 60 ? 'BUSY' : 'IDLE';
   } catch (_) {}
+}
+
+// ── Animated counter ────────────────────────────────────────────────
+
+function _animCounter(id, to, suffix) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const from = parseFloat(el.textContent) || 0;
+  const dur = 900;
+  const start = performance.now();
+  const tick = (now) => {
+    const t = Math.min((now - start) / dur, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(from + (to - from) * eased) + (suffix || '');
+    if (t < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+// ── Agents card ──────────────────────────────────────────────────────
+
+async function _loadAgents() {
+  const el = document.getElementById('dash-agents-list');
+  if (!el) return;
+  try {
+    const res = await fetch('/api/cyberapps/operations/agents', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    const agents = data.agents || [];
+    const cntEl = document.getElementById('dash-cnt-agents');
+    if (cntEl) _animCounter('dash-cnt-agents', agents.length);
+    if (!agents.length) {
+      el.innerHTML = '<div class="dash-empty">No active agents.</div>';
+      return;
+    }
+    el.innerHTML = agents.slice(0, 6).map(a => {
+      const status = a.status || 'idle';
+      const name = _esc(a.name || a.id || 'Agent');
+      return `<div class="dash-agent-row">
+        <span class="dash-agent-dot dash-agent-dot--${status}"></span>
+        <span class="dash-agent-name">${name}</span>
+        <span class="dash-agent-status">${_esc(status).toUpperCase()}</span>
+      </div>`;
+    }).join('');
+  } catch (_) {
+    const el2 = document.getElementById('dash-agents-list');
+    if (el2) el2.innerHTML = '<div class="dash-empty">Agents unavailable.</div>';
+  }
+}
+
+// ── Token usage chart (mock — FLAG 1: needs /api/usage/tokens) ──────
+
+function _drawUsageChart() {
+  const canvas = document.getElementById('dash-usage-canvas');
+  if (!canvas || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+  // Mock data — replace with real fetch once /api/usage/tokens exists
+  const days = 14;
+  const mockData = Array.from({ length: days }, (_, i) => ({
+    day: i,
+    tokens: Math.round(4000 + Math.sin(i * 0.9) * 1800 + Math.random() * 1200),
+  }));
+  const total = mockData.reduce((s, d) => s + d.tokens, 0);
+  const totalEl = document.getElementById('dash-usage-total');
+  if (totalEl) _animCounter('dash-usage-total', Math.round(total / 1000), 'K');
+
+  const W = canvas.parentElement?.clientWidth || 220;
+  const H = 54;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.floor(W * dpr);
+  canvas.height = Math.floor(H * dpr);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const pad = { l: 4, r: 4, t: 6, b: 4 };
+  const inner = { w: W - pad.l - pad.r, h: H - pad.t - pad.b };
+  const max = Math.max(...mockData.map(d => d.tokens));
+
+  function getColor() {
+    return getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b';
+  }
+  function hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : [192,57,43];
+  }
+
+  let phase = 0;
+  function draw() {
+    if (!document.getElementById(PANEL_ID)) return;
+    phase += 0.018;
+    ctx.clearRect(0, 0, W, H);
+    const c = getColor();
+    const [r,g,b] = hexToRgb(c);
+
+    // Animated area path
+    const pts = mockData.map((d, i) => {
+      const x = pad.l + (i / (days - 1)) * inner.w;
+      const pulse = 1 + Math.sin(phase + i * 0.7) * 0.04;
+      const y = pad.t + inner.h - (d.tokens / max) * inner.h * pulse;
+      return [x, y];
+    });
+
+    // Fill
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], H - pad.b);
+    ctx.lineTo(pts[0][0], pts[0][1]);
+    pts.forEach(([x,y]) => ctx.lineTo(x, y));
+    ctx.lineTo(pts[pts.length-1][0], H - pad.b);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, pad.t, 0, H);
+    grad.addColorStop(0,   `rgba(${r},${g},${b},0.28)`);
+    grad.addColorStop(0.7, `rgba(${r},${g},${b},0.06)`);
+    grad.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    pts.forEach(([x,y], i) => i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.75)`;
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    // Leading dot
+    const [lx, ly] = pts[pts.length - 1];
+    ctx.beginPath();
+    ctx.arc(lx, ly, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${r},${g},${b},0.9)`;
+    ctx.fill();
+
+    _usageRaf = requestAnimationFrame(draw);
+  }
+  draw();
 }
 
 function _setVital(key, val, unit) {
@@ -323,7 +468,9 @@ function _setVital(key, val, unit) {
 
 function _cleanup() {
   if (_rafId)       { cancelAnimationFrame(_rafId); _rafId = null; }
+  if (_usageRaf)    { cancelAnimationFrame(_usageRaf); _usageRaf = null; }
   if (_vitalsTimer) { clearInterval(_vitalsTimer); _vitalsTimer = null; }
+  if (_agentsTimer) { clearInterval(_agentsTimer); _agentsTimer = null; }
   _canvas = null;
 }
 
