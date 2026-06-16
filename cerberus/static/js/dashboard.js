@@ -205,9 +205,10 @@ function _buildPanel() {
     action?.();
   }
 
-  // Settings — close dashboard first so settings isn't obscured by it
+  // Settings + Tasks: use openShellModal so the modal is moved into
+  // #cerberus-modal-portal (z-index 999950) — visible above dashboard (4500)
   panel.querySelector('#dash-close')?.addEventListener('click', () => {
-    _go(() => import('./settings.js').then(m => m.default.open()));
+    import('./cerberusShellModals.js').then(m => m.openShellModal('settings'));
   });
   // Notes — open overlay then raise above dashboard
   panel.querySelector('#dash-act-notes')?.addEventListener('click', () => {
@@ -217,14 +218,8 @@ function _buildPanel() {
       if (el) el.style.zIndex = '5000';
     });
   });
-  // Tasks — bypass overlay tools to avoid async failures; set z-index directly
   panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => {
-    import('./tasks.js').then(async (m) => {
-      m.openTasks?.();
-      await Promise.resolve(); // yield to allow modal to be appended
-      const el = document.getElementById('tasks-modal');
-      if (el) el.style.setProperty('z-index', '5500', 'important');
-    });
+    import('./cerberusShellModals.js').then(m => m.openShellModal('tasks'));
   });
   // Navigation buttons close dashboard first
   panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('rail-new-session')?.click(); }));
