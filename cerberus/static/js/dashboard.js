@@ -181,6 +181,15 @@ function _buildPanel() {
               </svg>
               <span>TASKS</span>
             </button>
+            <button class="dash-action-btn" id="dash-act-theme">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none"/>
+                <circle cx="15.5" cy="10" r="1.5" fill="currentColor" stroke="none"/>
+                <circle cx="12" cy="15" r="1.5" fill="currentColor" stroke="none"/>
+              </svg>
+              <span>THEME</span>
+            </button>
           </div>
         </div>
 
@@ -220,6 +229,13 @@ function _buildPanel() {
   });
   panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => {
     import('./cerberusShellModals.js').then(m => m.openShellModal('tasks'));
+  });
+  panel.querySelector('#dash-act-theme')?.addEventListener('click', () => {
+    const modal = document.getElementById('theme-modal');
+    if (!modal) return;
+    const portal = document.getElementById('cerberus-modal-portal');
+    if (portal && modal.parentElement !== portal) portal.appendChild(modal);
+    modal.classList.remove('hidden');
   });
   // Navigation buttons close dashboard first
   panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('rail-new-session')?.click(); }));
