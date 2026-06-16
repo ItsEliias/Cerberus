@@ -201,7 +201,7 @@ function _buildPanel() {
     action?.();
   }
 
-  panel.querySelector('#dash-close')?.addEventListener('click', () => _go(() => document.getElementById('rail-settings')?.click()));
+  panel.querySelector('#dash-close')?.addEventListener('click', () => _go(() => import('./settings.js').then(m => m.default.open())));
   panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('rail-new-session')?.click(); }));
   panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _go(() => { window.location.href = '/home'; }));
   panel.querySelector('#dash-act-cc')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('sidebar-command-center-btn')?.click(); }));

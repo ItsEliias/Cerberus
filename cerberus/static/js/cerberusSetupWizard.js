@@ -8,7 +8,7 @@ let _bound = false;
 let _step = 0;
 let _status = null;
 let _gateResolve = null;
-let _workspacePath = './AtlasWorkspace';
+let _workspacePath = './CerberusWorkspace';
 
 const _BUILDING_LABELS = {
   business: 'Business',
@@ -52,7 +52,7 @@ async function _fetchStatus() {
   if (!res.ok && data.shouldShowWizard !== false) {
     return {
       shouldShowWizard: true,
-      workspacePath: './AtlasWorkspace',
+      workspacePath: './CerberusWorkspace',
       setupComplete: false,
     };
   }
@@ -62,6 +62,9 @@ async function _fetchStatus() {
 function _readForm() {
   return {
     userName: (_el('cerberus-setup-user-name')?.value || '').trim(),
+    userRole: (_el('cerberus-setup-user-role')?.value || '').trim(),
+    userCompany: (_el('cerberus-setup-user-company')?.value || '').trim(),
+    userHobbies: (_el('cerberus-setup-user-hobbies')?.value || '').trim(),
     officeName: (_el('cerberus-setup-office-name')?.value || '').trim(),
     buildingType: document.querySelector('input[name="cerberus-setup-building"]:checked')?.value || 'personal',
     aiModel: document.querySelector('input[name="cerberus-setup-model"]:checked')?.value || 'gemma',
@@ -85,7 +88,7 @@ function _validateStep(step) {
 }
 
 function _updateProgress() {
-  document.querySelectorAll('.atlas-setup-progress-item').forEach((item) => {
+  document.querySelectorAll('.cerberus-setup-progress-item').forEach((item) => {
     const idx = Number(item.dataset.stepIndex);
     item.classList.toggle('cerberus-setup-progress-item--active', idx === _step);
     item.classList.toggle('cerberus-setup-progress-item--done', idx < _step);
@@ -115,7 +118,7 @@ function _showStep(step) {
     sessionStorage.setItem(STEP_KEY, String(_step));
   } catch (_) {}
 
-  document.querySelectorAll('.atlas-setup-step').forEach((panel) => {
+  document.querySelectorAll('.cerberus-setup-step').forEach((panel) => {
     const idx = Number(panel.dataset.setupStep);
     const active = idx === _step;
     panel.classList.toggle('cerberus-setup-step--active', active);
@@ -130,20 +133,28 @@ function _showStep(step) {
 function _fillSummary() {
   const form = _readForm();
   const nameEl = _el('cerberus-setup-summary-name');
+  const roleEl = _el('cerberus-setup-summary-role');
+  const roleRow = _el('cerberus-setup-summary-role-row');
+  const companyEl = _el('cerberus-setup-summary-company');
+  const companyRow = _el('cerberus-setup-summary-company-row');
   const officeEl = _el('cerberus-setup-summary-office');
   const buildingEl = _el('cerberus-setup-summary-building');
   const modelEl = _el('cerberus-setup-summary-model');
   const storageEl = _el('cerberus-setup-summary-storage');
   if (nameEl) nameEl.textContent = form.userName || '—';
+  if (roleEl) roleEl.textContent = form.userRole || '—';
+  if (roleRow) roleRow.hidden = !form.userRole;
+  if (companyEl) companyEl.textContent = form.userCompany || '—';
+  if (companyRow) companyRow.hidden = !form.userCompany;
   if (officeEl) officeEl.textContent = form.officeName || '—';
   if (buildingEl) buildingEl.textContent = _BUILDING_LABELS[form.buildingType] || form.buildingType;
   if (modelEl) modelEl.textContent = _MODEL_LABELS[form.aiModel] || form.aiModel;
-  if (storageEl) storageEl.textContent = form.workspacePath || './AtlasWorkspace';
+  if (storageEl) storageEl.textContent = form.workspacePath || './CerberusWorkspace';
 }
 
 function _applyStatus(status) {
   _status = status;
-  _workspacePath = status.workspacePath || status.storagePath || './AtlasWorkspace';
+  _workspacePath = status.workspacePath || status.storagePath || './CerberusWorkspace';
   const pathEl = _el('cerberus-setup-storage-path');
   if (pathEl) pathEl.textContent = _workspacePath;
 }
@@ -169,6 +180,9 @@ async function _completeSetup() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userName: form.userName,
+        userRole: form.userRole,
+        userCompany: form.userCompany,
+        userHobbies: form.userHobbies,
         officeName: form.officeName,
         buildingType: form.buildingType,
         aiProvider: 'local',
@@ -191,7 +205,7 @@ async function _completeSetup() {
     } catch (_) {}
 
     _hide();
-    _deps.showToast?.(data.message || 'Atlas workspace ready.');
+    _deps.showToast?.(data.message || 'Cerberus workspace ready.');
     await _deps.onComplete?.(data);
     _gateResolve?.(true);
     _gateResolve = null;
@@ -218,7 +232,7 @@ function _bind() {
   _el('cerberus-setup-finish')?.addEventListener('click', () => void _completeSetup());
 
   _el('cerberus-setup-storage-default')?.addEventListener('click', () => {
-    _workspacePath = _status?.workspacePath || './AtlasWorkspace';
+    _workspacePath = _status?.workspacePath || './CerberusWorkspace';
     const pathEl = _el('cerberus-setup-storage-path');
     if (pathEl) pathEl.textContent = _workspacePath;
   });
