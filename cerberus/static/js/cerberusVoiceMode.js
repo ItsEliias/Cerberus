@@ -300,7 +300,7 @@ function _setStatus(status) {
   window.cerberusVoiceService?.setListeningLabel?.(listening ? '…' : (status === 'processing' ? 'processing' : status === 'speaking' ? 'speaking' : ''));
   const chip = _el('cerberus-voice-status-chip');
   if (chip) chip.dataset.status = status;
-  const chipText = chip?.querySelector('.atlas-voice-status-chip-text');
+  const chipText = chip?.querySelector('.cerberus-voice-status-chip-text');
   if (chipText) chipText.textContent = listening ? 'Wake Listening ●' : (hudLabel || 'Standby');
 }
 
@@ -356,7 +356,7 @@ function _updateCommandInputDisplay(text, { interim = '' } = {}) {
   } else if (!listening && !_submitting) {
     input.classList.remove('cerberus-mc-command-input--listening');
     if (!input.matches(':focus')) {
-      input.placeholder = 'Command Atlas…';
+      input.placeholder = 'Command Cerberus…';
     }
   }
 }
@@ -366,7 +366,7 @@ export function clearCommandInput() {
   if (input) {
     input.value = '';
     input.classList.remove('cerberus-mc-command-input--listening');
-    input.placeholder = 'Command Atlas…';
+    input.placeholder = 'Command Cerberus…';
   }
 }
 
@@ -409,9 +409,9 @@ function _updatePrivacyText() {
   const el = _el('cerberus-voice-privacy-browser');
   if (!el || _isWhisperMode()) return;
   if (_conversationActive) {
-    el.textContent = "Conversation Mode is on. Say your command, or 'Atlas standby' to stop.";
+    el.textContent = "Conversation Mode is on. Say your command, or 'Cerberus standby' to stop.";
   } else if (_passiveWakeActive) {
-    el.textContent = "Passive wake listening is on. Say 'Hey Atlas' to activate — no clap detection.";
+    el.textContent = "Passive wake listening is on. Say 'Hey Cerberus' to activate — no clap detection.";
   } else {
     el.textContent = 'Microphone is off until you open Home or start listening.';
   }
@@ -459,7 +459,7 @@ function _pickDefaultVoice(voices) {
   }
   const en = voices.filter(v => (v.lang || '').toLowerCase().startsWith('en'));
   const settings = window.AtlasUserSettings?.getAtlasUserSettings?.();
-  if (settings?.assistant_identity === 'Atlasia') {
+  if (settings?.assistant_identity === 'Cerberusia') {
     const ukFemale = en.find(v => v.name.includes('Google UK English Female'));
     if (ukFemale) return ukFemale.name;
   }
@@ -702,7 +702,7 @@ function _updateModeUI() {
   const browserPrivacy = _el('cerberus-voice-privacy-browser');
   const whisperPrivacy = _el('cerberus-voice-privacy-whisper');
   const wakeNote = _el('cerberus-voice-wake-whisper-note');
-  const wakeToggleWrap = document.querySelector('.atlas-voice-wake-toggle');
+  const wakeToggleWrap = document.querySelector('.cerberus-voice-wake-toggle');
   const modeSel = _el('cerberus-voice-stt-mode');
   const startBtn = _el('cerberus-voice-start-btn');
   const stopBtn = _el('cerberus-voice-stop-btn');
@@ -1620,7 +1620,7 @@ function _setWakeMode(enabled) {
   if (_deps.showToast) _deps.showToast('Conversation mode — say a wake phrase');
   const online = _el('cerberus-voice-wake-indicator');
   if (online) {
-    online.textContent = 'Say “Hey Atlas”…';
+    online.textContent = 'Say “Hey Cerberus”…';
   }
   _startWakeListening();
 }
@@ -1767,7 +1767,7 @@ function _bindEvents() {
   const modal = _el('cerberus-voice-modal');
   if (modal) {
     modal.addEventListener('click', (e) => {
-      if (e.target.closest('[data-atlas-voice-close]')) closeVoiceMode();
+      if (e.target.closest('[data-cerberus-voice-close]')) closeVoiceMode();
     });
   }
 

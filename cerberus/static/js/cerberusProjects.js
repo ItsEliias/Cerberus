@@ -89,7 +89,7 @@ function _renderWorkspace() {
     const indexed = valid.filter(p => p.last_indexed_at || p.indexed);
     discovered.textContent = valid.length
       ? `${valid.length} project(s) linked · ${indexed.length} indexed`
-      : 'No projects discovered yet — scan after adding folders to your Atlas Workspace';
+      : 'No projects discovered yet — scan after adding folders to your Cerberus Workspace';
   }
 }
 
@@ -488,7 +488,7 @@ async function _deepIndexAllProjects() {
 
 function _browseWorkspaceRoot() {
   if (!_status.mounted) {
-    if (_deps.showToast) _deps.showToast(_status.warning || 'Atlas Workspace is not mounted');
+    if (_deps.showToast) _deps.showToast(_status.warning || 'Cerberus Workspace is not mounted');
     return;
   }
   const start = _status.browse_start || _status.container_root || '/workspace';
@@ -810,14 +810,14 @@ function _bindEvents() {
   const setupModal = _el('cerberus-workspace-setup-modal');
   if (setupModal) {
     setupModal.addEventListener('click', (e) => {
-      if (e.target.closest('[data-atlas-setup-close]')) _closeSetupModal();
+      if (e.target.closest('[data-cerberus-workspace-setup-close]')) _closeSetupModal();
     });
   }
 
   const sumModal = _el('cerberus-project-summary-modal');
   if (sumModal) {
     sumModal.addEventListener('click', (e) => {
-      if (e.target.closest('[data-atlas-summary-close]')) _closeSummaryModal();
+      if (e.target.closest('[data-cerberus-summary-close]')) _closeSummaryModal();
     });
   }
   document.addEventListener('keydown', (e) => {

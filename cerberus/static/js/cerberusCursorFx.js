@@ -124,7 +124,7 @@ function _setup() {
 
   document.body.appendChild(wrap);
 
-  _glow = wrap.querySelector('.atlas-cursor-fx-glow');
+  _glow = wrap.querySelector('.cerberus-cursor-fx-glow');
 
   document.body.classList.add('cerberus-cursor-fx-on');
 

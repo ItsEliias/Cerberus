@@ -29,6 +29,11 @@ const MIN_H = 200;
 // within EDGE px of the window border (close buttons, sliders, inputs, links).
 const INTERACTIVE = 'button, input, select, textarea, a, [contenteditable=""], [contenteditable="true"]';
 
+export function clearWindowResizeLock() {
+  document.body.classList.remove('window-resizing-active');
+  document.body.style.cursor = '';
+}
+
 export function makeWindowResizable(content, options = {}) {
   if (!content) return;
   const modal = options.modal || null;

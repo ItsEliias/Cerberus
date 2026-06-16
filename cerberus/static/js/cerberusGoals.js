@@ -52,7 +52,7 @@ function _renderFinanceGoal(goal, container) {
       </div>
     </div>
   `;
-  const saveBtn = container.querySelector('.atlas-goal-save-btn');
+  const saveBtn = container.querySelector('.cerberus-goal-save-btn');
   saveBtn?.addEventListener('click', async () => {
     const cur = container.querySelector('[data-field="current"]');
     const tgt = container.querySelector('[data-field="target"]');

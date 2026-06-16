@@ -279,7 +279,7 @@ function _renderPods() {
     const task = _workingAgents.has(id) ? 'Generating…' : (a.current_task || '—');
     const project = _linkedProjectLine(a);
     return `
-      <article class="cerberus-agent-pod atlas-agent-pod--${pos}${_workingAgents.has(id) ? ' atlas-agent-pod--working' : ''}"
+      <article class="cerberus-agent-pod cerberus-agent-pod--${pos}${_workingAgents.has(id) ? ' cerberus-agent-pod--working' : ''}"
         data-agent-id="${_esc(a.id)}" data-agent-office="${_esc(a.id)}" role="button" tabindex="0"
         aria-label="Open ${_esc(_deptName(a))}">
         <header class="cerberus-agent-pod-head">
@@ -288,7 +288,7 @@ function _renderPods() {
             <span class="cerberus-agent-pod-dept">${_esc(_deptName(a))}</span>
             <span class="cerberus-agent-pod-code">${short}</span>
           </div>
-          <span class="cerberus-agent-pod-status atlas-agent-pod-status--${_esc(st)}">${_workingAgents.has(id) ? 'Work' : _statusLabel(a.status)}</span>
+          <span class="cerberus-agent-pod-status cerberus-agent-pod-status--${_esc(st)}">${_workingAgents.has(id) ? 'Work' : _statusLabel(a.status)}</span>
         </header>
         <h3 class="cerberus-agent-pod-name">${_esc(a.name)}</h3>
         <ul class="cerberus-agent-pod-lines">
@@ -312,9 +312,9 @@ function _renderBriefingStrip() {
   const approval = (_queue.waiting_for_approval || []).length;
   const top = (v.priorities || [])[0];
   strip.innerHTML = `
-    <span class="cerberus-hq-strip-item">${_esc(v.greeting || 'Atlas Council online')}</span>
+    <span class="cerberus-hq-strip-item">${_esc(v.greeting || 'Cerberus Council online')}</span>
     <span class="cerberus-hq-strip-item">${approval} pending approval${approval === 1 ? '' : 's'}</span>
-    ${top ? `<span class="cerberus-hq-strip-item atlas-hq-strip-priority">Priority: ${_esc(top.name)}${top.potential_score != null ? ` (${top.potential_score})` : ''}</span>` : ''}
+    ${top ? `<span class="cerberus-hq-strip-item cerberus-hq-strip-priority">Priority: ${_esc(top.name)}${top.potential_score != null ? ` (${top.potential_score})` : ''}</span>` : ''}
     ${v.recommendation ? `<span class="cerberus-hq-strip-rec">${_esc(v.recommendation)}</span>` : ''}
   `;
 }
@@ -336,12 +336,12 @@ function _renderSidebar() {
       <span class="cerberus-hq-status-label">In progress</span>
       <strong class="cerberus-hq-status-value">${pending}</strong>
     </div>
-    <div class="cerberus-hq-status-card atlas-hq-status-card--wide">
+    <div class="cerberus-hq-status-card cerberus-hq-status-card--wide">
       <span class="cerberus-hq-status-label">Top project</span>
       <strong class="cerberus-hq-status-value">${_esc(top?.name || '—')}</strong>
       ${top?.stage ? `<span class="cerberus-hq-status-meta">${_esc(top.stage)}${top.potential_score != null ? ` · ${top.potential_score}/100` : ''}</span>` : ''}
     </div>
-    <div class="cerberus-hq-status-card atlas-hq-status-card--wide">
+    <div class="cerberus-hq-status-card cerberus-hq-status-card--wide">
       <span class="cerberus-hq-status-label">Recommendation</span>
       <p class="cerberus-hq-status-rec">${_esc(v.recommendation || 'Refresh briefing on Home for latest guidance.')}</p>
     </div>
@@ -454,8 +454,8 @@ function _openReportPanel(report) {
   }
   if (badgesEl) {
     badgesEl.innerHTML = `
-      <span class="cerberus-report-badge atlas-report-badge--status">${_esc(status)}</span>
-      ${report.requires_approval ? '<span class="cerberus-report-badge atlas-report-badge--approval">Approval required</span>' : ''}
+      <span class="cerberus-report-badge cerberus-report-badge--status">${_esc(status)}</span>
+      ${report.requires_approval ? '<span class="cerberus-report-badge cerberus-report-badge--approval">Approval required</span>' : ''}
       ${report.next_agent_suggestion ? `<span class="cerberus-report-badge">Next: ${_esc(report.next_agent_suggestion)}</span>` : ''}
     `;
   }
@@ -477,12 +477,12 @@ function _openReportPanel(report) {
     const nextAgent = report.next_agent_suggestion;
     const hasProject = !!pid;
     actionsEl.innerHTML = `
-      ${canAct ? '<button type="button" class="cerberus-report-action-btn atlas-report-action-btn--approve" data-report-action="approve">Approve</button>' : ''}
+      ${canAct ? '<button type="button" class="cerberus-report-action-btn cerberus-report-action-btn--approve" data-report-action="approve">Approve</button>' : ''}
       ${canAct ? '<button type="button" class="cerberus-report-action-btn" data-report-action="revise">Request Revision</button>' : ''}
       <button type="button" class="cerberus-report-action-btn" data-report-action="archive">Archive</button>
-      ${canAct && nextAgent && hasProject ? '<button type="button" class="cerberus-report-action-btn atlas-report-action-btn--send" data-report-action="send_next">Send to Next Agent</button>' : ''}
+      ${canAct && nextAgent && hasProject ? '<button type="button" class="cerberus-report-action-btn cerberus-report-action-btn--send" data-report-action="send_next">Send to Next Agent</button>' : ''}
       ${hasProject ? `<button type="button" class="cerberus-report-action-btn" data-report-action="open_project" data-project-id="${_esc(pid)}">Open Project</button>` : ''}
-      <button type="button" class="cerberus-report-action-btn" data-report-action="ask_atlas">Ask Atlas About This</button>
+      <button type="button" class="cerberus-report-action-btn" data-report-action="ask_cerberus">Ask Cerberus About This</button>
     `;
   }
 
@@ -542,7 +542,7 @@ async function _reportAction(action, extra = {}) {
     return;
   }
 
-  if (action === 'ask_atlas') {
+  if (action === 'ask_cerberus') {
     const prompt = `Review this council report and advise next steps:\n\n**${report?.title || 'Report'}**\n${report?.summary || ''}`;
     if (_deps.openAssistant) _deps.openAssistant(prompt, { submit: false });
     return;
@@ -1002,7 +1002,7 @@ async function _openCouncilModal() {
       <p>${_esc(v.headline || '')}</p>
       <p class="cerberus-council-rec">${_esc(v.recommendation || '')}</p>
     </section>
-    <section class="cerberus-council-section atlas-council-section--decision">
+    <section class="cerberus-council-section cerberus-council-section--decision">
       <h3>6. Recommended Next Decision</h3>
       <p class="cerberus-council-decision">${_esc(nextDecision)}</p>
     </section>
@@ -1055,7 +1055,7 @@ function _drawConnectionLines() {
   ctx.clearRect(0, 0, rect.width, rect.height);
   const t = performance.now() * 0.001;
 
-  const pods = COUNCIL_ORDER.map(id => document.querySelector(`.atlas-agent-pod[data-agent-id="${id}"]`)).filter(Boolean);
+  const pods = COUNCIL_ORDER.map(id => document.querySelector(`.cerberus-agent-pod[data-agent-id="${id}"]`)).filter(Boolean);
   const points = pods.map(p => _podCenter(p, rect));
 
   function drawSegment(a, b, { alpha = 0.3, width = 1, dash = [6, 10], color = '80, 200, 255', speed = 45 } = {}) {
@@ -1158,7 +1158,7 @@ function _bindEvents() {
   }
 
   _el('cerberus-agent-office-modal')?.addEventListener('click', (e) => {
-    if (e.target.closest('[data-atlas-agent-office-close]')) _closeAgentOffice();
+    if (e.target.closest('[data-cerberus-agent-office-close]')) _closeAgentOffice();
     const row = e.target.closest('[data-report-id]');
     if (row) openReport(row.dataset.reportId);
   });
@@ -1173,7 +1173,7 @@ function _bindEvents() {
   });
 
   _el('cerberus-council-modal')?.addEventListener('click', (e) => {
-    if (e.target.closest('[data-atlas-council-close]')) _closeCouncilModal();
+    if (e.target.closest('[data-cerberus-council-close]')) _closeCouncilModal();
     const link = e.target.closest('[data-report-id]');
     if (link) {
       _closeCouncilModal();
@@ -1184,7 +1184,7 @@ function _bindEvents() {
   const modal = _el('cerberus-report-modal');
   if (modal) {
     modal.addEventListener('click', (e) => {
-      if (e.target.closest('[data-atlas-report-close]')) _closeReportModal();
+      if (e.target.closest('[data-cerberus-report-close]')) _closeReportModal();
       const actionBtn = e.target.closest('[data-report-action]');
       if (actionBtn) {
         _reportAction(actionBtn.dataset.reportAction, {

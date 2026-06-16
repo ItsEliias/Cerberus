@@ -3,7 +3,7 @@
 import cerberusPersonality from './cerberusPersonality.js';
 
 export const THEMES = {
-  'default-blue': { label: 'Atlas Blue', toast: 'Atlas Blue Theme Activated' },
+  'default-blue': { label: 'Cerberus Blue', toast: 'Cerberus Blue Theme Activated' },
   'matrix-green': { label: 'Matrix Green', toast: 'Matrix Theme Activated' },
   purple: { label: 'Purple', toast: 'Purple Theme Activated' },
   'red-gold': { label: 'Red Gold', toast: 'Red Gold Theme Activated' },
@@ -17,7 +17,7 @@ export const IDENTITY_DEFAULTS = {
     preferred_address: 'sir',
     response_style: 'professional',
   },
-  Atlasia: {
+  Cerberusia: {
     voice_gender: 'female',
     preferred_voice: 'Google UK English Female',
     preferred_address: 'sir',
@@ -134,13 +134,13 @@ export function toastThemeChange(themeId) {
 }
 
 export function toastIdentityChange(identity) {
-  const voice = identity === 'Atlasia' ? 'British Female' : 'British Male';
+  const voice = identity === 'Cerberusia' ? 'British Female' : 'British Male';
   _showToast(`✓ ${identity} Activated — Voice: ${voice}`);
 }
 
 export function toastAddressChange(address) {
   const label = address || 'no title';
-  _showToast(`✓ Preferred address updated — Atlas will now refer to you as "${label}"`);
+  _showToast(`✓ Preferred address updated — Cerberus will now refer to you as "${label}"`);
 }
 
 export function getActivationGreeting() {

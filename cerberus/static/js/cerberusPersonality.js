@@ -2,7 +2,7 @@
 
 const ASSISTANT_PROFILES = {
   Atlas: { id: 'Cerberus', label: 'Cerberus', tone: 'professional', defaultGender: 'male' },
-  Atlasia: { id: 'Atlasia', label: 'Atlasia', tone: 'conversational', defaultGender: 'female' },
+  Cerberusia: { id: 'Cerberusia', label: 'Cerberusia', tone: 'conversational', defaultGender: 'female' },
   Athena: { id: 'Athena', label: 'Athena', tone: 'professional', reserved: true },
   Oracle: { id: 'Oracle', label: 'Oracle', tone: 'executive', reserved: true },
   Sentinel: { id: 'Sentinel', label: 'Sentinel', tone: 'minimal', reserved: true },
@@ -52,7 +52,7 @@ export function appendAddress(text) {
 
 export function getGreeting() {
   const { identity, preferred_address: addr, response_style: style } = getProfile();
-  if (identity === 'Atlasia') {
+  if (identity === 'Cerberusia') {
     const map = {
       professional: ['Online.', 'Ready when you are.', "I'm here."],
       friendly: ["Hey — I'm here.", 'Ready when you are.', 'Online.'],
@@ -68,14 +68,14 @@ export function getGreeting() {
 }
 
 export function getStandby() {
-  if (getProfile().identity === 'Atlasia') {
+  if (getProfile().identity === 'Cerberusia') {
     return _pick(['Standing by.', "I'll be here.", 'On standby.']);
   }
   return appendAddress('Standing by');
 }
 
 export function getCompletion() {
-  if (getProfile().identity === 'Atlasia') {
+  if (getProfile().identity === 'Cerberusia') {
     return _pick(['All set.', 'Done.', 'Finished.', 'Everything is ready.', 'Research finished.']);
   }
   return appendAddress(_pick(['Done', 'Completed', 'Research complete']));
@@ -84,13 +84,13 @@ export function getCompletion() {
 export function getConfirmation(action) {
   const text = String(action || '').trim().replace(/[.!?]+$/, '');
   if (!text) return getCompletion();
-  if (getProfile().identity === 'Atlasia') return `${text}.`;
+  if (getProfile().identity === 'Cerberusia') return `${text}.`;
   return appendAddress(text);
 }
 
 export function getError(message) {
   const msg = String(message || 'something went wrong').trim().replace(/[.!?]+$/, '');
-  if (getProfile().identity === 'Atlasia') {
+  if (getProfile().identity === 'Cerberusia') {
     return msg.toLowerCase().startsWith('sorry') ? `${msg}.` : `Sorry — ${msg.toLowerCase()}.`;
   }
   if (!getAddress()) return `Sorry, ${msg.toLowerCase()}.`;
@@ -104,7 +104,7 @@ export function formatAction(action) {
 export function formatQuestion(question) {
   const q = String(question || '').trim().replace(/\?$/, '');
   if (!q) return '';
-  if (getProfile().identity === 'Atlasia') return `${q}?`;
+  if (getProfile().identity === 'Cerberusia') return `${q}?`;
   const addr = getAddress();
   if (!addr) return `${q}?`;
   return `${q}, ${addr}?`;

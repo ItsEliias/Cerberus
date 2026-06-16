@@ -27,7 +27,7 @@ function _render(data) {
     mountedEl.classList.toggle('cerberus-workspace-mount-badge--ok', mounted);
     mountedEl.classList.toggle('cerberus-workspace-mount-badge--warn', !mounted);
   }
-  if (inputEl && !inputEl.dataset.touched) inputEl.value = settings.workspacePath || './AtlasWorkspace';
+  if (inputEl && !inputEl.dataset.touched) inputEl.value = settings.workspacePath || './CerberusWorkspace';
   if (defaultModeEl) {
     const mode = settings.defaultProjectStorage || 'managed';
     defaultModeEl.querySelectorAll('input[name="cerberus-default-project-storage"]').forEach((inp) => {
@@ -59,7 +59,7 @@ function _bind() {
     const input = _el('cerberus-settings-storage-path-input');
     const defaultMode = document.querySelector('input[name="cerberus-default-project-storage"]:checked')?.value || 'managed';
     const body = {
-      workspacePath: input?.value?.trim() || './AtlasWorkspace',
+      workspacePath: input?.value?.trim() || './CerberusWorkspace',
       defaultProjectStorage: defaultMode,
     };
     await fetch('/api/cerberus/workspace/ce/settings', {
@@ -82,7 +82,7 @@ function _bind() {
     if (!start) return;
     try {
       const mod = await import('./workspace.js');
-      mod.default?.openWorkspaceBrowser?.({ startPath: start, title: 'Atlas Storage' });
+      mod.default?.openWorkspaceBrowser?.({ startPath: start, title: 'Cerberus Storage' });
     } catch (_) {
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(start);

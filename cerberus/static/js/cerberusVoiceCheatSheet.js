@@ -4,7 +4,7 @@ const COMMAND_GROUPS = [
   {
     id: 'navigation',
     label: 'Navigation',
-    hint: 'Move around Atlas without leaving the home screen.',
+    hint: 'Move around Cerberus without leaving the home screen.',
     commands: [
       { say: '“Open assistant”', does: 'Opens the Assistant modal' },
       { say: '“Open offices”', does: 'Opens the Offices modal' },
@@ -16,7 +16,7 @@ const COMMAND_GROUPS = [
       { say: '“Open settings”', does: 'Opens Settings' },
       { say: '“Open voice commands”', does: 'Opens this cheat sheet' },
       { say: '“Open system monitor”', does: 'Opens the System Monitor' },
-      { say: '“Go to home”', does: 'Returns to the Atlas home view' },
+      { say: '”Go to home”', does: 'Returns to the Cerberus home view' },
     ],
   },
   {
@@ -76,7 +76,7 @@ const COMMAND_GROUPS = [
     label: 'System commands',
     hint: 'Voice session and workspace control.',
     commands: [
-      { say: '“Stop speaking”', does: 'Interrupts Atlas speech' },
+      { say: '”Stop speaking”', does: 'Interrupts Cerberus speech' },
       { say: '“Refresh workspace”', does: 'Reloads projects, agents and briefing data' },
       { say: '“Continue”', does: 'Resumes after a pause' },
     ],
@@ -98,7 +98,7 @@ export function renderVoiceCheatSheet() {
 
   body.innerHTML = `
     <p class="cerberus-cheatsheet-intro">
-      Say <strong>“Atlas …”</strong> followed by any command below, or type it into the Assistant.
+      Say <strong>”Cerberus …”</strong> followed by any command below, or type it into the Assistant.
       Unknown commands show a notification — they never interrupt you.
     </p>
     ${COMMAND_GROUPS.map((g) => `

@@ -347,8 +347,8 @@ export function parseVoiceAction(transcript, context = AtlasVoiceContext.get()) 
 
 function _scrollActiveModal(direction) {
   const sel = direction === 'down'
-    ? ['.atlas-report-modal:not(.hidden) .atlas-report-modal-body', '.atlas-agent-office-reports-wrap', '.atlas-project-hq-content', '.atlas-hq-modal-body']
-    : ['.atlas-report-modal:not(.hidden) .atlas-report-modal-body', '.atlas-agent-office-reports-wrap', '.atlas-project-hq-content', '.atlas-hq-modal-body'];
+    ? ['.cerberus-report-modal:not(.hidden) .cerberus-report-modal-body', '.cerberus-agent-office-reports-wrap', '.cerberus-project-hq-content', '.cerberus-hq-modal-body']
+    : ['.cerberus-report-modal:not(.hidden) .cerberus-report-modal-body', '.cerberus-agent-office-reports-wrap', '.cerberus-project-hq-content', '.cerberus-hq-modal-body'];
   for (const s of sel) {
     const el = document.querySelector(s);
     if (el) {

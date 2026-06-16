@@ -113,7 +113,7 @@ export async function applyVoiceUiAction(uiAction) {
         }
         break;
       case 'scroll_report_top': {
-        const body = document.querySelector('.atlas-report-modal:not(.hidden) .atlas-report-modal-body');
+        const body = document.querySelector('.cerberus-report-modal:not(.hidden) .cerberus-report-modal-body');
         if (body) body.scrollTop = 0;
         break;
       }

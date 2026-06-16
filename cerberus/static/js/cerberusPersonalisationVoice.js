@@ -35,9 +35,9 @@ export async function tryHandlePersonalisationVoice(transcript) {
 
   m = raw.match(IDENTITY_RE);
   if (m) {
-    const identity = m[1] === 'cerberusia' ? 'Atlasia' : 'Cerberus';
+    const identity = m[1] === 'cerberusia' ? 'Cerberusia' : 'Cerberus';
     const patch = { assistant_identity: identity };
-    if (identity === 'Atlasia') {
+    if (identity === 'Cerberusia') {
       patch.voice_gender = 'female';
       patch.preferred_voice = 'Google UK English Female';
     } else {

@@ -92,7 +92,7 @@ function _renderReports(groups = []) {
           <span>${_esc(r.title || 'Report')}</span>
           <span class="cerberus-hq-report-badge">${_esc(r.status || '')}</span>
           <button type="button" class="cerberus-project-btn atlas-hq-report-open" data-hq-report-id="${_esc(r.id)}">Open Report</button>
-          <button type="button" class="cerberus-project-btn" data-hq-ask-report="${_esc(r.id)}">Ask Atlas</button>
+          <button type="button" class="cerberus-project-btn" data-hq-ask-report="${_esc(r.id)}">Ask Cerberus</button>
         </li>`).join('')}</ul>
     </section>`).join('');
 }

@@ -222,13 +222,24 @@ export function startCerberusCore() {
   }
 
   function _themeRgb() {
-    const raw = getComputedStyle(document.body).getPropertyValue('--atlas-rgb').trim() || '80, 200, 255';
-    const parts = raw.split(',').map((n) => parseInt(n.trim(), 10));
-    return [parts[0] || 80, parts[1] || 200, parts[2] || 255];
+    const raw = getComputedStyle(document.body).getPropertyValue('--atlas-rgb').trim();
+    if (raw) {
+      const parts = raw.split(',').map((n) => parseInt(n.trim(), 10));
+      if (parts.length === 3 && parts.every(Number.isFinite)) return parts;
+    }
+    // Fallback: parse --red so globe canvas matches the active theme accent
+    const red = getComputedStyle(document.body).getPropertyValue('--red').trim();
+    if (red && red.startsWith('#') && red.length >= 7) {
+      const r = parseInt(red.slice(1, 3), 16);
+      const g = parseInt(red.slice(3, 5), 16);
+      const b = parseInt(red.slice(5, 7), 16);
+      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) return [r, g, b];
+    }
+    return [80, 200, 255];
   }
 
   function _graphZoom() {
-    const raw = getComputedStyle(document.documentElement).getPropertyValue('--atlas-graph-zoom').trim();
+    const raw = getComputedStyle(document.documentElement).getPropertyValue('--cerberus-graph-zoom').trim();
     const z = parseFloat(raw);
     return Number.isFinite(z) && z > 0 ? z : 1;
   }

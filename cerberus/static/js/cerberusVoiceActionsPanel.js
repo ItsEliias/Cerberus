@@ -39,7 +39,7 @@ const ACTIONS_BY_CONTEXT = {
     'Move to Projects',
     'Move to Agents',
     'Open Cursor',
-    'Atlas standby',
+    'Cerberus standby',
   ],
 };
 

@@ -4,7 +4,7 @@
 
 export function isCerberusHomeRoute(path = window.location.pathname) {
 
-  return path === '/' || path === '/home';
+  return path === '/home';
 
 }
 

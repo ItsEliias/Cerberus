@@ -75,7 +75,7 @@ async function _pollBackend() {
 function _voiceStatus() {
   const chip = document.getElementById('cerberus-voice-status-chip');
   const status = chip?.dataset?.status || 'idle';
-  const text = chip?.querySelector('.atlas-voice-status-chip-text')?.textContent?.trim();
+  const text = chip?.querySelector('.cerberus-voice-status-chip-text')?.textContent?.trim();
   return text || (status.charAt(0).toUpperCase() + status.slice(1));
 }
 
@@ -94,7 +94,7 @@ function _activeModals() {
 function _setRow(id, value, state = '') {
   const row = _el(id);
   if (!row) return;
-  const valEl = row.querySelector('.atlas-sysmon-value');
+  const valEl = row.querySelector('.cerberus-sysmon-value');
   if (valEl && valEl.textContent !== value) valEl.textContent = value;
   if (state) row.dataset.state = state;
   else delete row.dataset.state;
