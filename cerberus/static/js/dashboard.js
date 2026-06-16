@@ -157,6 +157,10 @@ function _buildPanel() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
               <span>NEXUS</span>
             </button>
+            <button class="dash-action-btn dash-action-cerberus" id="dash-act-cerberus">
+              <svg width="13" height="15" viewBox="0 0 100 115" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round"><path d="M50 5 L8 22 L8 55 C8 78 26 100 50 110 C74 100 92 78 92 55 L92 22 Z"/><path d="M30 70 C30 54 40 46 50 46 C60 46 70 54 70 70" stroke-width="5" opacity="0.8"/></svg>
+              <span>CERBERUS</span>
+            </button>
             <button class="dash-action-btn" id="dash-act-cc">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
@@ -201,12 +205,15 @@ function _buildPanel() {
     action?.();
   }
 
-  panel.querySelector('#dash-close')?.addEventListener('click', () => _go(() => import('./settings.js').then(m => m.default.open())));
+  // Settings / tasks / notes open ON TOP of the dashboard (no _go)
+  panel.querySelector('#dash-close')?.addEventListener('click', () => import('./settings.js').then(m => m.default.open()));
+  panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => import('./cerberusOverlayTools.js').then(m => m.default.openOverlayTool('tasks')));
+  panel.querySelector('#dash-act-notes')?.addEventListener('click', () => import('./cerberusOverlayTools.js').then(m => m.default.openOverlayTool('notes')));
+  // Navigation buttons close dashboard first
   panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('rail-new-session')?.click(); }));
   panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _go(() => { window.location.href = '/home'; }));
+  panel.querySelector('#dash-act-cerberus')?.addEventListener('click', () => _go(() => { window.location.href = '/'; }));
   panel.querySelector('#dash-act-cc')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('sidebar-command-center-btn')?.click(); }));
-  panel.querySelector('#dash-act-notes')?.addEventListener('click', () => _go(() => { window.location.href = '/notes'; }));
-  panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => _go(() => { window.location.href = '/tasks'; }));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); }, { once: true });
   _tickClock(panel);
   _tickDatetime(panel);

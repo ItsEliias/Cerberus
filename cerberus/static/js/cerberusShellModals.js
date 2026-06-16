@@ -399,7 +399,14 @@ export async function openShellModal(id) {
   }
 
   if (modalId.startsWith('finance:')) {
-    return _openPanelModal('finance');
+    const section = modalId.slice(8);
+    const opened = _openPanelModal('finance');
+    if (opened && section) {
+      import('./cerberusFinance.js').then((m) => {
+        setTimeout(() => m.scrollToSection(section), 120);
+      }).catch(() => {});
+    }
+    return opened;
   }
 
   if (modalId.startsWith('project:')) {

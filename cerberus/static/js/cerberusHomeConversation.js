@@ -177,7 +177,7 @@ function _syncStatusChip(status, label) {
   const chip = _el('cerberus-voice-status-chip');
   if (chip) {
     chip.dataset.status = status || 'idle';
-    const text = chip.querySelector('.atlas-voice-status-chip-text');
+    const text = chip.querySelector('.cerberus-voice-status-chip-text');
     const listening = ['wake-listening', 'command-listening', 'listening', 'recording'].includes(status);
     if (text) text.textContent = listening ? 'Wake Listening ●' : (label || 'Standby');
   }
@@ -517,7 +517,11 @@ function _bindEvents() {
   _eventsBound = true;
 
   _el('cerberus-conv-open-assistant')?.addEventListener('click', () => {
-    if (_deps.openFullAssistant) _deps.openFullAssistant();
+    if (_deps.openFullAssistant) {
+      _deps.openFullAssistant();
+    } else {
+      window.location.href = '/';
+    }
   });
 
   _el('cerberus-conv-clear')?.addEventListener('click', () => clearOverlay());

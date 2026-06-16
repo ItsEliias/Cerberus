@@ -138,7 +138,7 @@ function _renderStrategy() {
 
 function _setTab(tab) {
   _tab = tab;
-  document.querySelectorAll('.atlas-finance-tab').forEach(btn => {
+  document.querySelectorAll('.cerberus-finance-tab').forEach(btn => {
     btn.classList.toggle('cerberus-finance-tab--active', btn.dataset.financeTab === tab);
   });
   _el('cerberus-finance-personal')?.classList.toggle('hidden', tab !== 'personal');
@@ -268,6 +268,20 @@ export async function renderFinancePanel() {
   _renderPersonal();
   _renderProjectTable();
   _renderStrategy();
+}
+
+export function scrollToSection(section) {
+  const s = (section || '').toLowerCase();
+  const isProject = s === 'reports' || s === 'forecasts';
+  _setTab(isProject ? 'project' : 'personal');
+  requestAnimationFrame(() => {
+    let target;
+    if (s === 'income') target = _el('cerberus-finance-work-form');
+    else if (s === 'reports') target = _el('cerberus-finance-table-body');
+    else if (s === 'forecasts') target = _el('cerberus-finance-strategy');
+    else target = _el('cerberus-finance-bill-form'); // expenses, reminders, goals
+    target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
 }
 
 export function initAtlasFinance(deps = {}) {
