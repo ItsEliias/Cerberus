@@ -41,11 +41,9 @@ function _buildPanel() {
           <span class="dash-status" id="dash-status-text">ONLINE</span>
         </div>
         <div class="dash-clock" id="dash-clock"></div>
-        <button class="dash-close-btn" id="dash-close" title="Go to Chat" aria-label="Go to Chat">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span>CHAT</span>
+        <button class="dash-close-btn" id="dash-close" title="Settings" aria-label="Settings">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>SETTINGS</span>
         </button>
       </header>
 
@@ -149,6 +147,10 @@ function _buildPanel() {
               </svg>
               <span>NEW CHAT</span>
             </button>
+            <button class="dash-action-btn dash-action-nexus" id="dash-act-nexus">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <span>NEXUS</span>
+            </button>
             <button class="dash-action-btn" id="dash-act-cc">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
@@ -177,11 +179,19 @@ function _buildPanel() {
 
   document.body.appendChild(panel);
 
-  panel.querySelector('#dash-close')?.addEventListener('click', close);
-  panel.querySelector('#dash-act-chat')?.addEventListener('click', () => { close(); setTimeout(() => document.getElementById('rail-new-session')?.click(), 100); });
-  panel.querySelector('#dash-act-cc')?.addEventListener('click', () => { close(); setTimeout(() => document.getElementById('sidebar-command-center-btn')?.click(), 100); });
-  panel.querySelector('#dash-act-notes')?.addEventListener('click', () => { close(); setTimeout(() => window.location.href = '/notes', 80); });
-  panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => { close(); setTimeout(() => document.getElementById('tool-tasks-btn')?.click(), 80); });
+  function _navClose(action) {
+    _cleanup();
+    const el = document.getElementById(PANEL_ID);
+    if (el) { el.style.cssText += ';opacity:0;pointer-events:none;transition:opacity 0.12s ease'; }
+    setTimeout(() => { el?.remove(); action?.(); }, 140);
+  }
+
+  panel.querySelector('#dash-close')?.addEventListener('click', () => _navClose(() => document.getElementById('rail-settings')?.click()));
+  panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _navClose(() => { window.history.replaceState({}, '', '/'); document.getElementById('rail-new-session')?.click(); }));
+  panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _navClose(() => { window.location.href = '/home'; }));
+  panel.querySelector('#dash-act-cc')?.addEventListener('click', () => _navClose(() => { window.history.replaceState({}, '', '/'); document.getElementById('sidebar-command-center-btn')?.click(); }));
+  panel.querySelector('#dash-act-notes')?.addEventListener('click', () => _navClose(() => { window.location.href = '/notes'; }));
+  panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => _navClose(() => { window.location.href = '/tasks'; }));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); }, { once: true });
   _tickClock(panel);
   _tickDatetime(panel);
@@ -202,8 +212,6 @@ function _tickDatetime(panel) {
   const el = panel.querySelector('#dash-datetime');
   if (el) el.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
 }
-
-// ── Globe animation ─────────────────────────────────────────────────
 
 function _startGlobeAnimation() {
   const canvas = document.getElementById('dash-bg-canvas');
@@ -249,12 +257,10 @@ function _startGlobeAnimation() {
   frame();
 }
 
-// ── Data loading ────────────────────────────────────────────────────
-
 async function _loadData() {
   await Promise.all([_loadSessions(), _loadVitals(), _loadAgents()]);
-  _vitalsTimer  = setInterval(_loadVitals,  8000);
-  _agentsTimer  = setInterval(_loadAgents, 12000);
+  _vitalsTimer = setInterval(_loadVitals, 8000);
+  _agentsTimer = setInterval(_loadAgents, 12000);
   _drawUsageChart();
 }
 
@@ -317,8 +323,6 @@ async function _loadVitals() {
     if (cntStatus) cntStatus.textContent = cpu > 85 ? 'HIGH' : cpu > 60 ? 'BUSY' : 'IDLE';
   } catch (_) {}
 }
-
-// ── Animated counter ────────────────────────────────────────────────
 
 function _animCounter(id, to, suffix) {
   const el = document.getElementById(id);

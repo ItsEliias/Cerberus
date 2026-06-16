@@ -15,6 +15,7 @@
 }
 #cerberus-dashboard.dash-leaving {
   animation: dash-leave 0.3s ease-in both;
+  pointer-events: none;
 }
 @keyframes dash-enter {
   from { opacity: 0; transform: translateY(8px); }
@@ -278,6 +279,17 @@
 
 .dash-actions-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+/* NEXUS spans full width with secondary styling */
+.dash-action-nexus {
+  grid-column: 1 / -1;
+  background: color-mix(in srgb, var(--red, #c0392b) 6%, transparent);
+  border-color: color-mix(in srgb, var(--red, #c0392b) 45%, transparent);
+}
+.dash-action-nexus:hover {
+  background: color-mix(in srgb, var(--red, #c0392b) 15%, transparent);
+  border-color: var(--red, #c0392b);
+  color: var(--red, #c0392b);
 }
 .dash-action-btn {
   display: flex; align-items: center; justify-content: center; gap: 7px;
