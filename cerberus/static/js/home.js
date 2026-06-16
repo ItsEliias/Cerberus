@@ -10,8 +10,8 @@ import {
   isCerberusFinanceRoute,
   cerberusHomeUrl,
 } from './cerberusShell.js';
-import { initCerberusGraph, refreshCerberusGraph } from './cerberusGraph.js';
-import { initCerberusPowerLinks } from './cerberusPowerLinks.js';
+import { initAtlasGraph as initCerberusGraph, refreshAtlasGraph as refreshCerberusGraph } from './cerberusGraph.js';
+import { initAtlasPowerLinks as initCerberusPowerLinks } from './cerberusPowerLinks.js';
 import cerberusShellModals from './cerberusShellModals.js';
 import agentsOfficeModule from './agentsOffice.js';
 import cerberusProjectsModule from './cerberusProjects.js';
@@ -343,6 +343,24 @@ export function bootAtlasHome() {
   prefetchAtlasData();
   import('./cerberusCursorFx.js').then((m) => m.default.initAtlasCursorFx?.());
 
+  // Boot voice service (passive wake, commands, HUD) if not already done
+  if (!window.cerberusHomeConversation) {
+    import('./cerberusHomeConversation.js').then((m) => {
+      m.default.initAtlasHomeConversation({
+        openFullAssistant: () => { window.location.href = '/'; },
+        showToast: _deps.showToast,
+      });
+      window.cerberusHomeConversation = m.default;
+    }).catch(() => {});
+  }
+  import('./cerberusVoiceService.js').then((m) => {
+    const svc = m.default ?? m;
+    svc.init?.({
+      showToast: _deps.showToast,
+      openAssistant: _deps.openAssistant,
+    })?.catch?.(() => {});
+  }).catch(() => {});
+
   _active = true;
   _ensureHomeVisible();
   _setNavActive('home');
@@ -613,6 +631,7 @@ export function initHome(deps = {}) {
     navigateAssistant: () => deps.openAssistant?.('', { submit: false }),
   });
   window.cerberusPipelineRefresh = () => cerberusPipelineModule.renderPipeline();
+  window.atlasPipelineRefresh = window.cerberusPipelineRefresh;
   _bindEvents();
   // Home shell boots from app.js _bootAtlasAfterSetup() after the setup wizard gate.
   if (deps.defaultHome && !deps.skipDefaultHome

@@ -205,9 +205,15 @@ function _buildPanel() {
     action?.();
   }
 
-  // Settings opens on top of the dashboard (z-index 9999 > dashboard 4500)
-  panel.querySelector('#dash-close')?.addEventListener('click', () => import('./settings.js').then(m => m.default.open()));
-  // Notes / tasks: open overlay then raise its z-index above dashboard (4500)
+  // Settings — open then lift above dashboard (z-index 250 < dashboard 4500)
+  panel.querySelector('#dash-close')?.addEventListener('click', () => {
+    import('./settings.js').then(m => {
+      m.default.open();
+      const modal = document.getElementById('settings-modal');
+      if (modal) modal.style.setProperty('z-index', '5500', 'important');
+    });
+  });
+  // Notes — open overlay then raise above dashboard
   panel.querySelector('#dash-act-notes')?.addEventListener('click', () => {
     import('./cerberusOverlayTools.js').then(async (m) => {
       await m.default.openOverlayTool('notes');
@@ -215,11 +221,13 @@ function _buildPanel() {
       if (el) el.style.zIndex = '5000';
     });
   });
+  // Tasks — bypass overlay tools to avoid async failures; set z-index directly
   panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => {
-    import('./cerberusOverlayTools.js').then(async (m) => {
-      await m.default.openOverlayTool('tasks');
+    import('./tasks.js').then(async (m) => {
+      m.openTasks?.();
+      await Promise.resolve(); // yield to allow modal to be appended
       const el = document.getElementById('tasks-modal');
-      if (el) el.style.zIndex = '5000';
+      if (el) el.style.setProperty('z-index', '5500', 'important');
     });
   });
   // Navigation buttons close dashboard first
