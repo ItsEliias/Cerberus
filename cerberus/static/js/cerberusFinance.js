@@ -274,12 +274,18 @@ export function scrollToSection(section) {
   const s = (section || '').toLowerCase();
   const isProject = s === 'reports' || s === 'forecasts';
   _setTab(isProject ? 'project' : 'personal');
+
+  const LABELS = { expenses: 'Expenses', income: 'Income', goals: 'Goals', reminders: 'Reminders', reports: 'Reports', forecasts: 'Forecasts' };
+  const label = LABELS[s];
+  const titleEl = _el('cerberus-finance-panel-title');
+  if (titleEl && label) titleEl.textContent = `Finance — ${label}`;
+
   requestAnimationFrame(() => {
     let target;
     if (s === 'income') target = _el('cerberus-finance-work-form');
     else if (s === 'reports') target = _el('cerberus-finance-table-body');
     else if (s === 'forecasts') target = _el('cerberus-finance-strategy');
-    else target = _el('cerberus-finance-bill-form'); // expenses, reminders, goals
+    else target = _el('cerberus-finance-bill-form');
     target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 }

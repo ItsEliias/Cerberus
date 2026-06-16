@@ -205,10 +205,23 @@ function _buildPanel() {
     action?.();
   }
 
-  // Settings / tasks / notes open ON TOP of the dashboard (no _go)
+  // Settings opens on top of the dashboard (z-index 9999 > dashboard 4500)
   panel.querySelector('#dash-close')?.addEventListener('click', () => import('./settings.js').then(m => m.default.open()));
-  panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => import('./cerberusOverlayTools.js').then(m => m.default.openOverlayTool('tasks')));
-  panel.querySelector('#dash-act-notes')?.addEventListener('click', () => import('./cerberusOverlayTools.js').then(m => m.default.openOverlayTool('notes')));
+  // Notes / tasks: open overlay then raise its z-index above dashboard (4500)
+  panel.querySelector('#dash-act-notes')?.addEventListener('click', () => {
+    import('./cerberusOverlayTools.js').then(async (m) => {
+      await m.default.openOverlayTool('notes');
+      const el = document.getElementById('notes-pane-backdrop') || document.getElementById('notes-pane');
+      if (el) el.style.zIndex = '5000';
+    });
+  });
+  panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => {
+    import('./cerberusOverlayTools.js').then(async (m) => {
+      await m.default.openOverlayTool('tasks');
+      const el = document.getElementById('tasks-modal');
+      if (el) el.style.zIndex = '5000';
+    });
+  });
   // Navigation buttons close dashboard first
   panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('rail-new-session')?.click(); }));
   panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _go(() => { window.location.href = '/home'; }));

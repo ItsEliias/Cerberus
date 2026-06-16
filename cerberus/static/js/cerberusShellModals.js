@@ -437,7 +437,18 @@ export async function openShellModal(id) {
 
   if (SHELL_MODALS[modalId]) {
     if (modalId === 'assistant') {
-      window.cerberusHomeConversation?.onHomeShown?.();
+      if (!window.cerberusHomeConversation) {
+        import('./cerberusHomeConversation.js').then((m) => {
+          m.default.initAtlasHomeConversation({
+            openFullAssistant: () => { window.location.href = '/'; },
+            showToast: _deps.showToast,
+          });
+          window.cerberusHomeConversation = m.default;
+          window.cerberusHomeConversation.onHomeShown?.();
+        }).catch(() => {});
+      } else {
+        window.cerberusHomeConversation.onHomeShown?.();
+      }
     }
     if (modalId === 'offices') {
       officesModal.renderOfficesModal();
