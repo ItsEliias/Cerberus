@@ -245,10 +245,18 @@ def setup_conference_room_routes() -> APIRouter:
             ) if pids else []
             mode = getattr(room, "mode", None) or "routed"
             cap  = _effective_cap(room, agents, owner)
-            # Snapshot agent data before commit (expire_on_commit=True would
-            # expire all ORM attrs, causing DetachedInstanceError in the
-            # async generator after db.close()).
+            # Snapshot ORM objects before db.commit() + db.close().
+            # expire_on_commit=True (SQLAlchemy default) expires all loaded
+            # attrs on commit; accessing them after close() raises
+            # DetachedInstanceError inside the async _generate() generator.
+            # Neither routed_stream nor open_stream uses the room arg, but
+            # snapshot it anyway so _generate()'s room_snap reference resolves
+            # and future engine reads don't hit expired attrs.
             import types as _types
+            room_snap = _types.SimpleNamespace(
+                id=room.id, mode=mode,
+                round_cap=getattr(room, "round_cap", None),
+            )
             agents = [
                 _types.SimpleNamespace(
                     id=a.id, name=a.name,

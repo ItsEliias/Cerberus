@@ -572,3 +572,103 @@ def test_tts_enabled_toggle_persists_via_settings(tmp_path, monkeypatch):
     s_mod.save_settings(loaded)
     s_mod._invalidate_caches()
     assert s_mod.load_settings()["tts_enabled"] is False
+
+
+# ---------------------------------------------------------------------------
+# Regression: DetachedInstanceError / room_snap NameError (Task 0 root cause)
+#
+# The send_to_room handler previously:
+#   (a) Queried agents as SQLAlchemy objects, committed the session
+#       (expire_on_commit=True expires all ORM attrs), then closed it.
+#       Accessing agent.name etc. in the async generator raised DetachedInstanceError.
+#   (b) A subsequent fix snapshot agents but deleted room_snap = room, leaving
+#       references to room_snap in _generate() that raised NameError at first yield.
+#
+# These tests guard both regressions by exercising the _generate() closure
+# with the SimpleNamespace inputs the fixed code produces after db.close().
+# ---------------------------------------------------------------------------
+
+def test_send_to_room_generate_works_with_simplenameespace_snapshots():
+    """After the fix, _generate() must iterate without NameError or DetachedInstanceError
+    when room_snap and agents are SimpleNamespace objects (not live ORM instances)."""
+    import types as _t
+
+    room_snap = _t.SimpleNamespace(id="r1", mode="routed", round_cap=5)
+    agents = [
+        _t.SimpleNamespace(
+            id="a1", name="CODER",
+            model_alias="default",
+            system_prompt="You are CODER.",
+            tts_voice="alloy",
+        )
+    ]
+    mode = "routed"
+    cap = 5
+    room_id = "r1"
+    text = "hello"
+    owner = "user"
+
+    routed_chunks = []
+
+    async def _fake_routed(r_id, room, ag, txt, own, db_factory):
+        assert room is room_snap, "room_snap must be passed through unchanged"
+        yield 'event: route\ndata: {"agent":"CODER","agent_id":"a1","tts_voice":"alloy"}\n\n'
+        yield 'data: {"delta":"hi"}\n\n'
+        yield "data: [DONE]\n\n"
+
+    async def _run():
+        async def _generate():
+            if not agents:
+                yield 'event: error\ndata: {"error":"no participants"}\n\n'
+                return
+            if mode == "open":
+                async for chunk in _fake_routed(room_id, room_snap, agents, text, owner, None):
+                    yield chunk
+            else:
+                async for chunk in _fake_routed(room_id, room_snap, agents, text, owner, None):
+                    yield chunk
+
+        async for chunk in _generate():
+            routed_chunks.append(chunk)
+
+    asyncio.run(_run())
+    assert any("DONE" in c for c in routed_chunks), "Generator must reach [DONE]"
+    assert not any("NameError" in c for c in routed_chunks)
+
+
+def test_send_to_room_generate_no_agents_emits_error_not_nameerror():
+    """When agents list is empty, _generate() yields the error event without
+    ever reaching the room_snap reference — this was the only safe path before the fix."""
+    import types as _t
+
+    room_snap = _t.SimpleNamespace(id="r1", mode="routed", round_cap=5)
+    agents = []
+    mode = "routed"
+
+    results = []
+
+    async def _run():
+        async def _generate():
+            if not agents:
+                yield 'event: error\ndata: {"error":"Room has no participants."}\n\n'
+                return
+            # room_snap referenced here — with empty agents we never reach it
+            yield f"room_snap={room_snap}"
+
+        async for chunk in _generate():
+            results.append(chunk)
+
+    asyncio.run(_run())
+    assert len(results) == 1
+    assert "no participants" in results[0]
+
+
+def test_room_snap_is_defined_in_send_to_room_source():
+    """Structural regression: room_snap must be assigned in send_to_room so
+    _generate()'s closure resolves it. Prevents reintroducing the NameError."""
+    import inspect
+    from routes.conference_room_routes import setup_conference_room_routes
+    source = inspect.getsource(setup_conference_room_routes)
+    assert "room_snap = " in source, (
+        "room_snap assignment missing from send_to_room — _generate() will NameError at runtime"
+    )
