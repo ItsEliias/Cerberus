@@ -1450,6 +1450,89 @@
 .cc-chat-send-btn:hover   { background: rgba(52,152,219,0.2); }
 .cc-chat-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
+/* ---- CONFERENCE ROOMS tab (Phase 3) ---- */
+
+/* Room list cards */
+.cc-rooms-tab { overflow-y: auto; }
+.cc-room-card {
+  border: 1px solid var(--cc-border); border-radius: 4px;
+  padding: 10px 12px; background: rgba(255,255,255,0.025);
+  display: flex; flex-direction: column; gap: 4px; position: relative;
+  transition: border-color 0.2s;
+}
+.cc-room-card:hover { border-color: rgba(255,255,255,0.18); }
+.cc-room-card-header { display: flex; align-items: center; justify-content: space-between; }
+.cc-room-name {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cc-room-count { font-size: 8px; opacity: 0.45; flex-shrink: 0; }
+.cc-room-last { font-size: 8px; opacity: 0.35; font-variant-numeric: tabular-nums; }
+.cc-room-card-actions { display: flex; gap: 4px; margin-top: 4px; }
+.cc-room-open-btn {
+  font-size: 9px; padding: 3px 8px; border-radius: 3px; cursor: pointer;
+  border: 1px solid rgba(52,152,219,0.4); background: rgba(52,152,219,0.06);
+  color: #3498db; font-family: inherit; transition: background 0.15s;
+}
+.cc-room-open-btn:hover { background: rgba(52,152,219,0.14); }
+.cc-room-delete-btn {
+  font-size: 9px; padding: 3px 7px; border-radius: 3px; cursor: pointer;
+  border: 1px solid var(--cc-border); background: transparent;
+  color: rgba(255,255,255,0.35); font-family: inherit; transition: border-color 0.15s, color 0.15s;
+}
+.cc-room-delete-btn:hover { border-color: var(--cc-crimson); color: var(--cc-crimson); }
+
+/* New room form — agent toggles */
+.cc-room-new-form {
+  border: 1px solid var(--cc-border); border-radius: 4px; padding: 12px;
+  background: rgba(255,255,255,0.02); display: flex; flex-direction: column;
+  gap: 4px; margin-bottom: 8px;
+}
+.cc-room-form-title {
+  font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--cc-crimson); margin-bottom: 4px;
+}
+.cc-room-new-form label { font-size: 8px; letter-spacing: 0.1em; opacity: 0.38; display: block; }
+.cc-room-new-form input {
+  width: 100%; box-sizing: border-box; padding: 4px 6px; font-size: 10px;
+  background: rgba(0,0,0,0.25); border: 1px solid var(--cc-border, rgba(255,255,255,0.1));
+  color: var(--cc-fg); border-radius: 3px; font-family: inherit;
+}
+.cc-room-agent-list {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px;
+}
+.cc-room-agent-toggle {
+  display: flex; align-items: center; gap: 4px; cursor: pointer;
+  padding: 3px 7px; border: 1px solid var(--cc-border);
+  border-radius: 3px; font-size: 9px; letter-spacing: 0.06em;
+  transition: border-color 0.15s, background 0.15s;
+}
+.cc-room-agent-toggle:hover { border-color: rgba(255,255,255,0.25); }
+.cc-room-agent-toggle input { display: none; }
+.cc-room-agent-toggle input:checked ~ .cc-room-agent-toggle-name {
+  color: #3498db;
+}
+.cc-room-agent-toggle:has(input:checked) {
+  border-color: rgba(52,152,219,0.4); background: rgba(52,152,219,0.08);
+}
+.cc-room-agent-toggle-name { color: rgba(255,255,255,0.5); pointer-events: none; }
+
+/* Room chat view — participant chips in header */
+.cc-room-participants { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+.cc-room-participant-chip {
+  font-size: 8px; letter-spacing: 0.08em; padding: 1px 6px;
+  border-radius: 2px; border: 1px solid; font-family: inherit;
+  text-transform: uppercase; font-weight: 600;
+}
+.cc-room-chat-clear-btn {
+  font-size: 8px; letter-spacing: 0.08em; padding: 2px 7px;
+  border: 1px solid var(--cc-border); background: transparent;
+  color: rgba(255,255,255,0.3); border-radius: 2px; cursor: pointer;
+  font-family: inherit; white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.cc-room-chat-clear-btn:hover { color: var(--cc-crimson); border-color: var(--cc-crimson); }
+
 /* ---- OBSERVABILITY tab ---- */
 .cc-obs-tab { display: flex; flex-direction: column; padding: 12px 16px; gap: 12px; overflow-y: auto; }
 .cc-obs-header { display: flex; align-items: center; }

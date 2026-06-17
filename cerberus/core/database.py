@@ -761,6 +761,40 @@ class AgentMessage(Base):
     thread = relationship("AgentThread", back_populates="messages")
 
 
+class ConferenceRoom(Base):
+    """Multi-agent conference room. Messages are routed by ORCHESTRATOR."""
+    __tablename__ = "conference_rooms"
+
+    id              = Column(String, primary_key=True, index=True)
+    name            = Column(String, nullable=False)
+    owner           = Column(String, nullable=False, index=True)
+    participant_ids = Column(Text, nullable=False, default="[]")   # JSON array of agent IDs
+    created_at      = Column(DateTime, default=utcnow_naive)
+    last_message_at = Column(DateTime, nullable=True)
+    message_count   = Column(Integer, default=0)
+
+    messages = relationship(
+        "RoomMessage", back_populates="room",
+        cascade="all, delete-orphan",
+        order_by="RoomMessage.timestamp",
+    )
+
+
+class RoomMessage(Base):
+    """A single message posted in a ConferenceRoom."""
+    __tablename__ = "room_messages"
+
+    id          = Column(String, primary_key=True, index=True)
+    room_id     = Column(String, ForeignKey("conference_rooms.id", ondelete="CASCADE"), nullable=False, index=True)
+    role        = Column(String, nullable=False)   # user | agent
+    sender_id   = Column(String, nullable=True)    # agent.id for agent messages
+    sender_name = Column(String, nullable=True)    # display name
+    content     = Column(Text, nullable=False)
+    timestamp   = Column(DateTime, default=utcnow_naive)
+
+    room = relationship("ConferenceRoom", back_populates="messages")
+
+
 def _migrate_add_last_message_at_column():
     """Add last_message_at to sessions + backfill from the latest message
     timestamp per session (fallback to last_accessed / created_at when a
