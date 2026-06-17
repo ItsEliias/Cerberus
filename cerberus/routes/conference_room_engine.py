@@ -33,6 +33,12 @@ def _utcnow():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def _agent_voice(agent) -> str:
+    """Return tts_voice as a plain string, or '' when absent or non-string (e.g. test mocks)."""
+    v = getattr(agent, "tts_voice", None)
+    return v if isinstance(v, str) else ""
+
+
 def _sanitize(text: str) -> str:
     """Strip control chars and cap length per message (untrusted transcript data)."""
     text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", str(text or ""))
@@ -261,7 +267,7 @@ async def routed_stream(
         yield f'event: error\ndata: {json.dumps({"error": "Routing failed."})}\n\n'
         return
 
-    yield f'event: route\ndata: {json.dumps({"agent": target.name, "agent_id": target.id})}\n\n'
+    yield f'event: route\ndata: {json.dumps({"agent": target.name, "agent_id": target.id, "tts_voice": _agent_voice(target)})}\n\n'
 
     db = db_factory()
     try:
@@ -309,7 +315,7 @@ async def open_stream(
             agent = others[rr_index % len(others)]
             rr_index += 1
 
-        yield f'event: route\ndata: {json.dumps({"agent": agent.name, "agent_id": agent.id})}\n\n'
+        yield f'event: route\ndata: {json.dumps({"agent": agent.name, "agent_id": agent.id, "tts_voice": _agent_voice(agent)})}\n\n'
 
         db = db_factory()
         try:

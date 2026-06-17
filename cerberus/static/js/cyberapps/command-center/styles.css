@@ -1714,3 +1714,53 @@
   color: #27ae60; font-family: inherit; transition: background 0.15s;
 }
 .cc-ag-call-btn:hover { background: rgba(39,174,96,0.14); }
+
+/* ---- ROOM VOICE CALL panel (Phase 4b) ---- */
+.cc-rv-panel { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.cc-rv-header { gap: 6px; }
+.cc-rv-state-badge {
+  font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 2px; border: 1px solid var(--cc-border);
+  color: rgba(255,255,255,0.45); white-space: nowrap; transition: color 0.2s, border-color 0.2s;
+}
+[data-rv-state="listening"]      .cc-rv-state-badge { color: var(--cc-crimson); border-color: var(--cc-crimson); }
+[data-rv-state="transcribing"]   .cc-rv-state-badge { color: #e67e22; border-color: #e67e22; }
+[data-rv-state="processing"]     .cc-rv-state-badge { color: #3498db; border-color: rgba(52,152,219,0.5); }
+[data-rv-state="agent-speaking"] .cc-rv-state-badge { color: #27ae60; border-color: rgba(39,174,96,0.5); }
+[data-rv-state="user-floor"]     .cc-rv-state-badge { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
+
+.cc-rv-floor-btn {
+  font-size: 9px; padding: 3px 8px; border-radius: 3px; cursor: pointer;
+  border: 1px solid var(--cc-border); background: transparent;
+  color: rgba(255,255,255,0.4); font-family: inherit; white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s; margin-left: auto;
+}
+.cc-rv-floor-btn:hover:not(:disabled) { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.7); }
+.cc-rv-floor-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+.cc-rv-floor-btn--active { border-color: var(--cc-crimson) !important; color: var(--cc-crimson) !important; }
+
+.cc-rv-transcript { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.cc-rv-controls {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 14px; border-top: 1px solid var(--cc-border); flex-shrink: 0;
+}
+.cc-rv-continue-btn {
+  font-size: 9px; padding: 3px 10px; border-radius: 3px; cursor: pointer;
+  border: 1px solid rgba(52,152,219,0.4); background: rgba(52,152,219,0.08);
+  color: #3498db; font-family: inherit; transition: background 0.15s;
+}
+.cc-rv-continue-btn:hover { background: rgba(52,152,219,0.18); }
+.cc-rv-end-btn {
+  font-size: 9px; padding: 3px 10px; border-radius: 3px; cursor: pointer;
+  border: 1px solid var(--cc-border); background: transparent;
+  color: rgba(255,255,255,0.4); font-family: inherit; transition: border-color 0.15s, color 0.15s;
+}
+.cc-rv-end-btn:hover { border-color: var(--cc-crimson); color: var(--cc-crimson); }
+
+/* Room call button in room chat header */
+.cc-room-call-btn {
+  font-size: 9px; padding: 3px 8px; border-radius: 3px; cursor: pointer;
+  border: 1px solid rgba(39,174,96,0.35); background: rgba(39,174,96,0.06);
+  color: #27ae60; font-family: inherit; transition: background 0.15s; white-space: nowrap;
+}
+.cc-room-call-btn:hover { background: rgba(39,174,96,0.14); }
