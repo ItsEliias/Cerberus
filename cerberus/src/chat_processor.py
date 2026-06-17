@@ -249,6 +249,53 @@ class ChatProcessor:
             # (skills index injection moved out — see below; only fires in
             # agent mode so chat mode and incognito stay clean.)
 
+        # Proactive session recall: inject snippets from related past sessions.
+        # Only fires at the start of a session (≤4 messages) to avoid noise in
+        # established conversations. Gated on use_memory to respect incognito.
+        _cur_session_id = getattr(session, "id", None)
+        _history_len = len(getattr(session, "history", []))
+        _msg_tokens = _content_tokens(message)
+        if (
+            use_memory
+            and not incognito
+            and _history_len <= 4
+            and len(_msg_tokens) >= 4
+            and _cur_session_id
+        ):
+            try:
+                from src.session_search import search_session_messages
+                _recall_hits = search_session_messages(
+                    " ".join(_msg_tokens[:12]),
+                    limit=6,
+                    owner=owner,
+                    context_messages=0,
+                )
+                _seen_sids: set = set()
+                _snippets: list = []
+                for r in _recall_hits:
+                    if r.session_id == _cur_session_id:
+                        continue
+                    if r.session_id in _seen_sids:
+                        continue
+                    _seen_sids.add(r.session_id)
+                    _snippets.append(r)
+                    if len(_snippets) >= 2:
+                        break
+                if _snippets:
+                    lines = [
+                        "Related content from past conversations "
+                        "(cite inline as [ref 1], [ref 2] … if you draw on these):",
+                    ]
+                    for i, r in enumerate(_snippets, 1):
+                        text = (r.content_snippet or r.content or "")[:200].strip()
+                        lines.append(f'[ref {i}] "{text}" (from: {r.session_name})')
+                    preface.append(untrusted_context_message(
+                        "past session recall",
+                        "\n".join(lines),
+                    ))
+            except Exception as _re:
+                logger.debug("Proactive session recall skipped: %s", _re)
+
         # RAG: search if enabled and rag_manager available, inject only above threshold
         if use_rag:
             try:

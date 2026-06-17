@@ -1,0 +1,422 @@
+// Cerberus OS — voice navigation + project/council voice actions (client-side)
+
+import cerberusActiveProject from './cerberusActiveProject.js';
+import cerberusOverlayTools from './cerberusOverlayTools.js';
+import cerberusPersonality from './cerberusPersonality.js';
+import { cmdHandled, cmdUnhandled } from './cerberusCommandResult.js';
+import officesModal from './officesModal.js';
+import * as cerberusShellModals from './cerberusShellModals.js';
+import * as cerberusVoiceMode from './cerberusVoiceMode.js';
+
+let _deps = {};
+let _councilStatus = 'IDLE';
+
+// Every target routes through _openModal → homeModule.openAtlasModal →
+// cerberusShellModals.openShellModal. Voice MUST use the exact same path as a
+// mouse click on the globe node, so the two can never drift apart again.
+const NAV_TARGETS = {
+  home: { label: 'Home', paths: ['/home', '/'], navigate: () => _goHome(), aliases: ['nexus', 'cerberus home', 'go home'] },
+  dashboard: { label: 'Dashboard', paths: ['/dashboard'], navigate: () => _goDashboard(), aliases: ['dash', 'the dashboard'] },
+  assistant: { label: 'Assistant', paths: ['/assistant'], navigate: () => _openModal('assistant') },
+  projects: { label: 'Projects', paths: ['/projects'], navigate: () => _openModal('projects') },
+  agents: { label: 'Agents', paths: ['/agents'], navigate: () => _openModal('offices') },
+  offices: { label: 'Offices', paths: ['/agents'], navigate: () => _openModal('offices') },
+  finance: { label: 'Finance', paths: ['/finance'], navigate: () => _openModal('finance') },
+  brain: { label: 'Brain', paths: ['/memory'], navigate: () => _openModal('brain'), aliases: ['memory', 'the brain'] },
+  tasks: { label: 'Tasks', paths: ['/tasks'], navigate: () => _openModal('tasks') },
+  tools: { label: 'Tools', paths: [], navigate: () => _openModal('tools') },
+  calendar: { label: 'Calendar', paths: ['/calendar'], navigate: () => _openModal('calendar') },
+  notes: { label: 'Notes', paths: ['/notes'], navigate: () => _openModal('notes') },
+  library: { label: 'Library', paths: ['/library'], navigate: () => _openModal('library') },
+  cookbook: { label: 'Cookbook', paths: ['/cookbook'], navigate: () => _openModal('cookbook') },
+  settings: { label: 'Settings', paths: [], navigate: () => _openModal('settings') },
+  voice: {
+    label: 'Voice Commands',
+    paths: [],
+    navigate: () => _openModal('voice'),
+    aliases: ['voice command cheat sheet', 'voice cheat sheet', 'voice commands list', 'cheat sheet', 'help', 'what can i say', 'what can you do'],
+  },
+  monitor: {
+    label: 'System Monitor',
+    paths: [],
+    navigate: () => _openModal('monitor'),
+    aliases: ['system monitor', 'sys monitor', 'performance monitor'],
+  },
+};
+
+const NAV_PREFIX = /^(?:(?:hey\s+)?atlas\s+)?(?:(?:can\s+you|could\s+you|please)\s+)?(?:move\s+to|navigate\s+to|switch\s+to|go\s+to|open|launch|start|run)\s+/i;
+
+const DESTRUCTIVE = [
+  /\bdelete\b/i,
+  /\bshutdown\b/i,
+  /\brestart\s+(?:the\s+)?(?:pc|computer)\b/i,
+  /\bformat\b/i,
+  /\bremove\s+project\b/i,
+];
+
+function _norm(text) {
+  return String(text || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+async function _goHome() {
+  await cerberusShellModals.closeAllModals();
+  await window.homeModule?.showHome?.({ skipHistory: false });
+  history.pushState({ atlasView: 'home' }, '', '/home');
+}
+
+function _goDashboard() {
+  window.dashModule?.open?.();
+}
+
+async function _openModal(id) {
+  await window.homeModule?.showHome?.({ skipHistory: true });
+  await window.homeModule?.openAtlasModal?.(id);
+}
+
+function _openTool(id) {
+  _deps.openTool?.(id);
+}
+
+async function _fetchJson(url, opts = {}) {
+  const res = await fetch(url, { credentials: 'same-origin', ...opts });
+  return res.json();
+}
+
+async function _resolveProject(query, projects) {
+  const q = _norm(query);
+  if (!q) return null;
+  for (const p of projects) {
+    const id = (p.id || '').toLowerCase();
+    const name = (p.name || '').toLowerCase();
+    if (q === id || q === name || name.includes(q) || q.includes(name)) return p;
+  }
+  return null;
+}
+
+export function setCouncilStatus(status) {
+  _councilStatus = status || 'IDLE';
+}
+
+export function getCouncilStatus() {
+  return _councilStatus;
+}
+
+export function isDestructiveCommand(text) {
+  const t = String(text || '');
+  return DESTRUCTIVE.some((re) => re.test(t));
+}
+
+/**
+ * True when the text *looks like* an open/navigate command ("open …",
+ * "go to …"). Used as the last step of the voice pipeline: a navigation-shaped
+ * command that nothing recognised gets a quiet notification instead of being
+ * sent to the LLM or surfaced as an error.
+ */
+export function looksLikeNavigationCommand(text) {
+  return NAV_PREFIX.test(_norm(text));
+}
+
+/** Non-blocking "unknown command" notice (toast — never a blocking error). */
+export function notifyUnknownCommand(text) {
+  const short = String(text || '').trim().slice(0, 60);
+  const fn = _deps.showToast || window.uiModule?.showToast;
+  if (fn) {
+    fn(`Unknown command: “${short}” — say “open voice commands” for the list`, 3200);
+  }
+  return cmdHandled(true, 'I don’t know that command yet. Say “open voice commands” to see what I understand.');
+}
+
+export async function tryHandleNavigation(text) {
+  const raw = String(text || '').trim();
+  let norm = _norm(raw);
+  if (!norm) return cmdUnhandled();
+
+  const m = norm.match(NAV_PREFIX);
+  if (m) norm = norm.slice(m[0].length).trim();
+
+  if (norm === 'show brain' || norm === 'show the brain') {
+    await _openModal('brain');
+    return cmdHandled(true, cerberusPersonality.formatAction('Opening Brain'));
+  }
+
+  if (norm === 'show pending reports' || norm === 'pending reports') {
+    await _openModal('brain');
+    return cmdHandled(true, cerberusPersonality.formatAction('Opening pending reports in Brain'));
+  }
+
+  for (const [key, cfg] of Object.entries(NAV_TARGETS)) {
+    const aliases = cfg.aliases || [];
+    if (norm === key || norm === cfg.label.toLowerCase() || aliases.includes(norm)) {
+      await cfg.navigate();
+      const isOverlay = cerberusOverlayTools.TOOL_IDS?.includes?.(key);
+      return cmdHandled(true, cerberusPersonality.formatAction(`Opening ${cfg.label}`), {
+        uiAction: isOverlay
+          ? { type: 'open_overlay', payload: { tool: key } }
+          : { type: 'open_modal', payload: { modal: key } },
+        uiActivity: `Done: Opening ${cfg.label}`,
+      });
+    }
+  }
+
+  const openOffice = norm.match(/^open\s+office(?:\s+(.+))?$/);
+  if (openOffice) {
+    await _openModal('offices');
+    if (openOffice[1]) {
+      const office = officesModal.openOfficeByName(openOffice[1]);
+      if (!office) {
+        return cmdHandled(true, `Which office would you like to open? Available: ${officesModal.getOffices().map((o) => o.name).join(', ')}`);
+      }
+    }
+    return cmdHandled(true, cerberusPersonality.formatAction('Opening Offices'));
+  }
+
+  const openNamed = norm.match(/^(?:open|launch|start|run)\s+(.+)$/);
+  if (openNamed) {
+    const name = openNamed[1];
+    if (officesModal.openAgentByName(name)) {
+      await _openModal('offices');
+      return cmdHandled(true, cerberusPersonality.formatAction(`Opening ${name}`));
+    }
+  }
+
+  if (norm === 'create agent' || norm.startsWith('create agent ')) {
+    await _openModal('offices');
+    return cmdHandled(true, 'Use the Offices modal to create a new agent in a department.');
+  }
+
+  const assignAgent = norm.match(/^assign\s+agent\s+to\s+(.+)$/);
+  if (assignAgent) {
+    await _openModal('offices');
+    return cmdHandled(true, `Which department in ${assignAgent[1]}? Reply with the department name.`);
+  }
+
+  return cmdUnhandled();
+}
+
+export async function tryHandleAtlasCommands(text) {
+  const norm = _norm(text);
+  if (!norm) return cmdUnhandled();
+
+  if (norm === 'stop speaking') {
+    window.speechSynthesis?.cancel();
+    return cmdHandled(true, 'Stopped speaking.');
+  }
+  if (norm === 'repeat') {
+    return cmdHandled(true, 'Repeat is not available for the last reply yet.');
+  }
+  if (norm === 'continue') {
+    return cmdHandled(true, 'Continuing.');
+  }
+  if (norm === 'refresh workspace') {
+    await window.homeModule?.prefetchAtlasData?.();
+    return cmdHandled(true, 'Workspace refreshed.');
+  }
+
+  // ── New chat ──────────────────────────────────────────────────────────────
+  if (norm === 'new chat' || norm === 'new session' || norm === 'start new chat' || norm === 'start new session' || norm === 'start a new chat') {
+    document.getElementById('rail-new-session')?.click();
+    return cmdHandled(true, 'Starting a new session.');
+  }
+
+  // ── Close all modals ──────────────────────────────────────────────────────
+  if (norm === 'close all' || norm === 'close everything' || norm === 'dismiss all' || norm === 'dismiss everything') {
+    await cerberusShellModals.closeAllModals();
+    return cmdHandled(true, 'All panels closed.');
+  }
+
+  // ── Time & date ───────────────────────────────────────────────────────────
+  if (norm === 'what time is it' || norm === 'what is the time' || norm === "what's the time") {
+    const t = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return cmdHandled(true, `It is ${t}.`);
+  }
+  if (norm === "what's the date" || norm === 'what is the date' || norm === "what's today" || norm === "what's today's date" || norm === 'what day is it' || norm === 'what is today') {
+    const d = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    return cmdHandled(true, `Today is ${d}.`);
+  }
+
+  // ── Finance — log work ────────────────────────────────────────────────────
+  const logWork = norm.match(/^log\s+(?:a\s+)?(?:(full|half)\s+day|work\s+day)$/);
+  if (logWork) {
+    const type = logWork[1] === 'half' ? 'Half Day' : 'Full Day';
+    await _fetchJson('/api/cerberus/finance/work-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type }),
+    });
+    return cmdHandled(true, `${type} logged.`);
+  }
+
+  // ── Finance — weekly due ──────────────────────────────────────────────────
+  if (norm === 'how much do i owe this week' || norm === 'what do i owe this week' || norm === "what's due this week" || norm === 'weekly due') {
+    const data = await _fetchJson('/api/cerberus/finance/overview');
+    const ov = (data.overview || data);
+    const due = Number(ov.weekly_due || 0);
+    const fmt = '£' + due.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return cmdHandled(true, `You owe ${fmt} this week.`);
+  }
+
+  // ── Tasks — add ───────────────────────────────────────────────────────────
+  const addTask = norm.match(/^(?:add|create|new)\s+task\s+(.+)$/);
+  if (addTask) {
+    const prompt = addTask[1];
+    await _fetchJson('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, task_type: 'llm', trigger_type: 'manual' }),
+    });
+    return cmdHandled(true, `Task created: "${prompt}".`);
+  }
+
+  // ── Tasks — list ──────────────────────────────────────────────────────────
+  if (norm === 'what are my tasks' || norm === 'show my tasks' || norm === 'list my tasks' || norm === 'list tasks' || norm === 'show tasks') {
+    const data = await _fetchJson('/api/tasks');
+    const tasks = (data.tasks || data || []).filter((t) => t.status !== 'deleted' && t.status !== 'archived').slice(0, 5);
+    if (!tasks.length) return cmdHandled(true, 'You have no active tasks.');
+    const names = tasks.map((t, i) => `${i + 1}. ${t.name || t.prompt || 'Untitled'}`).join('; ');
+    return cmdHandled(true, `Your tasks: ${names}.`);
+  }
+
+  // ── Mute microphone ───────────────────────────────────────────────────────
+  if (norm === 'mute' || norm === 'pause listening' || norm === 'mute microphone' || norm === 'stop listening') {
+    cerberusVoiceMode.pauseHomeConversation?.();
+    return cmdHandled(true, 'Microphone paused. Say "Hey Cerberus" to resume.');
+  }
+
+  // ── Read last reply back ──────────────────────────────────────────────────
+  if (norm === 'read that back' || norm === 'read it back' || norm === 'say that again' || norm === 'repeat that') {
+    const last = cerberusVoiceMode.getLastSpokenText?.();
+    if (!last) return cmdHandled(true, 'Nothing to repeat.');
+    await cerberusVoiceMode.speakText?.(last, { short: false });
+    return cmdHandled(true, last, { spoken: true });
+  }
+
+  // ── Theme ─────────────────────────────────────────────────────────────────
+  if (norm === 'dark mode' || norm === 'switch to dark mode' || norm === 'enable dark mode') {
+    const th = window.themeModule;
+    const colors = th?.THEMES?.dark;
+    if (colors) { th.save('dark', colors); th.applyColors(colors); }
+    return cmdHandled(true, 'Dark mode enabled.');
+  }
+  if (norm === 'light mode' || norm === 'switch to light mode' || norm === 'enable light mode') {
+    const th = window.themeModule;
+    const colors = th?.THEMES?.light;
+    if (colors) { th.save('light', colors); th.applyColors(colors); }
+    else return cmdHandled(false, 'Open Settings to pick a light theme.');
+    return cmdHandled(true, 'Light mode enabled.');
+  }
+
+  // ── Agent status ──────────────────────────────────────────────────────────
+  const agentQuery = norm.match(/^what(?:'s|\s+is)\s+(.+?)\s+(?:doing|working on|up to)(?:\s+right\s+now)?$/);
+  if (agentQuery) {
+    const nameQ = agentQuery[1];
+    const data = await _fetchJson('/api/agents');
+    const agents = data.agents || data || [];
+    const agent = agents.find((a) => _norm(a.name || '').includes(_norm(nameQ)));
+    if (!agent) return cmdHandled(true, `I couldn't find an agent named "${nameQ}".`);
+    return cmdHandled(true, `${agent.name} is currently ${agent.status || 'idle'}.`);
+  }
+
+  return cmdUnhandled();
+}
+
+export async function tryHandleProjectCommands(text) {
+  const norm = _norm(text);
+  if (!norm) return cmdUnhandled();
+
+  let projects = [];
+  try {
+    const data = await _fetchJson('/api/cerberus/projects');
+    projects = data.projects || data || [];
+  } catch (_) {
+    return cmdUnhandled();
+  }
+
+  const activeId = cerberusActiveProject.getActiveProjectId?.();
+  const active = projects.find((p) => p.id === activeId) || projects[0];
+
+  const openHq = norm.match(/^(?:open\s+)?(?:project\s+)?hq(?:\s+for\s+(.+))?$/);
+  if (openHq) {
+    const proj = openHq[1] ? await _resolveProject(openHq[1], projects) : active;
+    if (proj) {
+      const mod = await import('./cerberusProjectHQ.js');
+      mod.default.openProjectHQ(proj.id);
+      return cmdHandled(true, cerberusPersonality.formatAction(`Opening Project HQ for ${proj.name || proj.id}`));
+    }
+  }
+
+  const review = norm.match(/^review\s+(.+)$/);
+  if (review) {
+    const proj = await _resolveProject(review[1], projects);
+    if (proj) {
+      const mod = await import('./cerberusProjectHQ.js');
+      mod.default.openProjectHQ(proj.id);
+      return cmdHandled(true, cerberusPersonality.formatAction(`Opening ${proj.name} for review`));
+    }
+  }
+
+  const council = norm.match(/^(?:run\s+)?council\s+review(?:\s+(?:for\s+)?(.+))?$/);
+  if (council) {
+    const proj = council[1] ? await _resolveProject(council[1], projects) : active;
+    if (!proj) return cmdHandled(false, 'No project found for council review.');
+    setCouncilStatus('RUNNING');
+    const res = await _fetchJson(`/api/cerberus/projects/${proj.id}/council-review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    setCouncilStatus(res.ok ? 'READY' : 'IDLE');
+    return cmdHandled(!!res.ok, res.message || (res.ok ? 'Council review started.' : 'Council review failed.'));
+  }
+
+  const cursorPrompt = norm.match(/^generate\s+cursor\s+prompt(?:\s+(?:for\s+)?(.+))?$/);
+  if (cursorPrompt) {
+    const proj = cursorPrompt[1] ? await _resolveProject(cursorPrompt[1], projects) : active;
+    if (!proj) return cmdHandled(false, 'No project found.');
+    const res = await _fetchJson(`/api/cerberus/projects/${proj.id}/generate-cursor-prompt`, { method: 'POST' });
+    return cmdHandled(!!res.ok, res.message || (res.ok ? 'Cursor prompt generated.' : 'Failed to generate prompt.'));
+  }
+
+  const launchPlan = norm.match(/^generate\s+launch\s+plan(?:\s+(?:for\s+)?(.+))?$/);
+  if (launchPlan) {
+    const proj = launchPlan[1] ? await _resolveProject(launchPlan[1], projects) : active;
+    if (!proj) return cmdHandled(false, 'No project found.');
+    const res = await _fetchJson(`/api/cerberus/projects/${proj.id}/create-launch-plan`, { method: 'POST' });
+    return cmdHandled(!!res.ok, res.message || (res.ok ? 'Launch plan created.' : 'Failed to create launch plan.'));
+  }
+
+  const deepIndex = norm.match(/^deep\s+index(?:\s+project)?(?:\s+(?:for\s+)?(.+))?$/);
+  if (deepIndex) {
+    const proj = deepIndex[1] ? await _resolveProject(deepIndex[1], projects) : active;
+    if (!proj) return cmdHandled(false, 'No project found.');
+    const res = await _fetchJson(`/api/cerberus/projects/${proj.id}/deep-index`, { method: 'POST' });
+    return cmdHandled(!!res.ok, res.message || (res.ok ? 'Deep index started.' : 'Deep index failed.'));
+  }
+
+  if (norm === 'open active project' || norm === 'open latest project') {
+    const proj = active;
+    if (!proj) return cmdHandled(false, 'No active project set.');
+    const mod = await import('./cerberusProjectHQ.js');
+    mod.default.openProjectHQ(proj.id);
+    return cmdHandled(true, cerberusPersonality.formatAction(`Opening ${proj.name || proj.id}`));
+  }
+
+  return cmdUnhandled();
+}
+
+export function initAtlasVoiceNavigation(deps = {}) {
+  _deps = deps;
+}
+
+const cerberusVoiceNavigation = {
+  tryHandleNavigation,
+  tryHandleAtlasCommands,
+  tryHandleProjectCommands,
+  isDestructiveCommand,
+  looksLikeNavigationCommand,
+  notifyUnknownCommand,
+  setCouncilStatus,
+  getCouncilStatus,
+  initAtlasVoiceNavigation,
+};
+
+export default cerberusVoiceNavigation;

@@ -772,6 +772,15 @@ app.include_router(setup_cerberus_agent_routes())
 from routes.cyberapps_routes import router as cyberapps_router
 app.include_router(cyberapps_router)
 
+from routes.gateway_routes import router as gateway_router
+app.include_router(gateway_router)
+
+from routes.cerberus_os_routes import setup_cerberus_routes
+app.include_router(setup_cerberus_routes())
+
+from routes.workspace_routes import setup_workspace_routes
+app.include_router(setup_workspace_routes())
+
 # ========= ROUTES (kept in app.py) =========
 
 def _serve_html_with_nonce(request: Request, file_path: str) -> HTMLResponse:
@@ -826,6 +835,27 @@ async def serve_tasks(request: Request):
 
 @app.get("/library")
 async def serve_library(request: Request):
+    return await serve_index(request)
+
+@app.get("/dashboard")
+async def serve_dashboard(request: Request):
+    return await serve_index(request)
+
+# ── CerberusOS pages (Mission Control, Council, Projects, Finance) ──────────
+@app.get("/home")
+async def serve_home(request: Request):
+    return await serve_index(request)
+
+@app.get("/agents")
+async def serve_agents(request: Request):
+    return await serve_index(request)
+
+@app.get("/projects")
+async def serve_projects(request: Request):
+    return await serve_index(request)
+
+@app.get("/finance")
+async def serve_finance(request: Request):
     return await serve_index(request)
 
 @app.get("/backgrounds")

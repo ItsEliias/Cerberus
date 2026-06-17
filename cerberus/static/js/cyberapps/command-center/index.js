@@ -7,11 +7,12 @@
  * Self-registers with window.CYBER_APPS_REGISTRY using unshift() (priority: first).
  */
 
-import { buildCommandTab, applyVitals, applyTimeseries, applySwarm, applyAgents } from './command.js';
+import { buildCommandTab, applyVitals, applyTimeseries, applySwarm, applyAgents, applyGateway } from './command.js';
 import { buildCouncilTab, initCouncil, loadCouncil } from './council.js';
 import { buildWorkspaceTab, loadWorkspace } from './workspace.js';
 import { buildFinanceTab, loadFinance }     from './finance.js';
 import { buildAssistantTab, initAssistant, destroyAssistant } from './assistant.js';
+import { buildGatewayTab, loadGateway } from './gateway.js';
 import * as Poll from './poll.js';
 
 // Inject CC stylesheet once — version param busts browser/SW cache on updates
@@ -20,7 +21,7 @@ import * as Poll from './poll.js';
   const link = document.createElement('link');
   link.id   = 'cc-styles-link';
   link.rel  = 'stylesheet';
-  link.href = '/static/js/cyberapps/command-center/styles.css?v=357';
+  link.href = '/static/js/cyberapps/command-center/styles.css?v=358';
   document.head.appendChild(link);
 })();
 
@@ -67,6 +68,16 @@ const TABS = [
     icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>`,
+  },
+  {
+    id: 'gateway',
+    label: 'GATEWAY',
+    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 2H3v16h5v4l4-4h9V2z"/>
+      <line x1="7" y1="8" x2="17" y2="8"/>
+      <line x1="7" y1="12" x2="13" y2="12"/>
     </svg>`,
   },
 ];
@@ -180,6 +191,9 @@ function _mountTab(id, shell) {
   } else if (id === 'assistant') {
     content.innerHTML = buildAssistantTab();
     initAssistant(content);
+  } else if (id === 'gateway') {
+    content.innerHTML = buildGatewayTab();
+    loadGateway(content);
   }
 }
 
@@ -202,6 +216,10 @@ function _pollCallbacks(shell) {
     onAgents(agents) {
       const c = shell.querySelector('#cc-tab-content');
       if (_activeTab === 'command' && c) applyAgents(c, agents);
+    },
+    onGateway(gw) {
+      const c = shell.querySelector('#cc-tab-content');
+      if (_activeTab === 'command' && c) applyGateway(c, gw);
     },
     onError(e) { console.warn('[Command Center] poll error:', e); },
   };

@@ -1,15 +1,14 @@
-/**
- * dashboard.js — Cerberus post-login landing screen
- * Full-page overlay composited of read-only panels from existing data.
- * All colours via CSS custom properties — theme-reactive by construction.
- */
+// dashboard.js — Cerberus post-login landing screen
+// All colours via CSS custom properties — theme-reactive by construction.
 
 const PANEL_ID = 'cerberus-dashboard';
-let _canvas = null;
-let _rafId  = null;
-let _vitalsTimer = null;
+let _rafId = null, _vitalsTimer = null, _agentsTimer = null, _usageRaf = null;
 
-// ── Public API ──────────────────────────────────────────────────────
+function _getRgb() {
+  const c = getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b';
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(c);
+  return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : [192,57,43];
+}
 
 export function open() {
   if (document.getElementById(PANEL_ID)) return;
@@ -21,17 +20,10 @@ export function open() {
 export function close() {
   _cleanup();
   const el = document.getElementById(PANEL_ID);
-  if (el) {
-    el.classList.add('dash-leaving');
-    setTimeout(() => el.remove(), 320);
-  }
+  if (el) { el.classList.add('dash-leaving'); setTimeout(() => el.remove(), 320); }
 }
 
-export function toggle() {
-  document.getElementById(PANEL_ID) ? close() : open();
-}
-
-// ── Build DOM ───────────────────────────────────────────────────────
+export function toggle() { document.getElementById(PANEL_ID) ? close() : open(); }
 
 function _buildPanel() {
   const panel = document.createElement('div');
@@ -55,11 +47,9 @@ function _buildPanel() {
           <span class="dash-status" id="dash-status-text">ONLINE</span>
         </div>
         <div class="dash-clock" id="dash-clock"></div>
-        <button class="dash-close-btn" id="dash-close" title="Go to Chat" aria-label="Go to Chat">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span>CHAT</span>
+        <button class="dash-close-btn" id="dash-close" title="Settings" aria-label="Settings">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>SETTINGS</span>
         </button>
       </header>
 
@@ -93,6 +83,20 @@ function _buildPanel() {
           <div class="dash-hero-text">
             <div class="dash-hero-greeting">GUARDIAN ONLINE</div>
             <div class="dash-hero-sub" id="dash-datetime"></div>
+            <div class="dash-counters">
+              <div class="dash-counter-item">
+                <span class="dash-counter-val" id="dash-cnt-sessions">—</span>
+                <span class="dash-counter-lbl">SESSIONS</span>
+              </div>
+              <div class="dash-counter-item">
+                <span class="dash-counter-val" id="dash-cnt-agents">—</span>
+                <span class="dash-counter-lbl">AGENTS</span>
+              </div>
+              <div class="dash-counter-item">
+                <span class="dash-counter-val" id="dash-cnt-status">—</span>
+                <span class="dash-counter-lbl">STATUS</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -121,6 +125,24 @@ function _buildPanel() {
           </div>
         </div>
 
+        <!-- Active agents -->
+        <div class="dash-card dash-agents">
+          <div class="dash-card-title">ACTIVE AGENTS</div>
+          <div id="dash-agents-list" class="dash-agents-list">
+            <div class="dash-empty">Loading…</div>
+          </div>
+        </div>
+
+        <!-- Token usage — mock until /api/usage/tokens exists (FLAG 1) -->
+        <div class="dash-card dash-usage">
+          <div class="dash-card-title">TOKEN USAGE <span class="dash-mock-badge">PREVIEW</span></div>
+          <canvas id="dash-usage-canvas" aria-label="Token usage chart" role="img"></canvas>
+          <div class="dash-usage-foot">
+            <span id="dash-usage-total">—</span>
+            <span class="dash-usage-period">THIS MONTH</span>
+          </div>
+        </div>
+
         <!-- Quick actions -->
         <div class="dash-card dash-actions">
           <div class="dash-card-title">QUICK ACCESS</div>
@@ -130,6 +152,14 @@ function _buildPanel() {
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
               <span>NEW CHAT</span>
+            </button>
+            <button class="dash-action-btn dash-action-nexus" id="dash-act-nexus">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <span>NEXUS</span>
+            </button>
+            <button class="dash-action-btn dash-action-cerberus" id="dash-act-cerberus">
+              <svg width="13" height="15" viewBox="0 0 100 115" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round"><path d="M50 5 L8 22 L8 55 C8 78 26 100 50 110 C74 100 92 78 92 55 L92 22 Z"/><path d="M30 70 C30 54 40 46 50 46 C60 46 70 54 70 70" stroke-width="5" opacity="0.8"/></svg>
+              <span>CERBERUS</span>
             </button>
             <button class="dash-action-btn" id="dash-act-cc">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -151,6 +181,25 @@ function _buildPanel() {
               </svg>
               <span>TASKS</span>
             </button>
+            <button class="dash-action-btn" id="dash-act-theme">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none"/>
+                <circle cx="15.5" cy="10" r="1.5" fill="currentColor" stroke="none"/>
+                <circle cx="12" cy="15" r="1.5" fill="currentColor" stroke="none"/>
+              </svg>
+              <span>THEME</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Session activity -->
+        <div class="dash-card dash-activity">
+          <div class="dash-card-title">SESSION ACTIVITY <span class="dash-mock-badge">7D</span></div>
+          <canvas id="dash-act-canvas" role="img" aria-label="Session activity past 7 days"></canvas>
+          <div class="dash-act-foot">
+            <span id="dash-act-total">0</span>
+            <span class="dash-usage-period">THIS WEEK</span>
           </div>
         </div>
       </div>
@@ -159,28 +208,44 @@ function _buildPanel() {
 
   document.body.appendChild(panel);
 
-  // Wire close / actions
-  panel.querySelector('#dash-close')?.addEventListener('click', close);
-  panel.querySelector('#dash-act-chat')?.addEventListener('click', () => {
-    close();
-    setTimeout(() => document.getElementById('rail-new-session')?.click(), 100);
-  });
-  panel.querySelector('#dash-act-cc')?.addEventListener('click', () => {
-    close();
-    setTimeout(() => document.getElementById('command-center-btn')?.click() || document.querySelector('[data-section="command-center"] .section-header-flex')?.click(), 100);
-  });
-  panel.querySelector('#dash-act-notes')?.addEventListener('click', () => { close(); setTimeout(() => window.location.href = '/notes', 80); });
-  panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => { close(); setTimeout(() => document.getElementById('tool-tasks-btn')?.click(), 80); });
+  function _go(action) {
+    _cleanup();
+    document.getElementById(PANEL_ID)?.remove();
+    action?.();
+  }
 
-  // Close on Escape
-  const _onKey = (e) => { if (e.key === 'Escape') close(); };
-  document.addEventListener('keydown', _onKey, { once: true });
-
+  // Settings + Tasks: use openShellModal so the modal is moved into
+  // #cerberus-modal-portal (z-index 999950) — visible above dashboard (4500)
+  panel.querySelector('#dash-close')?.addEventListener('click', () => {
+    import('./cerberusShellModals.js').then(m => m.openShellModal('settings'));
+  });
+  // Notes — open overlay then raise above dashboard
+  panel.querySelector('#dash-act-notes')?.addEventListener('click', () => {
+    import('./cerberusOverlayTools.js').then(async (m) => {
+      await m.default.openOverlayTool('notes');
+      const el = document.getElementById('notes-pane-backdrop') || document.getElementById('notes-pane');
+      if (el) el.style.zIndex = '5000';
+    });
+  });
+  panel.querySelector('#dash-act-tasks')?.addEventListener('click', () => {
+    import('./cerberusShellModals.js').then(m => m.openShellModal('tasks'));
+  });
+  panel.querySelector('#dash-act-theme')?.addEventListener('click', () => {
+    const modal = document.getElementById('theme-modal');
+    if (!modal) return;
+    const portal = document.getElementById('cerberus-modal-portal');
+    if (portal && modal.parentElement !== portal) portal.appendChild(modal);
+    modal.classList.remove('hidden');
+  });
+  // Navigation buttons close dashboard first
+  panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('rail-new-session')?.click(); }));
+  panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _go(() => { sessionStorage.setItem('cerberus_skip_modal_restore', '1'); window.location.href = '/home'; }));
+  panel.querySelector('#dash-act-cerberus')?.addEventListener('click', () => _go(() => { window.location.href = '/'; }));
+  panel.querySelector('#dash-act-cc')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('sidebar-command-center-btn')?.click(); }));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); }, { once: true });
   _tickClock(panel);
   _tickDatetime(panel);
 }
-
-// ── Clock & datetime ────────────────────────────────────────────────
 
 function _tickClock(panel) {
   const el = panel.querySelector('#dash-clock');
@@ -195,11 +260,8 @@ function _tickClock(panel) {
 
 function _tickDatetime(panel) {
   const el = panel.querySelector('#dash-datetime');
-  if (!el) return;
-  el.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
+  if (el) el.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
 }
-
-// ── Globe animation ─────────────────────────────────────────────────
 
 function _startGlobeAnimation() {
   const canvas = document.getElementById('dash-bg-canvas');
@@ -245,21 +307,23 @@ function _startGlobeAnimation() {
   frame();
 }
 
-// ── Data loading ────────────────────────────────────────────────────
-
 async function _loadData() {
-  await Promise.all([_loadSessions(), _loadVitals()]);
+  await Promise.all([_loadSessions(), _loadVitals(), _loadAgents()]);
   _vitalsTimer = setInterval(_loadVitals, 8000);
+  _agentsTimer = setInterval(_loadAgents, 12000);
+  _drawUsageChart();
 }
 
 async function _loadSessions() {
   const el = document.getElementById('dash-sessions-list');
   if (!el) return;
   try {
-    const res = await fetch('/api/sessions?limit=6', { credentials: 'same-origin' });
+    const res = await fetch('/api/sessions?limit=50', { credentials: 'same-origin' });
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     const sessions = Array.isArray(data) ? data : (data.sessions || []);
+    _animCounter('dash-cnt-sessions', sessions.length);
+    _drawActivityChart(sessions);
     if (!sessions.length) {
       el.innerHTML = `<div class="dash-empty dash-first-run">
         <div class="dash-empty-icon">◈</div>
@@ -288,6 +352,7 @@ async function _loadSessions() {
     });
   } catch (e) {
     el.innerHTML = '<div class="dash-empty">Could not load sessions.</div>';
+    _drawActivityChart([]);
   }
 }
 
@@ -301,12 +366,128 @@ async function _loadVitals() {
     _setVital('disk', v.disk_percent ?? -1, '%');
     _setVital('lat',  v.latency_ms   ?? -1, 'ms');
     const status = document.getElementById('dash-status-text');
+    const cpu = v.cpu_percent ?? 0;
     if (status) {
-      const cpu = v.cpu_percent ?? 0;
       status.textContent = cpu > 85 ? 'HIGH LOAD' : cpu > 60 ? 'ACTIVE' : 'ONLINE';
       status.dataset.level = cpu > 85 ? 'warn' : 'ok';
     }
+    const cntStatus = document.getElementById('dash-cnt-status');
+    if (cntStatus) cntStatus.textContent = cpu > 85 ? 'HIGH' : cpu > 60 ? 'BUSY' : 'IDLE';
   } catch (_) {}
+}
+
+function _animCounter(id, to, suffix) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const from = parseFloat(el.textContent) || 0;
+  const dur = 900;
+  const start = performance.now();
+  const tick = (now) => {
+    const t = Math.min((now - start) / dur, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(from + (to - from) * eased) + (suffix || '');
+    if (t < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+// ── Agents card ──────────────────────────────────────────────────────
+
+async function _loadAgents() {
+  const el = document.getElementById('dash-agents-list');
+  if (!el) return;
+  try {
+    const res = await fetch('/api/cyberapps/operations/agents', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    const agents = data.agents || [];
+    const cntEl = document.getElementById('dash-cnt-agents');
+    if (cntEl) _animCounter('dash-cnt-agents', agents.length);
+    if (!agents.length) {
+      el.innerHTML = '<div class="dash-empty">No active agents.</div>';
+      return;
+    }
+    el.innerHTML = agents.slice(0, 6).map(a => {
+      const status = a.status || 'idle';
+      const name = _esc(a.name || a.id || 'Agent');
+      return `<div class="dash-agent-row">
+        <span class="dash-agent-dot dash-agent-dot--${status}"></span>
+        <span class="dash-agent-name">${name}</span>
+        <span class="dash-agent-status">${_esc(status).toUpperCase()}</span>
+      </div>`;
+    }).join('');
+  } catch (_) {
+    const el2 = document.getElementById('dash-agents-list');
+    if (el2) el2.innerHTML = '<div class="dash-empty">Agents unavailable.</div>';
+  }
+}
+
+function _drawUsageChart() {
+  const canvas = document.getElementById('dash-usage-canvas');
+  if (!canvas || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  const days = 14;
+  const data = Array.from({length: days}, (_, i) => Math.round(4000 + Math.sin(i * 0.9) * 1800 + Math.random() * 1200));
+  const total = data.reduce((s, v) => s + v, 0);
+  if (document.getElementById('dash-usage-total')) _animCounter('dash-usage-total', Math.round(total / 1000), 'K');
+  const max = Math.max(...data);
+  const W = canvas.parentElement?.clientWidth || 220, H = 54;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.floor(W * dpr); canvas.height = Math.floor(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const [pl, pr, pt, pb] = [4, 4, 6, 4];
+  const iw = W - pl - pr, ih = H - pt - pb;
+  let phase = 0;
+  function draw() {
+    if (!document.getElementById(PANEL_ID)) return;
+    phase += 0.018; ctx.clearRect(0, 0, W, H);
+    const [r, g, b] = _getRgb();
+    const pts = data.map((v, i) => [pl + (i/(days-1))*iw, pt + ih - (v/max)*ih*(1+Math.sin(phase+i*0.7)*0.04)]);
+    ctx.beginPath(); ctx.moveTo(pts[0][0], H-pb); ctx.lineTo(pts[0][0], pts[0][1]);
+    pts.forEach(([x,y]) => ctx.lineTo(x, y)); ctx.lineTo(pts[pts.length-1][0], H-pb); ctx.closePath();
+    const grd = ctx.createLinearGradient(0, pt, 0, H);
+    grd.addColorStop(0, `rgba(${r},${g},${b},0.28)`); grd.addColorStop(0.7, `rgba(${r},${g},${b},0.06)`); grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grd; ctx.fill();
+    ctx.beginPath(); pts.forEach(([x,y], i) => i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+    ctx.strokeStyle=`rgba(${r},${g},${b},0.75)`; ctx.lineWidth=1.5; ctx.lineJoin='round'; ctx.stroke();
+    const [lx,ly]=pts[pts.length-1]; ctx.beginPath(); ctx.arc(lx,ly,2.5,0,Math.PI*2);
+    ctx.fillStyle=`rgba(${r},${g},${b},0.9)`; ctx.fill();
+    _usageRaf = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function _drawActivityChart(sessions) {
+  const canvas = document.getElementById('dash-act-canvas');
+  if (!canvas) return;
+  const days = 7, now = Date.now();
+  const bins = Array.from({length: days}, () => 0);
+  sessions.forEach(s => {
+    const d = Math.floor((now - new Date(s.updated_at || s.created_at || 0).getTime()) / 86400000);
+    if (d >= 0 && d < days) bins[days - 1 - d]++;
+  });
+  const tot = document.getElementById('dash-act-total');
+  if (tot) tot.textContent = bins.reduce((s, v) => s + v, 0);
+  const max = Math.max(...bins, 1);
+  const W = canvas.parentElement?.clientWidth || 200, H = 56;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.cssText = `width:${W}px;height:${H}px;display:block`;
+  const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const [r, g, b] = _getRgb();
+  const bw = Math.max(4, Math.floor((W - 16) / days) - 3);
+  const sp = (W - 16 - bw * days) / Math.max(1, days - 1);
+  const lbls = ['S','M','T','W','T','F','S'];
+  const today = new Date().getDay();
+  bins.forEach((v, i) => {
+    const bh = Math.max(2, (v / max) * (H - 18));
+    const x = 8 + i * (bw + sp);
+    ctx.fillStyle = `rgba(${r},${g},${b},${0.2 + (v / max) * 0.65})`;
+    ctx.fillRect(x, H - 10 - bh, bw, bh);
+    ctx.fillStyle = `rgba(${r},${g},${b},0.3)`;
+    ctx.font = '7px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(lbls[(today - (days - 1 - i) + 7) % 7], x + bw / 2, H - 1);
+  });
 }
 
 function _setVital(key, val, unit) {
@@ -323,8 +504,9 @@ function _setVital(key, val, unit) {
 
 function _cleanup() {
   if (_rafId)       { cancelAnimationFrame(_rafId); _rafId = null; }
+  if (_usageRaf)    { cancelAnimationFrame(_usageRaf); _usageRaf = null; }
   if (_vitalsTimer) { clearInterval(_vitalsTimer); _vitalsTimer = null; }
-  _canvas = null;
+  if (_agentsTimer) { clearInterval(_agentsTimer); _agentsTimer = null; }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

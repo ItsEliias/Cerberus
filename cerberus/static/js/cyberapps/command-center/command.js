@@ -228,6 +228,38 @@ function _jxAnimateNum(el, toVal, suffix, key) {
   }
 }
 
+// ---- Phase C: mock ops data (FLAG 2 & 3 — replace with live endpoints) ----
+
+function _mockTasksHTML() {
+  const TASKS = [
+    { id: 'T-001', title: 'Context summarisation', status: 'running',  agent: 'summarizer', elapsed: '2m 14s' },
+    { id: 'T-002', title: 'Memory consolidation',  status: 'queued',   agent: 'memory',     elapsed: '—' },
+    { id: 'T-003', title: 'File index refresh',    status: 'running',  agent: 'indexer',    elapsed: '48s' },
+  ];
+  return TASKS.map(t => {
+    const dotClass = t.status === 'running' ? 'running' : 'standby';
+    return `<div class="cc-task-row">
+      <span class="cc-dot ${dotClass}"></span>
+      <span class="cc-task-id">${t.id}</span>
+      <span class="cc-task-title">${t.title}</span>
+      <span class="cc-task-agent">${t.agent}</span>
+      <span class="cc-task-elapsed">${t.elapsed}</span>
+    </div>`;
+  }).join('');
+}
+
+function _mockModelHTML() {
+  return `
+    <div class="cc-model-row"><span class="cc-model-lbl">MODEL</span><span class="cc-model-val" id="cc-model-name">claude-sonnet-4-6</span></div>
+    <div class="cc-model-row"><span class="cc-model-lbl">CTX USED</span>
+      <div class="cc-model-bar-wrap"><div class="cc-model-bar" style="width:34%"></div></div>
+      <span class="cc-model-val cc-model-pct">34%</span>
+    </div>
+    <div class="cc-model-row"><span class="cc-model-lbl">CTX LIMIT</span><span class="cc-model-val">200K</span></div>
+    <div class="cc-model-row"><span class="cc-model-lbl">STATUS</span><span class="cc-model-val cc-model-ok">READY</span></div>
+  `.trim();
+}
+
 // ---- Build HTML ----
 
 export function buildCommandTab() {
@@ -260,10 +292,41 @@ export function buildCommandTab() {
       </div>
     </div>
   </div>
+  <div class="cc-card">
+    <div class="cc-card-title">Gateway</div>
+    <div class="cc-gw-list" id="cc-gw-list">
+      <div class="cc-gw-row" data-platform="telegram">
+        <span class="cc-dot cc-gw-dot" style="background:rgba(255,255,255,0.15)"></span>
+        <span class="cc-gw-name">Telegram</span>
+        <span class="cc-gw-status">—</span>
+      </div>
+      <div class="cc-gw-row" data-platform="discord">
+        <span class="cc-dot cc-gw-dot" style="background:rgba(255,255,255,0.15)"></span>
+        <span class="cc-gw-name">Discord</span>
+        <span class="cc-gw-status">—</span>
+      </div>
+    </div>
+  </div>
   <div class="cc-telemetry">
     <div class="cc-telemetry-header">Telemetry Feed</div>
     <div class="cc-sparklines" id="cc-sparklines">
       ${['cpu','ram','latency'].map(k => _sparkSvg(k)).join('')}
+    </div>
+  </div>
+  <div class="cc-ops-row">
+    <div class="cc-card cc-card-agents">
+      <div class="cc-card-title">Active Agents</div>
+      <div class="cc-agents-table" id="cc-agents-table">
+        <div class="cc-empty">Loading…</div>
+      </div>
+    </div>
+    <div class="cc-card cc-card-tasks">
+      <div class="cc-card-title">Running Tasks <span class="cc-flag-badge">MOCK</span></div>
+      <div class="cc-tasks-feed" id="cc-tasks-feed">${_mockTasksHTML()}</div>
+    </div>
+    <div class="cc-card cc-card-model">
+      <div class="cc-card-title">Model Status <span class="cc-flag-badge">MOCK</span></div>
+      <div class="cc-model-panel" id="cc-model-panel">${_mockModelHTML()}</div>
     </div>
   </div>
   <div class="cc-hero-globe">
@@ -327,4 +390,59 @@ function _esc(s) {
   const d = document.createElement('div');
   d.textContent = String(s);
   return d.innerHTML;
+}
+
+// ---- Gateway status ----
+
+const _GW_COLORS = {
+  active:        '#2ecc71',
+  idle:          '#f1c40f',
+  offline:       'rgba(192,57,43,0.6)',
+  unconfigured:  'rgba(255,255,255,0.15)',
+};
+
+function _gwRelative(iso) {
+  if (!iso) return 'never';
+  const delta = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (delta < 60)    return 'just now';
+  if (delta < 3600)  return `${Math.floor(delta / 60)}m ago`;
+  if (delta < 86400) return `${Math.floor(delta / 3600)}h ago`;
+  return `${Math.floor(delta / 86400)}d ago`;
+}
+
+export function applyGateway(root, gw) {
+  const platforms = (gw && gw.platforms) || [];
+  for (const p of platforms) {
+    const row = root.querySelector(`.cc-gw-row[data-platform="${p.name}"]`);
+    if (!row) continue;
+    const dot    = row.querySelector('.cc-gw-dot');
+    const status = row.querySelector('.cc-gw-status');
+    const color  = _GW_COLORS[p.status] || _GW_COLORS.unconfigured;
+    if (dot) {
+      dot.style.background  = color;
+      dot.style.boxShadow   = p.status === 'active' ? `0 0 5px ${color}` : 'none';
+    }
+    if (status) {
+      const rel = p.status === 'unconfigured' ? '—' : _gwRelative(p.last_seen);
+      status.textContent = p.status === 'unconfigured' ? 'off' : `${p.status} · ${rel}`;
+    }
+  }
+}
+
+// Live tasks — replace mock once /api/tasks/active exists (FLAG 2)
+export function applyTasks(root, tasks) {
+  const feed = root.querySelector('#cc-tasks-feed');
+  if (!feed || !Array.isArray(tasks)) return;
+  if (!tasks.length) { feed.innerHTML = '<div class="cc-empty">No running tasks</div>'; return; }
+  feed.innerHTML = tasks.map(t => {
+    const dotClass = t.status === 'running' ? 'running' : t.status === 'active' ? 'active' : 'standby';
+    const elapsed = t.started_at ? _gwRelative(t.started_at).replace(' ago', '') : '—';
+    return `<div class="cc-task-row">
+      <span class="cc-dot ${dotClass}"></span>
+      <span class="cc-task-id">${_esc(t.id || '—')}</span>
+      <span class="cc-task-title">${_esc(t.title || t.name || '—')}</span>
+      <span class="cc-task-agent">${_esc(t.agent || '—')}</span>
+      <span class="cc-task-elapsed">${elapsed}</span>
+    </div>`;
+  }).join('');
 }

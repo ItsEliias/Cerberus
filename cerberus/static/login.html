@@ -363,7 +363,7 @@
     const res = await fetch('/api/auth/status', { credentials: 'same-origin' });
     const data = await res.json();
     if (data.authenticated) {
-      window.location.replace('/');
+      window.location.replace('/dashboard');
       return;
     }
     signupAllowed = !!data.signup_enabled;
@@ -469,7 +469,7 @@
         sessionStorage.setItem('ody-prefetch-sessions', JSON.stringify(sess));
         sessionStorage.setItem('ody-prefetch-features', JSON.stringify(feat));
         sessionStorage.setItem('ody-prefetch-settings', JSON.stringify(sett));
-      }).catch(() => {}).finally(() => { window.location.replace('/'); });
+      }).catch(() => {}).finally(() => { window.location.replace('/dashboard'); });
     }
     async function doLogin(totpCode) {
       const loginBody = { username, password, remember };

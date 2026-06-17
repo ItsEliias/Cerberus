@@ -226,6 +226,7 @@
   <link rel="stylesheet" href="/static/jarvis-v2/surfaces-phase-b.css">
   <link rel="stylesheet" href="/static/jarvis-v2/surfaces-phase-b2.css">
   <link rel="stylesheet" href="/static/dashboard.css">
+  <link rel="stylesheet" href="/static/css/cerberus-os-home.css">
   <script src="/static/jarvis-v2/effects.js"></script>
   <link rel="modulepreload" href="/static/app.js">
   <link rel="modulepreload" href="/static/js/chat.js">
@@ -236,20 +237,24 @@
 </head>
 <body>
   <!-- Loading overlay — hides all flashing until app is ready -->
-  <div id="app-loader" style="position:fixed;inset:0;z-index:99999;background:var(--bg,#1a1d23);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;transition:opacity .3s">
-    <div id="loader-wave" style="color:var(--brand-color,var(--red,#c0392b));font-family:monospace;font-size:11px;opacity:.5">▁▂▃</div>
+  <style>
+    @keyframes cerb-pulse{0%,100%{opacity:.3;transform:scale(.92)}50%{opacity:.95;transform:scale(1.04)}}
+    @keyframes cerb-ring{0%,100%{opacity:.15;transform:scale(.85)}50%{opacity:.4;transform:scale(1.1)}}
+    #cerb-loader-shield{animation:cerb-pulse 2s ease-in-out infinite;transform-origin:center;filter:drop-shadow(0 0 10px rgba(192,57,43,.35))}
+    #cerb-loader-ring{animation:cerb-ring 2s ease-in-out infinite;transform-origin:center}
+  </style>
+  <div id="app-loader" style="position:fixed;inset:0;z-index:99999;background:var(--bg,#1a1d23);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;transition:opacity .3s">
+    <div style="position:relative;width:64px;height:64px;display:flex;align-items:center;justify-content:center">
+      <svg id="cerb-loader-ring" style="position:absolute" width="64" height="64" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke="var(--brand-color,#c0392b)" stroke-width="1" stroke-dasharray="6 4"/></svg>
+      <svg id="cerb-loader-shield" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--brand-color,#c0392b)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2 L19 5 V11 C19 16 12 22 12 22 C12 22 5 16 5 11 V5 L12 2 Z" fill="rgba(192,57,43,.1)"/>
+        <circle cx="12" cy="11" r="2.4" fill="var(--brand-color,#c0392b)" stroke="none"/>
+      </svg>
+    </div>
+    <div style="color:var(--brand-color,#c0392b);font-family:monospace;font-size:9px;letter-spacing:.3em;opacity:.5">CERBERUS</div>
   </div>
   <script nonce="{{CSP_NONCE}}">
   (function(){
-    var el=document.getElementById('loader-wave');
-    if(!el)return;
-    var frames=['▁▂▃','▂▃▄','▃▄▅','▄▅▆','▅▆▅','▆▅▄','▅▄▃','▄▃▂','▃▂▁'];
-    var i=0;
-    var iv=setInterval(function(){
-      if(!document.getElementById('app-loader')){clearInterval(iv);return}
-      el.textContent=frames[i%frames.length];
-      i++;
-    },150);
     setTimeout(function(){var l=document.getElementById('app-loader');if(l){l.style.opacity='0';setTimeout(function(){l.remove()},300)}},5000);
   })();
   </script>
@@ -671,6 +676,7 @@
   <div class="icon-rail" id="icon-rail">
     <div class="rail-resize-handle" id="rail-resize-handle"></div>
     <!-- Static: core actions -->
+    <button class="icon-rail-btn" id="rail-cerberus-home" title="CerberusOS Home"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/></svg></button>
     <button class="icon-rail-btn" id="rail-dashboard" title="Dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L3 6V12C3 17.5 7 22 12 24C17 22 21 17.5 21 12V6Z"/><line x1="9" y1="12" x2="11.5" y2="15" stroke-width="1.6"/><line x1="11.5" y1="15" x2="16" y2="10" stroke-width="1.6"/></svg></button>
     <button class="icon-rail-btn" id="rail-search-btn" title="Search conversations (Ctrl+K)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M21 21l-4.35-4.35"/></svg></button>
     <button class="icon-rail-btn rail-new-chat" id="rail-new-session" title="New chat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
@@ -713,7 +719,19 @@
         <svg class="sidebar-action-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
         <span class="grow" style="position:relative;left:-1px;">Search</span>
       </div>
-      <div class="list-item" id="sidebar-command-center-btn" title="Open Command Center (JARVIS overview)" style="margin-top:6px;">
+      <div class="list-item" id="sidebar-dashboard-btn" title="Dashboard — Guardian Online" style="margin-top:6px;">
+        <svg class="sidebar-action-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:relative;left:-1px;">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        <span class="grow" style="position:relative;left:-1px;">Dashboard</span>
+      </div>
+      <div class="list-item" id="sidebar-cerberus-globe-btn" title="Nexus — Interactive Globe" style="margin-top:2px;">
+        <svg class="sidebar-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="position:relative;left:-1px;">
+          <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+        </svg>
+        <span class="grow" style="position:relative;left:-1px;">Nexus</span>
+      </div>
+      <div class="list-item" id="sidebar-command-center-btn" title="Open Command Center (JARVIS overview)" style="margin-top:2px;">
         <svg class="sidebar-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" style="position:relative;left:-1px;">
           <path d="M12 2 L19 5 V11 C19 16 12 22 12 22 C12 22 5 16 5 11 V5 Z"/>
           <circle cx="12" cy="11" r="2.2" fill="currentColor" stroke="none"/>
@@ -2398,6 +2416,587 @@
 <script type="module" src="/static/app.js"></script>  <!-- app.js must be LAST -->
 <script type="module" src="/static/js/init.js"></script>
 <script type="module" src="/static/js/a11y.js"></script>
+<!-- ===== CerberusOS Home Shell ===== -->
+<div id="cerberus-os-backdrop" class="cerberus-os-backdrop" aria-hidden="true">
+  <canvas id="cerberus-mc-particles" class="cerberus-mc-particles"></canvas>
+  <div class="cerberus-mc-bg"></div>
+  <div class="cerberus-mc-scanline"></div>
+</div>
+
+<header id="cerberus-os-status-bar" class="cerberus-os-status-bar" aria-label="Cerberus OS status">
+  <div class="cerberus-os-status-ribbon">
+    <button type="button" id="cerberus-voice-status-chip" class="cerberus-os-status-wake" data-status="idle" title="Voice status" aria-label="Voice status">
+      <span class="cerberus-voice-status-chip-dot" aria-hidden="true"></span>
+      <span class="cerberus-voice-status-chip-text">Standby</span>
+    </button>
+    <span class="cerberus-os-status-sep" aria-hidden="true">|</span>
+    <button type="button" id="cerberus-status-passive" class="cerberus-os-status-pill cerberus-os-status-pill--toggle" data-on="true">Passive Wake: ON</button>
+    <button type="button" id="cerberus-status-conversation" class="cerberus-os-status-pill cerberus-os-status-pill--toggle" data-on="false">Conversation: OFF</button>
+    <button type="button" id="cerberus-status-speak" class="cerberus-os-status-pill cerberus-os-status-pill--toggle" data-on="false">Speak: OFF</button>
+    <span id="cerberus-status-bridge" class="cerberus-os-status-meta">Desktop: —</span>
+    <span id="cerberus-status-listening" class="cerberus-os-status-meta">Listening: …</span>
+    <span id="cerberus-status-activity" class="cerberus-os-status-meta cerberus-os-status-activity" data-state="idle"></span>
+    <span id="cerberus-status-last" class="cerberus-os-status-meta">Last: —</span>
+  </div>
+</header>
+
+<canvas id="cerberus-power-links" class="cerberus-power-links" aria-hidden="true"></canvas>
+<div id="cerberus-globe-hit-layer" class="cerberus-globe-hit-layer" aria-hidden="true"></div>
+
+<section id="cerberus-home" class="cerberus-home cerberus-os-hub hidden" aria-label="Cerberus OS Home">
+  <div class="cerberus-home-topbar">
+    <button type="button" id="cerberus-home-back-btn" class="cerberus-home-back-btn" title="Back to Dashboard" aria-label="Back to Dashboard">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Dashboard
+    </button>
+  </div>
+  <div id="cerberus-graph-viewport" class="cerberus-graph-viewport">
+    <div id="cerberus-globe-stage" class="cerberus-globe-stage">
+      <canvas id="cerberus-node-connections" class="cerberus-node-connections" aria-hidden="true"></canvas>
+      <div class="cerberus-mc-globe-bg cerberus-globe-shell" id="cerberus-core" aria-hidden="true">
+        <canvas id="cerberus-core-canvas" class="cerberus-core-canvas"></canvas>
+      </div>
+      <div class="cerberus-node-ring" id="cerberus-node-ring" aria-label="Cerberus navigation nodes"></div>
+      <button type="button" id="cerberus-brain-core" class="cerberus-brain-core" aria-label="Cerberus" title="Cerberus">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/></svg>
+      </button>
+    </div>
+  </div>
+  <!-- Legacy elements kept for JS compatibility (hidden) -->
+  <div class="cerberus-home-legacy" aria-hidden="true">
+    <p id="cerberus-home-briefing-text"></p>
+    <p id="cerberus-briefing-headline"></p>
+    <ul id="cerberus-briefing-priorities"></ul>
+    <p id="cerberus-briefing-recommendation"></p>
+    <div id="cerberus-home-projects"></div>
+    <div id="cerberus-home-agents"></div>
+    <div id="cerberus-widget-goals"></div>
+    <div id="cerberus-widget-finance-goal"></div>
+    <div id="cerberus-widget-notes-preview"></div>
+    <div id="cerberus-widget-tasks"></div>
+    <p id="cerberus-desktop-control-status"></p>
+    <p id="cerberus-desktop-control-meta"></p>
+    <button id="cerberus-briefing-speak"></button>
+    <button id="cerberus-briefing-refresh"></button>
+    <button id="cerberus-briefing-details"></button>
+    <button id="cerberus-desktop-open-cursor"></button>
+    <button id="cerberus-desktop-open-folder"></button>
+    <button id="cerberus-desktop-view-apps"></button>
+    <button id="cerberus-desktop-test-cursor"></button>
+    <button id="cerberus-desktop-test-browser"></button>
+    <button id="cerberus-desktop-setup"></button>
+    <div id="cerberus-voice-actions-panel"></div>
+  </div>
+</section>
+
+<div id="cerberus-setup-wizard" class="cerberus-setup-wizard hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-setup-title" aria-hidden="true">
+  <div class="cerberus-setup-wizard-card">
+    <nav class="cerberus-setup-progress" aria-label="Setup progress">
+      <ol id="cerberus-setup-progress-list" class="cerberus-setup-progress-list">
+        <li class="cerberus-setup-progress-item cerberus-setup-progress-item--active" data-step-index="0">Welcome</li>
+        <li class="cerberus-setup-progress-item" data-step-index="1">You</li>
+        <li class="cerberus-setup-progress-item" data-step-index="2">Office</li>
+        <li class="cerberus-setup-progress-item" data-step-index="3">Focus</li>
+        <li class="cerberus-setup-progress-item" data-step-index="4">AI</li>
+        <li class="cerberus-setup-progress-item" data-step-index="5">Storage</li>
+        <li class="cerberus-setup-progress-item" data-step-index="6">Finish</li>
+      </ol>
+    </nav>
+    <section class="cerberus-setup-step cerberus-setup-step--active" data-setup-step="0">
+      <h1 id="cerberus-setup-title" class="cerberus-setup-title">Welcome to Cerberus</h1>
+      <p class="cerberus-setup-subtitle">Let's build your AI workspace.</p>
+      <button type="button" id="cerberus-setup-start" class="cerberus-setup-primary-btn">Start Setup</button>
+    </section>
+    <section class="cerberus-setup-step" data-setup-step="1" hidden>
+      <h2 class="cerberus-setup-step-title">Tell us about yourself</h2>
+      <label class="cerberus-setup-label" for="cerberus-setup-user-name">Your name <span class="cerberus-setup-required">*</span></label>
+      <input type="text" id="cerberus-setup-user-name" class="cerberus-setup-input" autocomplete="name" placeholder="Your name" />
+      <label class="cerberus-setup-label" for="cerberus-setup-user-role" style="margin-top:12px">Role / job title</label>
+      <input type="text" id="cerberus-setup-user-role" class="cerberus-setup-input" autocomplete="organization-title" placeholder="e.g. Security Analyst, Developer, Founder" />
+      <label class="cerberus-setup-label" for="cerberus-setup-user-company" style="margin-top:12px">Company / organisation</label>
+      <input type="text" id="cerberus-setup-user-company" class="cerberus-setup-input" autocomplete="organization" placeholder="e.g. Acme Corp, Personal, Freelance" />
+      <label class="cerberus-setup-label" for="cerberus-setup-user-hobbies" style="margin-top:12px">Interests &amp; hobbies</label>
+      <textarea id="cerberus-setup-user-hobbies" class="cerberus-setup-input cerberus-setup-textarea" rows="2" placeholder="e.g. CTFs, red-teaming, music production, trading…"></textarea>
+    </section>
+    <section class="cerberus-setup-step" data-setup-step="2" hidden>
+      <h2 class="cerberus-setup-step-title">Create your first Office</h2>
+      <label class="cerberus-setup-label" for="cerberus-setup-office-name">Office name</label>
+      <input type="text" id="cerberus-setup-office-name" class="cerberus-setup-input" autocomplete="organization" placeholder="Example: My Company, Studio, Personal Lab" />
+    </section>
+    <section class="cerberus-setup-step" data-setup-step="3" hidden>
+      <h2 class="cerberus-setup-step-title">What are you building?</h2>
+      <div class="cerberus-setup-radio-group">
+        <label><input type="radio" name="cerberus-setup-building" value="business" checked /> Business</label>
+        <label><input type="radio" name="cerberus-setup-building" value="startup" /> Startup</label>
+        <label><input type="radio" name="cerberus-setup-building" value="personal" /> Personal</label>
+        <label><input type="radio" name="cerberus-setup-building" value="content" /> Content</label>
+        <label><input type="radio" name="cerberus-setup-building" value="development" /> Development</label>
+      </div>
+    </section>
+    <section class="cerberus-setup-step" data-setup-step="4" hidden>
+      <h2 class="cerberus-setup-step-title">Choose your AI</h2>
+      <p class="cerberus-setup-hint">Default: Local LLM</p>
+      <p class="cerberus-setup-sublabel">Model</p>
+      <div class="cerberus-setup-radio-group cerberus-setup-model-group">
+        <label><input type="radio" name="cerberus-setup-model" value="gemma" checked /> Gemma</label>
+        <label><input type="radio" name="cerberus-setup-model" value="qwen" /> Qwen</label>
+        <label><input type="radio" name="cerberus-setup-model" value="mistral" /> Mistral</label>
+        <label><input type="radio" name="cerberus-setup-model" value="gpt-oss" /> GPT OSS</label>
+        <label><input type="radio" name="cerberus-setup-model" value="skip" /> Skip for now</label>
+      </div>
+    </section>
+    <section class="cerberus-setup-step" data-setup-step="5" hidden>
+      <h2 class="cerberus-setup-step-title">Storage location</h2>
+      <p class="cerberus-setup-label">Default workspace folder</p>
+      <code id="cerberus-setup-storage-path" class="cerberus-setup-storage-path">./CerberusWorkspace</code>
+      <div class="cerberus-setup-storage-actions">
+        <button type="button" id="cerberus-setup-storage-default" class="cerberus-setup-secondary-btn">Use Default</button>
+        <button type="button" id="cerberus-setup-storage-change" class="cerberus-setup-secondary-btn cerberus-setup-secondary-btn--disabled" title="Coming soon" disabled>Change Location</button>
+      </div>
+    </section>
+    <section class="cerberus-setup-step" data-setup-step="6" hidden>
+      <h2 class="cerberus-setup-step-title">Ready to launch</h2>
+      <dl class="cerberus-setup-summary" id="cerberus-setup-summary">
+        <div><dt>Name</dt><dd id="cerberus-setup-summary-name">—</dd></div>
+        <div id="cerberus-setup-summary-role-row" class="cerberus-setup-summary-optional"><dt>Role</dt><dd id="cerberus-setup-summary-role">—</dd></div>
+        <div id="cerberus-setup-summary-company-row" class="cerberus-setup-summary-optional"><dt>Company</dt><dd id="cerberus-setup-summary-company">—</dd></div>
+        <div><dt>Office</dt><dd id="cerberus-setup-summary-office">—</dd></div>
+        <div><dt>Building</dt><dd id="cerberus-setup-summary-building">—</dd></div>
+        <div><dt>AI model</dt><dd id="cerberus-setup-summary-model">—</dd></div>
+        <div><dt>Storage</dt><dd id="cerberus-setup-summary-storage">—</dd></div>
+      </dl>
+      <button type="button" id="cerberus-setup-finish" class="cerberus-setup-primary-btn">Finish Setup</button>
+    </section>
+    <footer class="cerberus-setup-nav" id="cerberus-setup-nav">
+      <button type="button" id="cerberus-setup-back" class="cerberus-setup-secondary-btn" hidden>Back</button>
+      <button type="button" id="cerberus-setup-next" class="cerberus-setup-primary-btn" hidden>Continue</button>
+    </footer>
+  </div>
+</div>
+
+<div id="cerberus-shell-modal-backdrop" class="cerberus-shell-modal-backdrop hidden" aria-hidden="true"></div>
+<div id="cerberus-modal-portal"></div>
+
+<!-- ===== Projects Panel ===== -->
+<div id="cerberus-projects-panel" class="cerberus-shell-modal cerberus-shell-modal--wide hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-projects-panel-title" aria-hidden="true">
+  <header class="cerberus-os-panel-header">
+    <span class="cerberus-shell-modal-kicker">Cerberus</span>
+    <h2 class="cerberus-shell-modal-title" id="cerberus-projects-panel-title">Projects</h2>
+  </header>
+  <div class="cerberus-shell-modal-body cerberus-projects-panel-body">
+    <div class="cerberus-projects-toolbar">
+      <button type="button" id="cerberus-projects-add-btn" class="cerberus-project-btn">New Project</button>
+      <button type="button" id="cerberus-projects-import-btn" class="cerberus-project-btn">Import</button>
+      <button type="button" id="cerberus-projects-create-btn" class="cerberus-project-btn" style="display:none">Create</button>
+    </div>
+    <div id="cerberus-projects-grid" class="cerberus-projects-grid"></div>
+    <div class="cerberus-projects-detail" id="cerberus-projects-detail">
+      <h3 id="cerberus-projects-detail-name" class="cerberus-projects-detail-name"></h3>
+      <p id="cerberus-projects-changes" class="cerberus-projects-changes"></p>
+      <div id="cerberus-projects-detail-body" class="cerberus-projects-detail-body"></div>
+      <div id="cerberus-projects-detail-actions" class="cerberus-projects-detail-actions"></div>
+    </div>
+    <form id="cerberus-project-form" class="cerberus-project-form hidden" autocomplete="off">
+      <input type="hidden" id="cerberus-project-form-id">
+      <div class="cerberus-project-form-fields">
+        <label>Name<input type="text" id="cerberus-project-form-name" required placeholder="Project name"></label>
+        <label>Path<input type="text" id="cerberus-project-form-path" placeholder="/path/to/project"></label>
+        <label>Type<input type="text" id="cerberus-project-form-type" placeholder="e.g. App, Research"></label>
+        <label>Status<input type="text" id="cerberus-project-form-status" placeholder="e.g. active, paused"></label>
+        <label>Priority<input type="number" id="cerberus-project-form-priority" min="0" max="100"></label>
+        <label>Description<textarea id="cerberus-project-form-desc"></textarea></label>
+      </div>
+      <div class="cerberus-project-form-actions">
+        <button type="submit" class="cerberus-project-btn cerberus-project-btn--primary">Save</button>
+        <button type="button" id="cerberus-project-form-cancel" class="cerberus-project-btn">Cancel</button>
+      </div>
+    </form>
+    <!-- Workspace section -->
+    <details class="cerberus-workspace-section">
+      <summary>Workspace Settings</summary>
+      <div class="cerberus-workspace-fields">
+        <p><span class="cerberus-workspace-mount-badge" id="cerberus-workspace-mount-badge"></span></p>
+        <p id="cerberus-workspace-warning" class="cerberus-workspace-warning hidden"></p>
+        <p>Host path: <code id="cerberus-workspace-host-hint"></code></p>
+        <p>Container root: <code id="cerberus-workspace-container-root"></code></p>
+        <p>Projects folder: <code id="cerberus-workspace-projects-folder"></code></p>
+        <input type="hidden" id="cerberus-workspace-root">
+        <p id="cerberus-workspace-meta" class="cerberus-workspace-meta"></p>
+        <p id="cerberus-workspace-discovered" class="cerberus-workspace-discovered"></p>
+        <label><input type="checkbox" id="cerberus-workspace-auto-discover"> Auto-discover projects</label><br>
+        <label><input type="checkbox" id="cerberus-workspace-auto-index"> Auto-index on scan</label>
+        <div class="cerberus-workspace-actions">
+          <button type="button" id="cerberus-workspace-scan" class="cerberus-project-btn">Scan</button>
+          <button type="button" id="cerberus-workspace-index-all" class="cerberus-project-btn">Index all</button>
+          <button type="button" id="cerberus-workspace-deep-index-all" class="cerberus-project-btn">Deep index all</button>
+          <button type="button" id="cerberus-workspace-save" class="cerberus-project-btn">Save settings</button>
+          <button type="button" id="cerberus-workspace-browse" class="cerberus-project-btn">Browse</button>
+          <button type="button" id="cerberus-workspace-setup" class="cerberus-project-btn">Setup</button>
+          <button type="button" id="cerberus-workspace-bootstrap" class="cerberus-project-btn">Bootstrap</button>
+        </div>
+      </div>
+    </details>
+  </div>
+</div>
+
+<!-- ===== Finance Panel ===== -->
+<div id="cerberus-finance-panel" class="cerberus-shell-modal cerberus-shell-modal--wide hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-finance-panel-title" aria-hidden="true">
+  <header class="cerberus-os-panel-header">
+    <span class="cerberus-shell-modal-kicker">Cerberus</span>
+    <h2 class="cerberus-shell-modal-title" id="cerberus-finance-panel-title">Finance</h2>
+  </header>
+  <div class="cerberus-shell-modal-body cerberus-finance-panel-body">
+    <nav class="cerberus-finance-tabs">
+      <button type="button" class="cerberus-finance-tab" data-finance-tab="personal">Personal</button>
+      <button type="button" class="cerberus-finance-tab" data-finance-tab="project">Project</button>
+    </nav>
+    <div class="cerberus-finance-overview">
+      <div id="cerberus-finance-overview-cards" class="cerberus-finance-overview-cards"></div>
+    </div>
+    <!-- Personal tab -->
+    <div id="cerberus-finance-personal" class="cerberus-finance-personal">
+      <div id="cerberus-finance-empty-state" class="cerberus-finance-empty-state hidden">
+        <p>No financial data yet.</p>
+        <button type="button" class="cerberus-project-btn" data-finance-quick="expense">Add expense</button>
+        <button type="button" class="cerberus-project-btn" data-finance-quick="income">Log income</button>
+        <button type="button" class="cerberus-project-btn" data-finance-quick="goal">Set goal</button>
+      </div>
+      <div id="cerberus-finance-bills-list" class="cerberus-finance-bills-list"></div>
+      <div id="cerberus-finance-week-summary" class="cerberus-finance-week-summary"></div>
+      <div id="cerberus-finance-work-list" class="cerberus-finance-work-list"></div>
+      <form id="cerberus-finance-bill-form" class="cerberus-finance-form" autocomplete="off">
+        <h4>Add Bill / Expense</h4>
+        <input type="text" id="cerberus-finance-bill-name" placeholder="Name" required>
+        <input type="number" id="cerberus-finance-bill-amount" placeholder="Amount (£)" step="0.01" min="0" required>
+        <input type="number" id="cerberus-finance-bill-due-day" placeholder="Due day (1-31)" min="1" max="31">
+        <button type="submit" class="cerberus-project-btn">Add</button>
+      </form>
+      <form id="cerberus-finance-work-form" class="cerberus-finance-form" autocomplete="off">
+        <h4>Log Work Day</h4>
+        <input type="date" id="cerberus-finance-work-date">
+        <select id="cerberus-finance-work-type">
+          <option value="Full Day">Full Day</option>
+          <option value="Half Day">Half Day</option>
+          <option value="Custom">Custom amount</option>
+        </select>
+        <input type="number" id="cerberus-finance-work-amount" placeholder="Custom amount (£)" step="0.01" min="0" class="hidden">
+        <button type="submit" class="cerberus-project-btn">Log</button>
+      </form>
+    </div>
+    <!-- Project tab -->
+    <div id="cerberus-finance-project" class="cerberus-finance-project hidden">
+      <div class="cerberus-finance-project-controls">
+        <select id="cerberus-finance-project-select" class="cerberus-finance-select"><option value="">All projects</option></select>
+        <button type="button" id="cerberus-finance-ask-business" class="cerberus-project-btn">Business analysis</button>
+        <button type="button" id="cerberus-finance-monetisation-plan" class="cerberus-project-btn">Monetisation plan</button>
+      </div>
+      <table class="cerberus-finance-table">
+        <tbody id="cerberus-finance-table-body"></tbody>
+      </table>
+      <div id="cerberus-finance-strategy" class="cerberus-finance-strategy"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Project Summary Modal ===== -->
+<div id="cerberus-project-summary-modal" class="cerberus-hq-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-project-summary-title" aria-hidden="true">
+  <div class="cerberus-hq-modal-backdrop" data-cerberus-summary-close></div>
+  <div class="cerberus-hq-modal-panel">
+    <header class="cerberus-hq-modal-header">
+      <div>
+        <p class="cerberus-hq-modal-kicker" id="cerberus-project-summary-agent"></p>
+        <h2 class="cerberus-hq-modal-title" id="cerberus-project-summary-title">Project Summary</h2>
+        <p class="cerberus-hq-modal-sub" id="cerberus-project-summary-meta"></p>
+      </div>
+      <button type="button" class="cerberus-hq-modal-close" data-cerberus-summary-close aria-label="Close">&times;</button>
+    </header>
+    <div class="cerberus-hq-modal-body">
+      <p id="cerberus-project-summary-text" class="cerberus-project-summary-text"></p>
+      <div id="cerberus-project-summary-body" class="cerberus-project-summary-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Workspace Setup Modal ===== -->
+<div id="cerberus-workspace-setup-modal" class="cerberus-hq-modal hidden" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="cerberus-hq-modal-backdrop" data-cerberus-workspace-setup-close></div>
+  <div class="cerberus-hq-modal-panel">
+    <header class="cerberus-hq-modal-header">
+      <h2 class="cerberus-hq-modal-title">Workspace Setup</h2>
+      <button type="button" class="cerberus-hq-modal-close" data-cerberus-workspace-setup-close aria-label="Close">&times;</button>
+    </header>
+    <div class="cerberus-hq-modal-body" id="cerberus-workspace-setup-modal-body"></div>
+  </div>
+</div>
+
+<!-- ===== Reasoning Audit Modal ===== -->
+<div id="cerberus-reasoning-audit-modal" class="cerberus-hq-modal hidden" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="cerberus-hq-modal-backdrop" data-audit-close></div>
+  <div class="cerberus-hq-modal-panel cerberus-hq-modal-panel--audit">
+    <header class="cerberus-hq-modal-header">
+      <h2 class="cerberus-hq-modal-title">Reasoning Audit</h2>
+      <p id="cerberus-reasoning-audit-meta" class="cerberus-hq-modal-sub"></p>
+      <button type="button" class="cerberus-hq-modal-close" data-audit-close aria-label="Close">&times;</button>
+    </header>
+    <div id="cerberus-reasoning-audit-body" class="cerberus-hq-modal-body cerberus-reasoning-audit-body"></div>
+  </div>
+</div>
+
+<!-- ===== Project HQ / Command Centre ===== -->
+<div id="cerberus-project-hq" class="cerberus-shell-modal cerberus-shell-modal--wide cerberus-project-hq hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-hq-title" aria-hidden="true">
+  <header class="cerberus-hq-header cerberus-project-hq-header">
+    <div class="cerberus-hq-header-text">
+      <h2 class="cerberus-hq-title" id="cerberus-hq-title">Project</h2>
+      <p class="cerberus-hq-subtitle" id="cerberus-hq-subtitle"></p>
+    </div>
+    <button type="button" class="cerberus-project-hq-close cerberus-hq-modal-close" data-hq-close aria-label="Close">&times;</button>
+  </header>
+  <p id="cerberus-hq-stale" class="cerberus-hq-stale hidden"></p>
+  <div id="cerberus-hq-loading" class="cerberus-hq-loading hidden">Loading…</div>
+  <div id="cerberus-hq-content" class="cerberus-hq-content hidden">
+    <div class="cerberus-hq-body">
+      <section class="cerberus-hq-section">
+        <div id="cerberus-hq-meta" class="cerberus-hq-meta"></div>
+        <div id="cerberus-hq-scores" class="cerberus-hq-scores"></div>
+        <div id="cerberus-hq-stage" class="cerberus-hq-stage"></div>
+        <div id="cerberus-hq-recommendation" class="cerberus-hq-recommendation"></div>
+        <div class="cerberus-hq-actions">
+          <button type="button" id="cerberus-hq-pin" class="cerberus-project-btn">Pin</button>
+          <button type="button" id="cerberus-hq-make-active" class="cerberus-project-btn cerberus-project-btn--primary">Make Active Project</button>
+        </div>
+        <div id="cerberus-hq-desktop-status" class="cerberus-hq-desktop-status hidden">
+          <p id="cerberus-hq-desktop-meta" class="cerberus-hq-desktop-meta"></p>
+        </div>
+        <div id="cerberus-hq-changes" class="cerberus-hq-changes"></div>
+      </section>
+      <section class="cerberus-hq-section">
+        <h3>Pipeline</h3>
+        <div id="cerberus-hq-pipeline" class="cerberus-hq-pipeline"></div>
+      </section>
+      <section class="cerberus-hq-section">
+        <h3>Reports</h3>
+        <div id="cerberus-hq-reports" class="cerberus-hq-reports"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="cerberus-shell-modal-assistant" class="cerberus-shell-modal cerberus-shell-modal--wide hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-assistant-modal-title">
+  <header class="cerberus-shell-modal-header">
+    <span class="cerberus-shell-modal-kicker">Cerberus</span>
+    <h2 class="cerberus-shell-modal-title" id="cerberus-assistant-modal-title">Assistant</h2>
+    <button type="button" class="cerberus-shell-modal-close" data-shell-modal-close aria-label="Close">&times;</button>
+  </header>
+  <div class="cerberus-shell-modal-body cerberus-assistant-modal-body">
+    <form id="cerberus-home-command-form" class="cerberus-mc-command" autocomplete="off">
+      <input type="text" id="cerberus-home-command-input" class="cerberus-mc-command-input" placeholder="Command Cerberus…" aria-label="Command Cerberus" autocomplete="off" />
+      <button type="submit" class="cerberus-mc-command-submit" aria-label="Send command">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
+    </form>
+    <section id="cerberus-home-conversation" class="cerberus-home-conversation" aria-label="Conversation">
+      <div id="cerberus-conv-log" class="cerberus-conv-log" role="log" aria-live="polite"></div>
+      <div class="cerberus-conv-actions">
+        <button type="button" id="cerberus-conv-clear" class="cerberus-conv-btn cerberus-conv-btn--ghost">Clear</button>
+        <button type="button" id="cerberus-conv-open-assistant" class="cerberus-conv-btn">Open Full Assistant</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="cerberus-shell-modal-offices" class="cerberus-shell-modal cerberus-shell-modal--wide hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-offices-modal-title">
+  <header class="cerberus-shell-modal-header">
+    <span class="cerberus-shell-modal-kicker">Cerberus</span>
+    <h2 class="cerberus-shell-modal-title" id="cerberus-offices-modal-title">Offices</h2>
+    <button type="button" class="cerberus-shell-modal-close" data-shell-modal-close aria-label="Close">&times;</button>
+  </header>
+  <div class="cerberus-shell-modal-body">
+    <div class="cerberus-offices-layout">
+      <aside class="cerberus-offices-sidebar">
+        <div id="cerberus-offices-list" class="cerberus-offices-list"></div>
+        <button type="button" id="cerberus-offices-create" class="cerberus-offices-add-btn">+ Create Office</button>
+      </aside>
+      <main id="cerberus-offices-main" class="cerberus-offices-main"></main>
+    </div>
+    <div id="cerberus-offices-prompt" class="cerberus-offices-prompt hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-offices-prompt-title">
+      <div class="cerberus-offices-prompt-card">
+        <h3 id="cerberus-offices-prompt-title" class="cerberus-offices-prompt-title">Create Office</h3>
+        <label id="cerberus-offices-prompt-label" class="cerberus-offices-prompt-label" for="cerberus-offices-prompt-input">Name</label>
+        <input type="text" id="cerberus-offices-prompt-input" class="cerberus-offices-prompt-input" autocomplete="off" />
+        <label id="cerberus-offices-prompt-desc-label" class="cerberus-offices-prompt-label hidden" for="cerberus-offices-prompt-desc">Description</label>
+        <textarea id="cerberus-offices-prompt-desc" class="cerberus-offices-prompt-input cerberus-offices-prompt-textarea hidden" rows="3"></textarea>
+        <div class="cerberus-offices-prompt-actions">
+          <button type="button" id="cerberus-offices-prompt-cancel" class="cerberus-offices-prompt-btn">Cancel</button>
+          <button type="button" id="cerberus-offices-prompt-submit" class="cerberus-offices-prompt-btn cerberus-offices-prompt-btn--primary">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="cerberus-shell-modal-tools" class="cerberus-shell-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-tools-modal-title">
+  <header class="cerberus-shell-modal-header">
+    <span class="cerberus-shell-modal-kicker">Cerberus</span>
+    <h2 class="cerberus-shell-modal-title" id="cerberus-tools-modal-title">Tools</h2>
+    <button type="button" class="cerberus-shell-modal-close" data-shell-modal-close aria-label="Close">&times;</button>
+  </header>
+  <div class="cerberus-shell-modal-body">
+    <div id="cerberus-tools-grid" class="cerberus-tools-grid"></div>
+  </div>
+</div>
+
+<div id="cerberus-shell-modal-brain" class="cerberus-shell-modal cerberus-shell-modal--full hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-brain-modal-title">
+  <header class="cerberus-shell-modal-header">
+    <span class="cerberus-shell-modal-kicker">Cerberus Core</span>
+    <h2 class="cerberus-shell-modal-title" id="cerberus-brain-modal-title">Brain</h2>
+    <button type="button" class="cerberus-shell-modal-close" data-shell-modal-close aria-label="Close">&times;</button>
+  </header>
+  <nav id="cerberus-brain-tabs" class="cerberus-brain-tabs" aria-label="Brain sections"></nav>
+  <div id="cerberus-brain-sections"></div>
+</div>
+
+<div id="cerberus-shell-modal-voice" class="cerberus-shell-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-voice-modal-title">
+  <header class="cerberus-shell-modal-header">
+    <span class="cerberus-shell-modal-kicker">Cerberus Tools</span>
+    <h2 class="cerberus-shell-modal-title" id="cerberus-voice-modal-title">Voice Command Cheat Sheet</h2>
+    <button type="button" class="cerberus-shell-modal-close" data-shell-modal-close aria-label="Close">&times;</button>
+  </header>
+  <div class="cerberus-shell-modal-body" id="cerberus-voice-cheatsheet-body"></div>
+</div>
+
+<div id="cerberus-shell-modal-monitor" class="cerberus-shell-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-monitor-modal-title">
+  <header class="cerberus-shell-modal-header">
+    <span class="cerberus-shell-modal-kicker">Cerberus Tools</span>
+    <h2 class="cerberus-shell-modal-title" id="cerberus-monitor-modal-title">System Monitor</h2>
+    <button type="button" class="cerberus-shell-modal-close" data-shell-modal-close aria-label="Close">&times;</button>
+  </header>
+  <div class="cerberus-shell-modal-body cerberus-sysmon-body">
+    <div class="cerberus-sysmon-grid">
+      <div class="cerberus-sysmon-row" id="cerberus-sysmon-fps"><span class="cerberus-sysmon-label">FPS</span><span class="cerberus-sysmon-value">—</span></div>
+      <div class="cerberus-sysmon-row" id="cerberus-sysmon-heap"><span class="cerberus-sysmon-label">Browser memory</span><span class="cerberus-sysmon-value">—</span></div>
+      <div class="cerberus-sysmon-row" id="cerberus-sysmon-cpu"><span class="cerberus-sysmon-label">CPU</span><span class="cerberus-sysmon-value">—</span></div>
+      <div class="cerberus-sysmon-row" id="cerberus-sysmon-ram"><span class="cerberus-sysmon-label">RAM</span><span class="cerberus-sysmon-value">—</span></div>
+      <div class="cerberus-sysmon-row" id="cerberus-sysmon-uptime"><span class="cerberus-sysmon-label">Cerberus uptime</span><span class="cerberus-sysmon-value">—</span></div>
+      <div class="cerberus-sysmon-row" id="cerberus-sysmon-modals"><span class="cerberus-sysmon-label">Active modals</span><span class="cerberus-sysmon-value">—</span></div>
+      <div class="cerberus-sysmon-row" id="cerberus-sysmon-voice"><span class="cerberus-sysmon-label">Voice status</span><span class="cerberus-sysmon-value">—</span></div>
+      <div class="cerberus-sysmon-row" id="cerberus-sysmon-bridge"><span class="cerberus-sysmon-label">Desktop bridge</span><span class="cerberus-sysmon-value">—</span></div>
+      <div class="cerberus-sysmon-row" id="cerberus-sysmon-backend"><span class="cerberus-sysmon-label">Backend metrics</span><span class="cerberus-sysmon-value">—</span></div>
+    </div>
+    <p class="cerberus-sysmon-note">CPU / RAM connect automatically when the backend exposes <code>/api/cerberus/system/metrics</code>.</p>
+  </div>
+</div>
+
+<section id="cerberus-agents-office" class="cerberus-agents-office cerberus-hq hidden" aria-label="Agents Office">
+  <header class="cerberus-agents-header cerberus-hq-header">
+    <div class="cerberus-hq-header-text">
+      <h1 class="cerberus-agents-title">Agents Office</h1>
+      <p class="cerberus-agents-subtitle">Cerberus Headquarters — executive council operations</p>
+    </div>
+    <div id="cerberus-hq-briefing-strip" class="cerberus-hq-briefing-strip" aria-live="polite"></div>
+  </header>
+  <div class="cerberus-agents-layout cerberus-hq-layout">
+    <main class="cerberus-agents-main cerberus-hq-main" aria-label="The Cerberus Council">
+      <h2 class="cerberus-agents-network-label">The Cerberus Council</h2>
+      <div id="cerberus-agents-network" class="cerberus-agents-network cerberus-hq-network">
+        <canvas id="cerberus-agents-lines" class="cerberus-agents-lines" aria-hidden="true"></canvas>
+        <button type="button" id="cerberus-council-hub" class="cerberus-agents-core-hub cerberus-council-hub" aria-label="Open The Cerberus Council overview">
+          <span class="cerberus-agents-core-ring"></span>
+          <span class="cerberus-agents-core-label">The Cerberus<br>Council</span>
+        </button>
+        <div id="cerberus-agents-pods" class="cerberus-agents-pods"></div>
+      </div>
+    </main>
+    <aside class="cerberus-hq-sidebar" aria-label="Council status">
+      <h2 class="cerberus-hq-sidebar-title">Council Status</h2>
+      <div id="cerberus-hq-status-cards" class="cerberus-hq-status-cards"></div>
+      <button type="button" id="cerberus-hq-open-council" class="cerberus-hq-sidebar-btn">Open Council Overview</button>
+      <p class="cerberus-hq-sidebar-hint">Click any department office for agent reports.</p>
+    </aside>
+  </div>
+  <section id="cerberus-pipeline-section" class="cerberus-pipeline-section cerberus-pipeline-v2" aria-label="Council Pipeline">
+    <h2 class="cerberus-pipeline-title">Council Pipeline</h2>
+    <div id="cerberus-pipeline-items" class="cerberus-pipeline-items cerberus-pipeline-items-v2"></div>
+  </section>
+  <footer id="cerberus-agents-controls" class="cerberus-agents-controls cerberus-hq-controls" aria-label="Agent Controls"></footer>
+</section>
+
+<div id="cerberus-agent-office-modal" class="cerberus-hq-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-agent-office-title" aria-hidden="true">
+  <div class="cerberus-hq-modal-backdrop" data-cerberus-agent-office-close></div>
+  <div class="cerberus-hq-modal-panel cerberus-hq-modal-panel--agent">
+    <header class="cerberus-hq-modal-header">
+      <div>
+        <p class="cerberus-hq-modal-kicker" id="cerberus-agent-office-dept"></p>
+        <h2 class="cerberus-hq-modal-title" id="cerberus-agent-office-title">Agent Office</h2>
+        <p class="cerberus-hq-modal-sub" id="cerberus-agent-office-role"></p>
+      </div>
+      <button type="button" class="cerberus-hq-modal-close" data-cerberus-agent-office-close aria-label="Close">&times;</button>
+    </header>
+    <div class="cerberus-agent-office-layout">
+      <aside class="cerberus-agent-inbox" id="cerberus-agent-office-inbox" aria-label="Agent inbox">
+        <div id="cerberus-agent-office-reports" class="cerberus-agent-office-reports"></div>
+      </aside>
+      <main class="cerberus-agent-office-main">
+        <section class="cerberus-agent-conversation" id="cerberus-agent-office-conversation" aria-label="Message agent">
+          <h3 class="cerberus-agent-section-title">Conversation</h3>
+          <p id="cerberus-agent-message-capture-status" class="cerberus-agent-message-capture-status hidden" aria-live="polite"></p>
+          <textarea id="cerberus-agent-message-input" class="cerberus-agent-message-input" rows="3" placeholder="Message this agent…"></textarea>
+          <div class="cerberus-agent-message-controls">
+            <label class="cerberus-agent-message-field">
+              <span>Project</span>
+              <select id="cerberus-agent-message-project" class="cerberus-agent-message-select">
+                <option value="">General (no project)</option>
+              </select>
+            </label>
+            <label class="cerberus-agent-message-field">
+              <span>Report type</span>
+              <select id="cerberus-agent-message-type" class="cerberus-agent-message-select"></select>
+            </label>
+            <button type="button" id="cerberus-agent-message-send" class="cerberus-agent-message-send">Send</button>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Council Modal ===== -->
+<div id="cerberus-council-modal" class="cerberus-hq-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-council-modal-title" aria-hidden="true">
+  <div class="cerberus-hq-modal-backdrop" data-cerberus-council-close></div>
+  <div class="cerberus-hq-modal-panel cerberus-hq-modal-panel--council">
+    <header class="cerberus-hq-modal-header">
+      <div>
+        <p class="cerberus-hq-modal-kicker">Executive Overview</p>
+        <h2 class="cerberus-hq-modal-title" id="cerberus-council-modal-title">The Cerberus Council</h2>
+        <p class="cerberus-hq-modal-sub" id="cerberus-council-modal-sub"></p>
+      </div>
+      <button type="button" class="cerberus-hq-modal-close" data-cerberus-council-close aria-label="Close">&times;</button>
+    </header>
+    <div id="cerberus-council-modal-body" class="cerberus-council-modal-body"></div>
+  </div>
+</div>
+
+<!-- ===== Report Modal ===== -->
+<div id="cerberus-report-modal" class="cerberus-hq-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cerberus-report-modal-title" aria-hidden="true">
+  <div class="cerberus-hq-modal-backdrop" data-cerberus-report-close></div>
+  <div class="cerberus-hq-modal-panel cerberus-hq-modal-panel--report">
+    <header class="cerberus-hq-modal-header">
+      <div>
+        <p class="cerberus-hq-modal-kicker" id="cerberus-report-modal-agent"></p>
+        <h2 class="cerberus-hq-modal-title" id="cerberus-report-modal-title">Report</h2>
+        <p class="cerberus-hq-modal-sub" id="cerberus-report-modal-meta"></p>
+      </div>
+      <button type="button" class="cerberus-hq-modal-close" data-cerberus-report-close aria-label="Close">&times;</button>
+    </header>
+    <div class="cerberus-report-modal-body-wrap">
+      <div id="cerberus-report-modal-badges" class="cerberus-report-badges"></div>
+      <div id="cerberus-report-modal-context" class="cerberus-report-context"></div>
+      <p id="cerberus-report-modal-summary" class="cerberus-report-summary"></p>
+      <div id="cerberus-report-modal-body" class="cerberus-report-body"></div>
+    </div>
+    <footer id="cerberus-report-modal-actions" class="cerberus-report-actions"></footer>
+  </div>
+</div>
+
 <!-- ===== Command Center Overlay Panel ===== -->
 <div id="command-center-panel" style="display:none; position:fixed; top:0; bottom:0; left:calc(var(--icon-rail-w, 48px) + var(--sidebar-w, 0px)); right:0; z-index:100; background:#000; transition:left 0.25s ease;">
   <iframe id="command-center-iframe"
@@ -2448,6 +3047,20 @@
   btn.addEventListener('click', function(){
     if (panel.style.display !== 'block') sessionStorage.setItem('command-center-dismissed', '1');
   });
+  // Rail badge — CC iframe postMessages vitals alerts here
+  window.addEventListener('message', function(e) {
+    if (!e.data || e.data.type !== 'cc-badge') return;
+    if (panel.style.display === 'block') { btn.classList.remove('cc-alert'); return; }
+    e.data.level === 'warn' ? btn.classList.add('cc-alert') : btn.classList.remove('cc-alert');
+  });
+})();</script>
+<script nonce="{{CSP_NONCE}}">(function(){
+  var dashBtn = document.getElementById('sidebar-dashboard-btn');
+  if (dashBtn) dashBtn.addEventListener('click', function() { window.location.href = '/dashboard'; });
+  var globeBtn = document.getElementById('sidebar-cerberus-globe-btn');
+  if (globeBtn) globeBtn.addEventListener('click', function() { window.location.href = '/home'; });
+  var backBtn = document.getElementById('cerberus-home-back-btn');
+  if (backBtn) backBtn.addEventListener('click', function() { window.location.href = '/dashboard'; });
 })();</script>
 <script nonce="{{CSP_NONCE}}">if('serviceWorker' in navigator){navigator.serviceWorker.register('/static/sw.js').catch(()=>{});}</script>
 <!-- jarvis-v2 init — activates body.jx2-active and wires bracket corner signature interaction -->
