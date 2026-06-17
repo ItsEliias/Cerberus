@@ -3,7 +3,7 @@
  *
  * State machine: idle → listening → transcribing → thinking → speaking → your-turn
  * Push-to-talk: hold mic button while speaking, release to submit.
- * STT: POST /api/stt/transcribe (multipart). On 503 → text fallback.
+ * STT: provider-aware — browser → SpeechRecognition API; local/endpoint → POST /api/stt/transcribe.
  * LLM: POST /api/agents/{id}/thread/send (SSE stream, same path as chat).
  * TTS: GET /api/tts/stats → provider. browser → speechSynthesis; else base64 audio.
  * Text fallback always accessible via "Type instead" link.
@@ -151,8 +151,23 @@ async function _speak(text, ttsVoice, onStart, onEnd) {
 }
 
 // ---------------------------------------------------------------------------
-// STT: record audio and transcribe
+// STT provider detection + transcription
 // ---------------------------------------------------------------------------
+
+let _sttProvider = null;
+
+async function _getSttProvider() {
+  if (_sttProvider) return _sttProvider;
+  try {
+    const res = await fetch('/api/stt/stats');
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    _sttProvider = data.provider || 'disabled';
+  } catch (_) {
+    _sttProvider = 'disabled';
+  }
+  return _sttProvider;
+}
 
 async function _transcribeBlob(blob) {
   const form = new FormData();
@@ -244,6 +259,7 @@ export async function openVoiceCall(container, agentId, agentName, agentAvatar, 
 
   _setState(panel, 'idle');
   _ttsProvider = null; // reset per session
+  _sttProvider = null;
 
   // ---- Text fallback toggle ----
   let textMode = false;
@@ -274,12 +290,49 @@ export async function openVoiceCall(container, agentId, agentName, agentAvatar, 
   });
 
   // ---- Push-to-talk ----
-  let mediaRecorder = null;
-  let audioChunks   = [];
+  let mediaRecorder  = null;
+  let audioChunks    = [];
+  let _isBrowserStt  = false;
+  let _sttRecognizer = null;
+  let _sttPending    = null;
+
+  function _sttRevealFallback(msg) {
+    transcriptEl.insertAdjacentHTML('beforeend',
+      `<div class="cc-voice-stt-notice">${_esc(msg)}</div>`);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    textMode = true;
+    fallbackDiv.style.display = 'flex';
+    micBtn.style.display = 'none';
+    toggleText.textContent = 'Use mic';
+  }
 
   async function _startRecording() {
     const state = panel.dataset.voiceState;
-    if (state === 'listening' || state === 'transcribing' || state === 'thinking' || state === 'speaking') return;
+    if (['listening', 'transcribing', 'thinking', 'speaking'].includes(state)) return;
+    const provider = await _getSttProvider();
+
+    if (provider === 'browser') {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        _sttRevealFallback('Voice input requires Chrome or Safari — type instead.');
+        return;
+      }
+      _isBrowserStt = true;
+      _sttRecognizer = new SR();
+      _sttRecognizer.lang = navigator.language || 'en-US';
+      _sttRecognizer.interimResults = false;
+      _sttRecognizer.maxAlternatives = 1;
+      _sttPending = new Promise(resolve => {
+        _sttRecognizer.onresult = e => resolve(e.results[0][0].transcript.trim());
+        _sttRecognizer.onerror  = () => resolve('');
+        _sttRecognizer.onend    = () => resolve('');
+      });
+      _sttRecognizer.start();
+      _setState(panel, 'listening');
+      return;
+    }
+
+    _isBrowserStt = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunks = [];
@@ -288,7 +341,6 @@ export async function openVoiceCall(container, agentId, agentName, agentAvatar, 
       mediaRecorder.start();
       _setState(panel, 'listening');
     } catch (_) {
-      // Mic unavailable — switch to text mode
       textMode = true;
       fallbackDiv.style.display = 'flex';
       micBtn.style.display = 'none';
@@ -297,31 +349,35 @@ export async function openVoiceCall(container, agentId, agentName, agentAvatar, 
   }
 
   async function _stopRecording() {
+    if (_isBrowserStt) {
+      if (!_sttRecognizer) return;
+      _setState(panel, 'transcribing');
+      _sttRecognizer.stop();
+      _sttRecognizer = null;
+      const text = (await _sttPending) || '';
+      _sttPending = null;
+      _isBrowserStt = false;
+      if (!text) { _setState(panel, 'your-turn'); return; }
+      await _processTurn(text);
+      return;
+    }
+
     if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
     _setState(panel, 'transcribing');
     mediaRecorder.stop();
     mediaRecorder.stream?.getTracks().forEach(t => t.stop());
     await new Promise(resolve => { mediaRecorder.onstop = resolve; });
-
     const blob = new Blob(audioChunks, { type: 'audio/webm' });
     audioChunks = [];
     mediaRecorder = null;
-
     try {
       const text = await _transcribeBlob(blob);
       if (!text) { _setState(panel, 'your-turn'); return; }
       await _processTurn(text);
     } catch (err) {
-      const msg = err.code === 503
+      _sttRevealFallback(err.code === 503
         ? "Voice input isn't enabled — turn on STT in Settings, or type instead."
-        : "Transcription failed — type instead.";
-      transcriptEl.insertAdjacentHTML('beforeend',
-        `<div class="cc-voice-stt-notice">${_esc(msg)}</div>`);
-      transcriptEl.scrollTop = transcriptEl.scrollHeight;
-      textMode = true;
-      fallbackDiv.style.display = 'flex';
-      micBtn.style.display = 'none';
-      toggleText.textContent = 'Use mic';
+        : "Transcription failed — type instead.");
       _setState(panel, 'your-turn');
       textInput?.focus();
     }

@@ -402,3 +402,173 @@ def test_stt_empty_transcription_raises_500():
     exc = asyncio.run(_call())
     assert isinstance(exc, HTTPException)
     assert exc.status_code == 500
+
+
+# ---------------------------------------------------------------------------
+# Tests: STT settings card HTML + toggle persistence
+# ---------------------------------------------------------------------------
+
+def test_stt_settings_html_has_required_ids():
+    """index.html STT card must contain all element IDs that initSttSettings() binds to."""
+    import os
+    html_path = os.path.join(os.path.dirname(__file__), '..', 'static', 'index.html')
+    with open(html_path, encoding='utf-8') as f:
+        html = f.read()
+    required = [
+        'set-sttEnabledToggle',
+        'set-sttProviderSelect',
+        'set-sttModelSelect',
+        'set-sttModelInput',
+        'set-sttModelRow',
+        'set-sttLangRow',
+        'set-sttLangInput',
+        'set-sttSettingsMsg',
+        'set-sttConfigWrap',
+    ]
+    for id_ in required:
+        assert f'id="{id_}"' in html, f"Missing STT element id: {id_}"
+
+
+def test_stt_enabled_toggle_persists_via_settings(tmp_path, monkeypatch):
+    """stt_enabled written to settings round-trips via load_settings (mirrors /api/auth/settings persistence)."""
+    import json
+    for _mod in ["sqlalchemy", "sqlalchemy.orm", "sqlalchemy.ext",
+                 "sqlalchemy.ext.declarative", "sqlalchemy.ext.hybrid",
+                 "sqlalchemy.sql", "sqlalchemy.sql.expression", "src.auth_helpers"]:
+        if _mod not in sys.modules:
+            sys.modules[_mod] = MagicMock()
+
+    from src import settings as s_mod
+    settings_file = tmp_path / "settings.json"
+    base = dict(s_mod.DEFAULT_SETTINGS)
+    base["stt_enabled"] = False
+    settings_file.write_text(json.dumps(base), encoding="utf-8")
+    monkeypatch.setattr(s_mod, "SETTINGS_FILE", str(settings_file))
+    s_mod._invalidate_caches()
+
+    loaded = s_mod.load_settings()
+    assert loaded["stt_enabled"] is False
+
+    loaded["stt_enabled"] = True
+    s_mod.save_settings(loaded)
+    s_mod._invalidate_caches()
+    assert s_mod.load_settings()["stt_enabled"] is True
+
+
+# ---------------------------------------------------------------------------
+# Tests: browser STT provider — server must return 503, not transcribe server-side
+# ---------------------------------------------------------------------------
+
+def test_browser_provider_available_is_false():
+    """STTService.available returns False for 'browser' provider.
+    Browser STT is client-side (SpeechRecognition API); the server cannot transcribe it.
+    This ensures /api/stt/transcribe returns 503 for browser-mode clients,
+    matching the JS behaviour where browser-provider never calls that endpoint at all.
+    """
+    from services.stt.stt_service import STTService
+    svc = STTService()
+    with patch.object(svc, '_load_settings', return_value={
+        'stt_enabled': True, 'stt_provider': 'browser',
+        'stt_model': 'base', 'stt_language': '',
+    }):
+        assert svc.available is False
+
+
+def test_browser_provider_route_returns_503():
+    """With browser provider (available=False), /api/stt/transcribe must return 503.
+    voice.js and room_voice.js browser paths never reach this endpoint,
+    but if they did the response would be 503 (not 500), preserving the error contract.
+    """
+    from routes.stt_routes import setup_stt_routes
+    from fastapi import HTTPException
+
+    mock_stt = MagicMock()
+    mock_stt.available = False  # browser provider sets this to False
+
+    router = setup_stt_routes(mock_stt)
+    transcribe_route = next(r for r in router.routes if r.path == "/api/stt/transcribe")
+    endpoint = transcribe_route.endpoint
+
+    async def _call():
+        try:
+            return await endpoint(file=MagicMock())
+        except HTTPException as exc:
+            return exc
+
+    exc = asyncio.run(_call())
+    assert exc.status_code == 503
+
+
+# ---------------------------------------------------------------------------
+# Tests: TTS settings card HTML + toggle persistence
+# ---------------------------------------------------------------------------
+
+def test_tts_settings_html_has_required_ids():
+    """index.html TTS card must contain all element IDs that initTtsSettings() binds to."""
+    import os
+    html_path = os.path.join(os.path.dirname(__file__), '..', 'static', 'index.html')
+    with open(html_path, encoding='utf-8') as f:
+        html = f.read()
+    required = [
+        'set-ttsEnabledToggle',
+        'set-ttsProviderSelect',
+        'set-ttsModelSelect',
+        'set-ttsModelInput',
+        'set-ttsModelRow',
+        'set-ttsVoiceRow',
+        'set-ttsVoiceSelect',
+        'set-ttsVoiceInput',
+        'set-ttsSpeedRow',
+        'set-ttsSpeedSelect',
+        'set-ttsSettingsMsg',
+        'set-ttsPreviewBtn',
+    ]
+    for id_ in required:
+        assert f'id="{id_}"' in html, f"Missing TTS element id: {id_}"
+
+
+def test_tts_settings_card_is_visible():
+    """TTS card must NOT be hidden — element ids cannot be in a hidden card."""
+    import os, re
+    html_path = os.path.join(os.path.dirname(__file__), '..', 'static', 'index.html')
+    with open(html_path, encoding='utf-8') as f:
+        html = f.read()
+    # Find the card containing set-ttsProviderSelect
+    # It must not have 'hidden' attribute on the same opening tag
+    # Extract a snippet around the TTS card opening div
+    idx = html.find('id="set-ttsProviderSelect"')
+    assert idx != -1
+    # Walk back to find the enclosing admin-card opening tag
+    card_start = html.rfind('<div class="admin-card"', 0, idx)
+    assert card_start != -1
+    opening_tag = html[card_start:html.find('>', card_start) + 1]
+    assert 'hidden' not in opening_tag, "TTS card must not have 'hidden' attribute"
+    assert 'display:none' not in opening_tag, "TTS card must not have display:none"
+
+
+def test_tts_enabled_toggle_persists_via_settings(tmp_path, monkeypatch):
+    """tts_enabled written to settings round-trips via load_settings."""
+    import json
+    for _mod in ["sqlalchemy", "sqlalchemy.orm", "sqlalchemy.ext",
+                 "sqlalchemy.ext.declarative", "sqlalchemy.ext.hybrid",
+                 "sqlalchemy.sql", "sqlalchemy.sql.expression", "src.auth_helpers"]:
+        if _mod not in sys.modules:
+            sys.modules[_mod] = MagicMock()
+
+    from src import settings as s_mod
+    settings_file = tmp_path / "settings.json"
+    base = dict(s_mod.DEFAULT_SETTINGS)
+    base["tts_enabled"] = True
+    base["tts_provider"] = "browser"
+    settings_file.write_text(json.dumps(base), encoding="utf-8")
+    monkeypatch.setattr(s_mod, "SETTINGS_FILE", str(settings_file))
+    s_mod._invalidate_caches()
+
+    loaded = s_mod.load_settings()
+    assert loaded["tts_enabled"] is True
+    assert loaded["tts_provider"] == "browser"
+
+    loaded["tts_enabled"] = False
+    s_mod.save_settings(loaded)
+    s_mod._invalidate_caches()
+    assert s_mod.load_settings()["tts_enabled"] is False

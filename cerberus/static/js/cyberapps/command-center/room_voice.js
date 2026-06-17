@@ -184,8 +184,21 @@ async function _speakTurn(text, ttsVoice) {
 }
 
 // ---------------------------------------------------------------------------
-// STT
+// STT provider detection + transcription
 // ---------------------------------------------------------------------------
+
+let _rvSttProvider = null;
+
+async function _getRvSttProvider() {
+  if (_rvSttProvider) return _rvSttProvider;
+  try {
+    const res = await fetch('/api/stt/stats');
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    _rvSttProvider = data.provider || 'disabled';
+  } catch (_) { _rvSttProvider = 'disabled'; }
+  return _rvSttProvider;
+}
 
 async function _transcribeBlob(blob) {
   const form = new FormData();
@@ -319,6 +332,7 @@ export async function openRoomVoiceCall(container, room) {
   const backBtn     = container.querySelector('.cc-rv-back-btn');
 
   _rvTtsProvider = null;
+  _rvSttProvider = null;
   let _floorRequested = false;
   let _textMode = false;
   let _done = false;
@@ -408,6 +422,38 @@ export async function openRoomVoiceCall(container, room) {
       async function _onDown() {
         micBtn.removeEventListener('mousedown', _onDown);
         micBtn.removeEventListener('touchstart', _onDown);
+        const provider = await _getRvSttProvider();
+        if (provider === 'browser') {
+          const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (!SR) {
+            _showSttNotice(transcript, 'Voice input requires Chrome or Safari — type instead.');
+            _revealTextFallback();
+            _setState(panel, RV_STATES.USER_FLOOR);
+            _getUserMessage().then(resolve);
+            return;
+          }
+          const r = new SR();
+          r.lang = navigator.language || 'en-US';
+          r.interimResults = false; r.maxAlternatives = 1;
+          const pending = new Promise(res => {
+            r.onresult = e => res(e.results[0][0].transcript.trim());
+            r.onerror = () => res(''); r.onend = () => res('');
+          });
+          r.start();
+          _setState(panel, RV_STATES.LISTENING);
+          function _onUpBrowser() {
+            micBtn.removeEventListener('mouseup', _onUpBrowser);
+            micBtn.removeEventListener('touchend', _onUpBrowser);
+            micBtn.removeEventListener('mouseleave', _onUpBrowser);
+            _setState(panel, RV_STATES.TRANSCRIBING);
+            r.stop();
+            pending.then(text => resolve(text || ''));
+          }
+          micBtn.addEventListener('mouseup', _onUpBrowser);
+          micBtn.addEventListener('touchend', _onUpBrowser);
+          micBtn.addEventListener('mouseleave', _onUpBrowser);
+          return;
+        }
         const ok = await recorder.start();
         if (ok) {
           _setState(panel, RV_STATES.LISTENING);
@@ -555,6 +601,44 @@ export async function openRoomVoiceCall(container, room) {
     micBtn.addEventListener('mousedown', async function _initDown() {
       micBtn.removeEventListener('mousedown', _initDown);
       micBtn.removeEventListener('touchstart', _initTouch);
+
+      const provider = await _getRvSttProvider();
+      if (provider === 'browser') {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+          _showSttNotice(transcript, 'Voice input requires Chrome or Safari — type instead.');
+          _revealTextFallback();
+          _setState(panel, RV_STATES.IDLE);
+          textSend?.addEventListener('click', _handleInitialTextSubmit);
+          textInput?.addEventListener('keydown', _initKd);
+          textInput?.focus();
+          return;
+        }
+        const r = new SR();
+        r.lang = navigator.language || 'en-US';
+        r.interimResults = false; r.maxAlternatives = 1;
+        const pending = new Promise(res => {
+          r.onresult = e => res(e.results[0][0].transcript.trim());
+          r.onerror = () => res(''); r.onend = () => res('');
+        });
+        r.start();
+        _setState(panel, RV_STATES.LISTENING);
+        async function _initUpBrowser() {
+          micBtn.removeEventListener('mouseup', _initUpBrowser);
+          micBtn.removeEventListener('mouseleave', _initUpBrowser);
+          micBtn.removeEventListener('touchend', _initUpBrowser);
+          _setState(panel, RV_STATES.TRANSCRIBING);
+          r.stop();
+          const text = await pending;
+          if (text) await _runLoop(text);
+          else _setState(panel, RV_STATES.IDLE);
+        }
+        micBtn.addEventListener('mouseup', _initUpBrowser);
+        micBtn.addEventListener('mouseleave', _initUpBrowser);
+        micBtn.addEventListener('touchend', _initUpBrowser);
+        return;
+      }
+
       const ok = await recorder.start();
       if (!ok) return;
       _setState(panel, RV_STATES.LISTENING);

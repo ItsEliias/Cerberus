@@ -46,7 +46,7 @@ class STTService:
         if provider == "disabled":
             return False
         if provider == "browser":
-            return True  # handled client-side
+            return False  # Web Speech API is client-side; server cannot transcribe
         if provider == "local":
             return self._get_whisper() is not None
         if provider.startswith("endpoint:"):
