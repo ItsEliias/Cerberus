@@ -7,12 +7,14 @@
  * Self-registers with window.CYBER_APPS_REGISTRY using unshift() (priority: first).
  */
 
-import { buildCommandTab, applyVitals, applyTimeseries, applySwarm, applyAgents, applyGateway } from './command.js';
+import { buildCommandTab, applyVitals, applyTimeseries, applySwarm, applyAgents, applyGateway, applyTasks, applyModelStatus } from './command.js';
 import { buildCouncilTab, initCouncil, loadCouncil } from './council.js';
 import { buildWorkspaceTab, loadWorkspace } from './workspace.js';
 import { buildFinanceTab, loadFinance }     from './finance.js';
 import { buildAssistantTab, initAssistant, destroyAssistant } from './assistant.js';
 import { buildGatewayTab, loadGateway } from './gateway.js';
+import { buildAgentsTab, loadAgents } from './agents.js';
+import { buildObservabilityTab, loadObservability } from './observability.js';
 import * as Poll from './poll.js';
 
 // Inject CC stylesheet once — version param busts browser/SW cache on updates
@@ -78,6 +80,23 @@ const TABS = [
       <path d="M21 2H3v16h5v4l4-4h9V2z"/>
       <line x1="7" y1="8" x2="17" y2="8"/>
       <line x1="7" y1="12" x2="13" y2="12"/>
+    </svg>`,
+  },
+  {
+    id: 'agents',
+    label: 'AGENTS',
+    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2L3 6V12C3 17.5 7 22 12 24C17 22 21 17.5 21 12V6Z"/>
+    </svg>`,
+  },
+  {
+    id: 'observability',
+    label: 'OBSERVE',
+    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
     </svg>`,
   },
 ];
@@ -194,6 +213,12 @@ function _mountTab(id, shell) {
   } else if (id === 'gateway') {
     content.innerHTML = buildGatewayTab();
     loadGateway(content);
+  } else if (id === 'agents') {
+    content.innerHTML = buildAgentsTab();
+    loadAgents(content);
+  } else if (id === 'observability') {
+    content.innerHTML = buildObservabilityTab();
+    loadObservability(content);
   }
 }
 
@@ -220,6 +245,14 @@ function _pollCallbacks(shell) {
     onGateway(gw) {
       const c = shell.querySelector('#cc-tab-content');
       if (_activeTab === 'command' && c) applyGateway(c, gw);
+    },
+    onTasks(tasks) {
+      const c = shell.querySelector('#cc-tab-content');
+      if (_activeTab === 'command' && c) applyTasks(c, tasks);
+    },
+    onModelStatus(status) {
+      const c = shell.querySelector('#cc-tab-content');
+      if (_activeTab === 'command' && c) applyModelStatus(c, status);
     },
     onError(e) { console.warn('[Command Center] poll error:', e); },
   };
