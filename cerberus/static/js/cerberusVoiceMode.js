@@ -884,7 +884,7 @@ function _scheduleCommandFinish() {
 function _finishCommandCapture() {
   _clearCommandTimer();
   _stopRecognition();
-  const raw = (_el('cerberus-voice-transcript')?.value || '').trim();
+  const raw = (_el('cerberus-voice-transcript')?.value || _transcript || '').trim();
   if (!raw) {
     if (_conversationActive) {
       speakText(cerberusPersonality.appendAddress('I did not catch that'), { onEnd: () => _startFollowUpOrWake() });
@@ -1418,7 +1418,7 @@ function _startManualListening() {
 
 function _stopManualListening() {
   _stopRecognition();
-  const text = (_el('cerberus-voice-transcript')?.value || '').trim();
+  const text = (_el('cerberus-voice-transcript')?.value || _transcript || '').trim();
   if (text) _submitToAssistant();
   else {
     _setStatus('idle');
@@ -1519,7 +1519,7 @@ function _finishSubmitResult(result) {
 }
 
 function _submitToAssistant() {
-  const raw = (_el('cerberus-voice-transcript')?.value || '').trim();
+  const raw = (_el('cerberus-voice-transcript')?.value || _transcript || '').trim();
   const text = stripVoicePrefixes(raw);
   if (!text || _submitting) {
     if (!text) _returnToWakeStandby();
