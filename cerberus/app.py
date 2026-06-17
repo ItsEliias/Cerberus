@@ -772,6 +772,9 @@ app.include_router(setup_cerberus_agent_routes())
 from routes.cerberus_agent_thread_routes import setup_agent_thread_routes
 app.include_router(setup_agent_thread_routes())
 
+from routes.conference_room_routes import setup_conference_room_routes
+app.include_router(setup_conference_room_routes())
+
 from routes.cyberapps_routes import router as cyberapps_router
 app.include_router(cyberapps_router)
 

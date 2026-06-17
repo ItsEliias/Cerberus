@@ -14,6 +14,7 @@ import { buildFinanceTab, loadFinance }     from './finance.js';
 import { buildAssistantTab, initAssistant, destroyAssistant } from './assistant.js';
 import { buildGatewayTab, loadGateway } from './gateway.js';
 import { buildAgentsTab, loadAgents } from './agents.js';
+import { buildRoomsTab, loadRooms } from './rooms.js';
 import { buildObservabilityTab, loadObservability } from './observability.js';
 import * as Poll from './poll.js';
 
@@ -88,6 +89,15 @@ const TABS = [
     icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 2L3 6V12C3 17.5 7 22 12 24C17 22 21 17.5 21 12V6Z"/>
+    </svg>`,
+  },
+  {
+    id: 'rooms',
+    label: 'ROOMS',
+    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      <line x1="9" y1="10" x2="15" y2="10"/>
     </svg>`,
   },
   {
@@ -216,6 +226,9 @@ function _mountTab(id, shell) {
   } else if (id === 'agents') {
     content.innerHTML = buildAgentsTab();
     loadAgents(content);
+  } else if (id === 'rooms') {
+    content.innerHTML = buildRoomsTab();
+    loadRooms(content);
   } else if (id === 'observability') {
     content.innerHTML = buildObservabilityTab();
     loadObservability(content);
