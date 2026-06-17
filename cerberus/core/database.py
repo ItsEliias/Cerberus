@@ -699,6 +699,7 @@ class CerberusAgent(TimestampMixin, Base):
     last_run_url        = Column(String, nullable=True)                    # endpoint URL of the last run
     avatar              = Column(String, nullable=True)                    # emoji or short identifier
     is_suppressed       = Column(Boolean, default=False, nullable=False)   # owner-deleted default: skip back-fill
+    tts_voice           = Column(String, nullable=True)                    # preferred TTS voice for this agent
 
     __table_args__ = (
         Index('ix_cerberus_agents_owner_name', 'owner', 'name', unique=True),
@@ -723,6 +724,7 @@ class CerberusAgent(TimestampMixin, Base):
             "total_output_tokens": self.total_output_tokens or 0,
             "avatar": self.avatar or "",
             "is_suppressed": bool(self.is_suppressed),
+            "tts_voice": self.tts_voice or "",
         }
 
 
@@ -1915,6 +1917,19 @@ def init_db():
     _migrate_add_agent_usage_columns()
     _migrate_add_agent_phase_a_columns()
     _migrate_add_room_phase3b_columns()
+    _migrate_add_agent_tts_voice_column()
+
+
+def _migrate_add_agent_tts_voice_column():
+    """Add tts_voice column to cerberus_agents table (Phase 4a)."""
+    try:
+        with engine.connect() as conn:
+            cols = [r[1] for r in conn.execute(text("PRAGMA table_info(cerberus_agents)"))]
+            if "tts_voice" not in cols:
+                conn.execute(text("ALTER TABLE cerberus_agents ADD COLUMN tts_voice VARCHAR"))
+            conn.commit()
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"cerberus_agents tts_voice migration: {e}")
 
 
 def _migrate_add_agent_usage_columns():

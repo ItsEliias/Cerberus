@@ -12,14 +12,16 @@ function _esc(s) {
   return d.innerHTML;
 }
 
-function _buildChatPanel(agentName, agentAvatar, accentColor) {
+function _buildChatPanel(agentName, agentAvatar, accentColor, ttsVoice) {
   const glyph = agentAvatar || (agentName || '?')[0];
+  const callBtn = `<button class="cc-chat-call-btn" title="Voice call">📞</button>`;
   return `
 <div class="cc-agents-tab cc-agent-chat" id="cc-agent-chat">
   <div class="cc-agent-chat-header" style="--cat-accent:${_esc(accentColor)}">
     <button class="cc-chat-back-btn" title="Back to roster">← Back</button>
     <span class="cc-agent-chat-sigil" style="background:${_esc(accentColor)}">${_esc(glyph)}</span>
     <span class="cc-agent-chat-name">${_esc(agentName)}</span>
+    ${callBtn}
     <button class="cc-chat-clear-btn" title="Clear conversation">Clear</button>
   </div>
   <div class="cc-chat-messages" id="cc-chat-messages">
@@ -135,14 +137,20 @@ async function _sendMessage(agentId, input, messagesEl, sendBtn) {
 
 // ---- Public API ----
 
-export async function openAgentChat(container, agentId, agentName, agentAvatar, accentColor) {
-  container.innerHTML = _buildChatPanel(agentName, agentAvatar, accentColor || 'rgba(197,201,208,0.5)');
+export async function openAgentChat(container, agentId, agentName, agentAvatar, accentColor, ttsVoice = '') {
+  container.innerHTML = _buildChatPanel(agentName, agentAvatar, accentColor || 'rgba(197,201,208,0.5)', ttsVoice);
 
   const messagesEl = container.querySelector('#cc-chat-messages');
   const input      = container.querySelector('#cc-chat-input');
   const sendBtn    = container.querySelector('#cc-chat-send-btn');
   const backBtn    = container.querySelector('.cc-chat-back-btn');
   const clearBtn   = container.querySelector('.cc-chat-clear-btn');
+  const chatCallBtn = container.querySelector('.cc-chat-call-btn');
+
+  chatCallBtn?.addEventListener('click', async () => {
+    const { openVoiceCall } = await import('./voice.js');
+    openVoiceCall(container, agentId, agentName, agentAvatar, accentColor || 'rgba(197,201,208,0.5)', ttsVoice);
+  });
 
   // Back — re-mount the roster
   backBtn?.addEventListener('click', async () => {

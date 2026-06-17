@@ -58,6 +58,8 @@ After Phase B/C land, the diff against this doc is the acceptance test.
 | **Room mode toggle** (Phase 3b) | ROOMS | Click badge in chat header | `PATCH /api/rooms/{id}` `{mode: 'routed'\|'open'}` | ✅ live |
 | **Room cap + continue-checkpoint** (Phase 3b) | ROOMS | Inline prompt after cap hit | `POST /api/rooms/{id}/continue` | ✅ live |
 | **Room token meter** (Phase 3b) | ROOMS | Header display | `total_input_tokens + total_output_tokens` from room dict | ✅ live |
+| **Agent voice call** (Phase 4a) | AGENTS / CHAT | Push-to-talk SSE pipeline | `POST /api/stt/transcribe`, `POST /api/agents/{id}/thread/send`, `POST /api/tts/synthesize`, `GET /api/tts/stats` | ✅ live |
+| **Agent tts_voice field** (Phase 4a) | AGENTS edit form | On save | `PATCH /api/agents/{id}` `{tts_voice: str}` | ✅ live |
 
 ---
 
