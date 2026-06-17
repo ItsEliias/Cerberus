@@ -139,6 +139,7 @@ class AgentCreate(BaseModel):
     status: Optional[str] = "idle"
     model_alias: Optional[str] = "default"
     avatar: Optional[str] = ""
+    tts_voice: Optional[str] = None
 
 
 class AgentPatch(BaseModel):
@@ -151,6 +152,7 @@ class AgentPatch(BaseModel):
     model_alias: Optional[str] = None
     score: Optional[int] = None
     avatar: Optional[str] = None
+    tts_voice: Optional[str] = None
 
 
 class AgentInvoke(BaseModel):
@@ -274,6 +276,8 @@ def setup_cerberus_agent_routes() -> APIRouter:
                 agent.score = body.score
             if body.avatar is not None:
                 agent.avatar = body.avatar
+            if body.tts_voice is not None:
+                agent.tts_voice = body.tts_voice or None
             db.commit()
             db.refresh(agent)
             return agent.to_dict()

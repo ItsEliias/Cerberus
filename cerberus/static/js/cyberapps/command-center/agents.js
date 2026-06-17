@@ -89,7 +89,7 @@ function _agentCard(agent) {
   const hasMore = (agent.system_prompt || '').length > 180;
   const id      = _esc(agent.id);
   return `
-<div class="cc-ag-card cc-ag-card--v2" data-agent-id="${id}" data-agent-name="${_esc(agent.name || '')}" data-agent-avatar="${_esc(agent.avatar || '')}" data-cat-accent="${accent}" style="--cat-accent:${accent}">
+<div class="cc-ag-card cc-ag-card--v2" data-agent-id="${id}" data-agent-name="${_esc(agent.name || '')}" data-agent-avatar="${_esc(agent.avatar || '')}" data-cat-accent="${accent}" data-tts-voice="${_esc(agent.tts_voice || '')}" style="--cat-accent:${accent}">
   <div class="jx2-bracket-tl"></div>
   <div class="jx2-bracket-br"></div>
   <div class="cc-ag-card-header">
@@ -114,6 +114,7 @@ function _agentCard(agent) {
   </div>
   <div class="cc-ag-card-actions">
     <button class="cc-ag-chat-btn"   data-agent-id="${id}">Chat</button>
+    <button class="cc-ag-call-btn"   data-agent-id="${id}" title="Voice call">Call</button>
     <button class="cc-ag-invoke-btn" data-agent-id="${id}">Invoke</button>
     <button class="cc-ag-edit-btn"   data-agent-id="${id}">Edit</button>
     <button class="cc-ag-delete-btn" data-agent-id="${id}">Del</button>
@@ -137,6 +138,8 @@ function _agentCard(agent) {
     <input class="cc-ag-edit-agent-type" value="${_esc(agent.agent_type || '')}" placeholder="e.g. backend-dev">
     <label>Model alias</label>
     <input class="cc-ag-edit-model"      value="${_esc(agent.model_alias || 'default')}" placeholder="default">
+    <label>TTS voice (optional)</label>
+    <input class="cc-ag-edit-tts-voice"  value="${_esc(agent.tts_voice || '')}" placeholder="e.g. alloy, nova, onyx">
     <label>System prompt</label>
     <textarea class="cc-ag-edit-prompt" rows="5">${_esc(agent.system_prompt || '')}</textarea>
     <div class="cc-ag-invoke-actions">
@@ -192,6 +195,7 @@ function _wireCard(container, agentId) {
   const discardBtn = card.querySelector('.cc-ag-discard-btn');
   const deleteBtn  = card.querySelector('.cc-ag-delete-btn');
   const chatBtn    = card.querySelector('.cc-ag-chat-btn');
+  const callBtn    = card.querySelector('.cc-ag-call-btn');
   const expandBtn  = card.querySelector('.cc-ag-expand-btn');
   const details    = expandBtn ? card.querySelector(`#${expandBtn.dataset.target}`) : null;
 
@@ -207,7 +211,17 @@ function _wireCard(container, agentId) {
     const name   = card.dataset.agentName   || agentId;
     const avatar = card.dataset.agentAvatar || '';
     const accent = card.dataset.catAccent   || 'rgba(197,201,208,0.5)';
-    openAgentChat(container, agentId, name, avatar, accent);
+    const voice  = card.dataset.ttsVoice    || '';
+    openAgentChat(container, agentId, name, avatar, accent, voice);
+  });
+
+  callBtn?.addEventListener('click', async () => {
+    const name   = card.dataset.agentName   || agentId;
+    const avatar = card.dataset.agentAvatar || '';
+    const accent = card.dataset.catAccent   || 'rgba(197,201,208,0.5)';
+    const voice  = card.dataset.ttsVoice    || '';
+    const { openVoiceCall } = await import('./voice.js');
+    openVoiceCall(container, agentId, name, avatar, accent, voice);
   });
 
   invokeBtn?.addEventListener('click', () => {
@@ -235,6 +249,7 @@ async function _saveAgent(agentId, card, editForm) {
     model_alias:  editForm.querySelector('.cc-ag-edit-model')?.value?.trim() || 'default',
     system_prompt: editForm.querySelector('.cc-ag-edit-prompt')?.value ?? '',
     avatar:       editForm.querySelector('.cc-ag-edit-avatar')?.value?.trim() || '',
+    tts_voice:    editForm.querySelector('.cc-ag-edit-tts-voice')?.value?.trim() || '',
   };
   if (!body.name) { if (msgEl) msgEl.textContent = 'Name is required'; return; }
   try {

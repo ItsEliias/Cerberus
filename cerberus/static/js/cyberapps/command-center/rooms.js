@@ -138,6 +138,7 @@ function _buildRoomChatView(room) {
     <div class="cc-room-participants">${participants}</div>
     <button class="cc-room-mode-toggle cc-room-mode-badge ${modeClass}" data-room-id="${_esc(room.id)}" data-current-mode="${_esc(room.mode || 'routed')}" title="Click to toggle mode">${_esc(modeLabel)}</button>
     ${_tokenMeter(room)}
+    <button class="cc-room-call-btn" title="Start group voice call">📞 Call</button>
     <button class="cc-room-chat-clear-btn" title="Clear messages">Clear</button>
   </div>
   <div class="cc-chat-messages" id="cc-room-messages">
@@ -276,8 +277,14 @@ async function _openRoom(container, room) {
   const backBtn    = container.querySelector('.cc-chat-back-btn');
   const clearBtn   = container.querySelector('.cc-room-chat-clear-btn');
   const modeBtn    = container.querySelector('.cc-room-mode-toggle');
+  const callBtn    = container.querySelector('.cc-room-call-btn');
 
   modeBtn?.addEventListener('click', () => _toggleMode(modeBtn, container));
+
+  callBtn?.addEventListener('click', async () => {
+    const { openRoomVoiceCall } = await import('./room_voice.js');
+    openRoomVoiceCall(container, room);
+  });
 
   backBtn?.addEventListener('click', async () => {
     container.innerHTML = buildRoomsTab();
