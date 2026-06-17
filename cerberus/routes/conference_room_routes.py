@@ -245,7 +245,19 @@ def setup_conference_room_routes() -> APIRouter:
             ) if pids else []
             mode = getattr(room, "mode", None) or "routed"
             cap  = _effective_cap(room, agents, owner)
-            room_snap = room  # room object still valid within this try block
+            # Snapshot agent data before commit (expire_on_commit=True would
+            # expire all ORM attrs, causing DetachedInstanceError in the
+            # async generator after db.close()).
+            import types as _types
+            agents = [
+                _types.SimpleNamespace(
+                    id=a.id, name=a.name,
+                    model_alias=a.model_alias,
+                    system_prompt=a.system_prompt or "",
+                    tts_voice=getattr(a, "tts_voice", None) or "",
+                )
+                for a in agents
+            ]
             db.add(RoomMessage(
                 id=str(uuid.uuid4()), room_id=room_id,
                 role="user", sender_name="USER", content=text,
@@ -284,6 +296,16 @@ def setup_conference_room_routes() -> APIRouter:
                 db.query(CerberusAgent).filter(CerberusAgent.id.in_(pids)).all()
             ) if pids else []
             cap = _effective_cap(room, agents, owner)
+            import types as _types
+            agents = [
+                _types.SimpleNamespace(
+                    id=a.id, name=a.name,
+                    model_alias=a.model_alias,
+                    system_prompt=a.system_prompt or "",
+                    tts_voice=getattr(a, "tts_voice", None) or "",
+                )
+                for a in agents
+            ]
             # Use the last user message from transcript as the user_text for agent context
             last_user = (
                 db.query(RoomMessage)
