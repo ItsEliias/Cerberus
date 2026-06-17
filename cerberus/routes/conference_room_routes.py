@@ -244,7 +244,7 @@ def setup_conference_room_routes() -> APIRouter:
                 db.query(CerberusAgent).filter(CerberusAgent.id.in_(pids)).all()
             ) if pids else []
             mode = getattr(room, "mode", None) or "routed"
-            cap  = _effective_cap(room)
+            cap  = _effective_cap(room, agents, owner)
             room_snap = room  # room object still valid within this try block
             db.add(RoomMessage(
                 id=str(uuid.uuid4()), room_id=room_id,
@@ -283,7 +283,7 @@ def setup_conference_room_routes() -> APIRouter:
             agents = (
                 db.query(CerberusAgent).filter(CerberusAgent.id.in_(pids)).all()
             ) if pids else []
-            cap = _effective_cap(room)
+            cap = _effective_cap(room, agents, owner)
             # Use the last user message from transcript as the user_text for agent context
             last_user = (
                 db.query(RoomMessage)
@@ -323,9 +323,9 @@ def _get_room_or_404(db, room_id: str, owner: str) -> ConferenceRoom:
     return room
 
 
-def _effective_cap(room) -> int:
+def _effective_cap(room, agents=None, owner=None) -> int:
     from routes.conference_room_engine import effective_cap
-    return effective_cap(room)
+    return effective_cap(room, agents=agents, owner=owner)
 
 
 def _room_dict(room: ConferenceRoom) -> Dict[str, Any]:
