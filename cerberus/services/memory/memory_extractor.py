@@ -280,6 +280,7 @@ async def extract_and_store(
     endpoint_url: str,
     model: str,
     headers: Optional[dict] = None,
+    agent_id: Optional[str] = None,
 ):
     """Extract facts from recent conversation and store them.
 
@@ -388,6 +389,11 @@ async def extract_and_store(
         _owner = getattr(session, 'owner', None)
 
         existing = memory_manager.load_all()
+        # For agent-scoped extraction, dedup only within same owner+agent
+        _agent_existing = [
+            e for e in existing
+            if e.get("agent_id") == agent_id and (e.get("owner") == _owner or e.get("owner") is None)
+        ] if agent_id else None
         added = 0
 
         for fact in facts:
@@ -429,7 +435,13 @@ async def extract_and_store(
                         continue
 
             # Text dedup fallback: exact match + fuzzy similarity
-            user_existing = [e for e in existing if e.get("owner") == _owner or e.get("owner") is None] if _owner else existing
+            # For agent-scoped memories, dedup within the agent's scope only
+            if agent_id and _agent_existing is not None:
+                user_existing = _agent_existing
+            elif _owner:
+                user_existing = [e for e in existing if e.get("owner") == _owner or e.get("owner") is None]
+            else:
+                user_existing = existing
             if memory_manager.find_duplicates(fact_text, user_existing):
                 continue
             # Fuzzy text similarity check (catches rephrased duplicates when vector index is unavailable)
@@ -437,7 +449,7 @@ async def extract_and_store(
                 logger.debug(f"Memory dedup (fuzzy): '{fact_text[:50]}' too similar to existing")
                 continue
 
-            entry = memory_manager.add_entry(fact_text, source="auto", category=category, owner=_owner)
+            entry = memory_manager.add_entry(fact_text, source="auto", category=category, owner=_owner, agent_id=agent_id)
             # Auto-pin identity facts (name, job, location) — core context
             if category == "identity":
                 entry["pinned"] = True

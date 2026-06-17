@@ -116,8 +116,16 @@ function _agentCard(agent) {
     <button class="cc-ag-chat-btn"   data-agent-id="${id}">Chat</button>
     <button class="cc-ag-call-btn"   data-agent-id="${id}" title="Voice call">Call</button>
     <button class="cc-ag-invoke-btn" data-agent-id="${id}">Invoke</button>
+    <button class="cc-ag-memory-btn" data-agent-id="${id}" title="View agent memories">Mem</button>
     <button class="cc-ag-edit-btn"   data-agent-id="${id}">Edit</button>
     <button class="cc-ag-delete-btn" data-agent-id="${id}">Del</button>
+  </div>
+  <div class="cc-ag-memory-panel" id="cc-ag-memory-${id}" style="display:none">
+    <div class="cc-ag-memory-header">
+      <span class="cc-ag-memory-title">AGENT MEMORY</span>
+      <button class="cc-ag-memory-close-btn" data-agent-id="${id}">✕</button>
+    </div>
+    <div class="cc-ag-memory-list" id="cc-ag-memory-list-${id}"></div>
   </div>
   <div class="cc-ag-invoke-form" id="cc-ag-invoke-${id}" style="display:none">
     <textarea class="cc-ag-invoke-input" placeholder="Enter prompt…" rows="3"></textarea>
@@ -196,6 +204,10 @@ function _wireCard(container, agentId) {
   const deleteBtn  = card.querySelector('.cc-ag-delete-btn');
   const chatBtn    = card.querySelector('.cc-ag-chat-btn');
   const callBtn    = card.querySelector('.cc-ag-call-btn');
+  const memoryBtn  = card.querySelector('.cc-ag-memory-btn');
+  const memPanel   = card.querySelector(`#cc-ag-memory-${agentId}`);
+  const memList    = card.querySelector(`#cc-ag-memory-list-${agentId}`);
+  const memClose   = card.querySelector('.cc-ag-memory-close-btn');
   const expandBtn  = card.querySelector('.cc-ag-expand-btn');
   const details    = expandBtn ? card.querySelector(`#${expandBtn.dataset.target}`) : null;
 
@@ -206,6 +218,15 @@ function _wireCard(container, agentId) {
     expandBtn.textContent = open ? '›' : '⌄';
     expandBtn.classList.toggle('cc-ag-expand-btn--open', !open);
   });
+
+  memoryBtn?.addEventListener('click', async () => {
+    if (!memPanel) return;
+    const isOpen = memPanel.style.display !== 'none';
+    if (isOpen) { memPanel.style.display = 'none'; return; }
+    memPanel.style.display = 'block';
+    if (memList) await _loadAgentMemories(agentId, memList);
+  });
+  memClose?.addEventListener('click', () => { if (memPanel) memPanel.style.display = 'none'; });
 
   chatBtn?.addEventListener('click', () => {
     const name   = card.dataset.agentName   || agentId;
@@ -363,6 +384,52 @@ async function _streamSSE(body, resultEl) {
       }
       eventType = 'message';
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Agent memory panel
+// ---------------------------------------------------------------------------
+
+async function _loadAgentMemories(agentId, listEl) {
+  listEl.innerHTML = '<div class="cc-empty cc-ag-mem-loading">Loading…</div>';
+  try {
+    const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/memories`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { memories = [] } = await res.json();
+    if (!memories.length) {
+      listEl.innerHTML = '<div class="cc-empty">No memories yet. Start chatting to build agent memory.</div>';
+      return;
+    }
+    listEl.innerHTML = '';
+    for (const m of memories) {
+      const row = document.createElement('div');
+      row.className = 'cc-ag-mem-row';
+      row.dataset.memId = m.id;
+      const cat = m.category ? `<span class="cc-ag-mem-cat">${_esc(m.category)}</span>` : '';
+      row.innerHTML = `
+        <div class="cc-ag-mem-text">${_esc(m.text)}${cat}</div>
+        <button class="cc-ag-mem-del-btn" title="Delete memory">✕</button>
+      `.trim();
+      row.querySelector('.cc-ag-mem-del-btn')?.addEventListener('click', async () => {
+        try {
+          const dr = await fetch(
+            `/api/agents/${encodeURIComponent(agentId)}/memories/${encodeURIComponent(m.id)}`,
+            { method: 'DELETE' },
+          );
+          if (!dr.ok) throw new Error(`HTTP ${dr.status}`);
+          row.remove();
+          if (!listEl.querySelector('.cc-ag-mem-row')) {
+            listEl.innerHTML = '<div class="cc-empty">No memories yet. Start chatting to build agent memory.</div>';
+          }
+        } catch (e) {
+          row.querySelector('.cc-ag-mem-del-btn').textContent = '!';
+        }
+      });
+      listEl.appendChild(row);
+    }
+  } catch (e) {
+    listEl.innerHTML = `<div class="cc-empty">Could not load memories — ${_esc(e.message)}</div>`;
   }
 }
 
