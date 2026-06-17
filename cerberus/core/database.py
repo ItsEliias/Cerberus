@@ -772,6 +772,11 @@ class ConferenceRoom(Base):
     created_at      = Column(DateTime, default=utcnow_naive)
     last_message_at = Column(DateTime, nullable=True)
     message_count   = Column(Integer, default=0)
+    # Phase 3b
+    mode                = Column(String, nullable=False, default="routed")   # 'routed' | 'open'
+    round_cap           = Column(Integer, default=5)                          # 1-20
+    total_input_tokens  = Column(Integer, default=0)
+    total_output_tokens = Column(Integer, default=0)
 
     messages = relationship(
         "RoomMessage", back_populates="room",
@@ -1840,6 +1845,24 @@ def _migrate_seed_email_account():
 # Any future migrations or schema changes that temporarily violate foreign-key
 # constraints will fail. To perform such operations, foreign_keys must be
 # temporarily disabled around the migration workflow.
+def _migrate_add_room_phase3b_columns():
+    """Add mode, round_cap, total_input_tokens, total_output_tokens to conference_rooms (Phase 3b)."""
+    try:
+        with engine.connect() as conn:
+            cols = [r[1] for r in conn.execute(text("PRAGMA table_info(conference_rooms)"))]
+            if "mode" not in cols:
+                conn.execute(text("ALTER TABLE conference_rooms ADD COLUMN mode VARCHAR DEFAULT 'routed'"))
+            if "round_cap" not in cols:
+                conn.execute(text("ALTER TABLE conference_rooms ADD COLUMN round_cap INTEGER DEFAULT 5"))
+            if "total_input_tokens" not in cols:
+                conn.execute(text("ALTER TABLE conference_rooms ADD COLUMN total_input_tokens INTEGER DEFAULT 0"))
+            if "total_output_tokens" not in cols:
+                conn.execute(text("ALTER TABLE conference_rooms ADD COLUMN total_output_tokens INTEGER DEFAULT 0"))
+            conn.commit()
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"conference_rooms phase-3b migration: {e}")
+
+
 def init_db():
     """
     Initialize the database by creating all tables.
@@ -1891,6 +1914,7 @@ def init_db():
     _migrate_backfill_task_folders()
     _migrate_add_agent_usage_columns()
     _migrate_add_agent_phase_a_columns()
+    _migrate_add_room_phase3b_columns()
 
 
 def _migrate_add_agent_usage_columns():
