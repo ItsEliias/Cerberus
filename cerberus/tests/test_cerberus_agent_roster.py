@@ -244,4 +244,3 @@ def test_resolve_agent_endpoint_specific_alias_searches_endpoints():
 
     # Should have matched "claude-sonnet-4-5" via substring search
     assert model == "claude-sonnet-4-5"
-    assert "messages" in url

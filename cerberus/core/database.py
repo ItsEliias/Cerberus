@@ -682,18 +682,21 @@ class CerberusAgent(TimestampMixin, Base):
     """Persistent agent persona with its own system prompt and invocation config."""
     __tablename__ = "cerberus_agents"
 
-    id             = Column(String, primary_key=True, index=True)
-    name           = Column(String, nullable=False)
-    role           = Column(String, nullable=False, default="custom")
-    agent_type     = Column(String, nullable=False, default="general")
-    status         = Column(String, nullable=False, default="idle")   # active | idle | standby | alert
-    current_action = Column(String, nullable=True)
-    score          = Column(Integer, default=0)
-    system_prompt  = Column(Text, nullable=False, default="")
-    model_alias    = Column(String, nullable=False, default="sonnet")
-    owner          = Column(String, nullable=True, index=True)
-    last_active_at = Column(DateTime, nullable=True)
-    metadata_json  = Column(Text, nullable=True)                      # extensible JSON blob
+    id                  = Column(String, primary_key=True, index=True)
+    name                = Column(String, nullable=False)
+    role                = Column(String, nullable=False, default="custom")
+    agent_type          = Column(String, nullable=False, default="general")
+    status              = Column(String, nullable=False, default="idle")   # active | idle | standby | alert
+    current_action      = Column(String, nullable=True)
+    score               = Column(Integer, default=0)
+    system_prompt       = Column(Text, nullable=False, default="")
+    model_alias         = Column(String, nullable=False, default="sonnet")
+    owner               = Column(String, nullable=True, index=True)
+    last_active_at      = Column(DateTime, nullable=True)
+    metadata_json       = Column(Text, nullable=True)                      # extensible JSON blob
+    total_input_tokens  = Column(Integer, default=0)                       # cumulative across all runs
+    total_output_tokens = Column(Integer, default=0)
+    last_run_url        = Column(String, nullable=True)                    # endpoint URL of the last run
 
     __table_args__ = (
         Index('ix_cerberus_agents_owner_name', 'owner', 'name', unique=True),
@@ -714,6 +717,8 @@ class CerberusAgent(TimestampMixin, Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "last_active_at": self.last_active_at.isoformat() if self.last_active_at else None,
             "metadata_json": self.metadata_json,
+            "total_input_tokens": self.total_input_tokens or 0,
+            "total_output_tokens": self.total_output_tokens or 0,
         }
 
 
@@ -1811,6 +1816,22 @@ def init_db():
     _migrate_encrypt_signatures()
     _migrate_encrypt_endpoint_keys()
     _migrate_backfill_task_folders()
+    _migrate_add_agent_usage_columns()
+
+
+def _migrate_add_agent_usage_columns():
+    """Add token tracking and last_run_url columns to cerberus_agents table."""
+    try:
+        with engine.connect() as conn:
+            cols = [r[1] for r in conn.execute(text("PRAGMA table_info(cerberus_agents)"))]
+            if "total_input_tokens" not in cols:
+                conn.execute(text("ALTER TABLE cerberus_agents ADD COLUMN total_input_tokens INTEGER DEFAULT 0"))
+                conn.execute(text("ALTER TABLE cerberus_agents ADD COLUMN total_output_tokens INTEGER DEFAULT 0"))
+                conn.execute(text("ALTER TABLE cerberus_agents ADD COLUMN last_run_url VARCHAR"))
+                conn.commit()
+                logging.getLogger(__name__).info("Migrated: added usage tracking columns to cerberus_agents")
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"cerberus_agents usage columns migration: {e}")
 
 
 def _migrate_backfill_task_folders():
