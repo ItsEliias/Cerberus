@@ -1,12 +1,14 @@
 """CerberusAgent CRUD + invocation routes.
 
 Endpoints:
-  GET    /api/agents                — list owner's agents (lazy-seeds 6 defaults)
+  GET    /api/agents                — list owner's agents (lazy-seeds + back-fills defaults)
   POST   /api/agents                — create an agent
   PATCH  /api/agents/{id}           — update fields
   DELETE /api/agents/{id}           — delete
-  POST   /api/agents/{id}/invoke    — run agent via Claude Subscription provider (SSE)
+  POST   /api/agents/{id}/invoke    — run agent via the provider-agnostic LLM engine (SSE)
 
+Invocation resolves each agent's model_alias against the owner's configured
+endpoints (via endpoint_resolver.py / llm_core.py) — not a hardcoded provider.
 All routes require authentication via `require_user`.
 """
 
@@ -16,106 +18,17 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.database import CerberusAgent, SessionLocal
+from routes.cerberus_agent_defaults import _DEFAULT_AGENTS
 from src.auth_helpers import require_user
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Default agent seed definitions
-# ---------------------------------------------------------------------------
-
-_DEFAULT_AGENTS: List[Dict[str, str]] = [
-    {
-        "name": "ARCHITECT",
-        "role": "architect",
-        "agent_type": "system-architect",
-        "status": "idle",
-        "model_alias": "sonnet",
-        "system_prompt": (
-            "You are ARCHITECT, a senior system architect inside the Cerberus AI workspace. "
-            "You design scalable, secure, maintainable systems. You think in components, "
-            "interfaces, and trade-offs. When asked to design or review a system, produce "
-            "clear diagrams (ASCII or Mermaid), list the components, explain their responsibilities, "
-            "and call out the top 3 risks with mitigations. Keep all responses concise and actionable."
-        ),
-    },
-    {
-        "name": "CODER",
-        "role": "coder",
-        "agent_type": "backend-dev",
-        "status": "idle",
-        "model_alias": "sonnet",
-        "system_prompt": (
-            "You are CODER, an expert software engineer inside the Cerberus AI workspace. "
-            "You write clean, typed, tested code in Python, TypeScript, and Rust. "
-            "You follow SOLID principles and always validate inputs at system boundaries. "
-            "When asked to implement something, produce working code with inline comments "
-            "explaining non-obvious decisions. Functions stay under 20 lines."
-        ),
-    },
-    {
-        "name": "TESTER",
-        "role": "tester",
-        "agent_type": "tester",
-        "status": "idle",
-        "model_alias": "sonnet",
-        "system_prompt": (
-            "You are TESTER, a quality-engineering specialist inside the Cerberus AI workspace. "
-            "You write comprehensive test suites following the London School TDD approach. "
-            "You identify edge cases, boundary conditions, and failure modes. "
-            "For every feature or function you receive, produce unit tests, integration tests, "
-            "and a smoke-test checklist. Always ask: what can go wrong?"
-        ),
-    },
-    {
-        "name": "RESEARCHER",
-        "role": "researcher",
-        "agent_type": "researcher",
-        "status": "idle",
-        "model_alias": "sonnet",
-        "system_prompt": (
-            "You are RESEARCHER, a deep-research specialist inside the Cerberus AI workspace. "
-            "You gather, synthesise, and evaluate information from multiple sources. "
-            "You surface key facts, contradictions, and knowledge gaps. "
-            "Present findings as structured reports: summary, key findings, open questions, "
-            "and confidence level per claim. Cite sources when available."
-        ),
-    },
-    {
-        "name": "REVIEWER",
-        "role": "reviewer",
-        "agent_type": "reviewer",
-        "status": "idle",
-        "model_alias": "sonnet",
-        "system_prompt": (
-            "You are REVIEWER, a code and design review specialist inside the Cerberus AI workspace. "
-            "You critique code for correctness, security, performance, and maintainability. "
-            "You give blunt, actionable feedback structured as: MUST-FIX, SHOULD-FIX, SUGGESTION. "
-            "For every review you produce a risk score (1-10) and a one-line verdict."
-        ),
-    },
-    {
-        "name": "SECURITY",
-        "role": "security-auditor",
-        "agent_type": "security-auditor",
-        "status": "standby",
-        "model_alias": "sonnet",
-        "system_prompt": (
-            "You are SECURITY, a security architect and auditor inside the Cerberus AI workspace. "
-            "You identify vulnerabilities, threat vectors, and compliance gaps. "
-            "You think in STRIDE, OWASP Top-10, and zero-trust principles. "
-            "For every code review or system design, produce a threat model with severity ratings "
-            "(CRITICAL/HIGH/MEDIUM/LOW) and concrete remediation steps. Never normalise risk."
-        ),
-    },
-]
 
 
 # ---------------------------------------------------------------------------
@@ -126,8 +39,61 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def _resolve_agent_endpoint(
+    model_alias: str, owner: str
+) -> Tuple[Optional[str], Optional[str], Optional[Dict]]:
+    """Resolve agent model_alias → (chat_url, model, headers).
+
+    1. Empty / "default" → owner's configured default endpoint.
+    2. Specific alias (e.g. "sonnet") → first enabled endpoint whose model
+       list contains the alias as a case-insensitive substring.
+    3. Falls back to the owner's default if no match found.
+    Returns (None, None, None) only when no endpoint is configured at all.
+    """
+    from src.endpoint_resolver import (
+        resolve_endpoint,
+        resolve_endpoint_runtime,
+        build_chat_url,
+        build_headers,
+        _endpoint_enabled_models,
+    )
+    from src.auth_helpers import owner_filter
+    from core.database import ModelEndpoint
+
+    alias = (model_alias or "default").strip().lower()
+    if alias in ("", "default"):
+        return resolve_endpoint("default", owner=owner)
+
+    db = SessionLocal()
+    try:
+        q = db.query(ModelEndpoint).filter(ModelEndpoint.is_enabled.is_(True))
+        q = owner_filter(q, ModelEndpoint, owner)
+        for ep in q.all():
+            matched = next(
+                (m for m in _endpoint_enabled_models(ep) if alias in m.lower()),
+                None,
+            )
+            if not matched:
+                continue
+            try:
+                base, api_key = resolve_endpoint_runtime(ep, owner=owner)
+                return build_chat_url(base), matched, build_headers(api_key, base)
+            except Exception:
+                continue
+    except Exception as exc:
+        logger.debug("_resolve_agent_endpoint alias search failed: %s", exc)
+    finally:
+        db.close()
+
+    return resolve_endpoint("default", owner=owner)
+
+
 def _seed_defaults(db, owner: str) -> None:
-    """Insert the 6 default agent personas for a new owner. Idempotent."""
+    """Insert any missing default agent personas for an owner. Idempotent.
+
+    Called on every GET /api/agents so new defaults are back-filled for
+    existing owners without duplicating already-present names.
+    """
     for defn in _DEFAULT_AGENTS:
         existing = (
             db.query(CerberusAgent)
@@ -165,7 +131,7 @@ class AgentCreate(BaseModel):
     agent_type: str
     system_prompt: str
     status: Optional[str] = "idle"
-    model_alias: Optional[str] = "sonnet"
+    model_alias: Optional[str] = "default"
 
 
 class AgentPatch(BaseModel):
@@ -192,9 +158,9 @@ def setup_cerberus_agent_routes() -> APIRouter:
         owner = require_user(request)
         db = SessionLocal()
         try:
-            count = db.query(CerberusAgent).filter(CerberusAgent.owner == owner).count()
-            if count == 0:
-                _seed_defaults(db, owner)
+            # Always call seed — it's idempotent and back-fills new defaults
+            # for existing owners without duplicating already-present names.
+            _seed_defaults(db, owner)
             agents = (
                 db.query(CerberusAgent)
                 .filter(CerberusAgent.owner == owner)
@@ -227,7 +193,7 @@ def setup_cerberus_agent_routes() -> APIRouter:
                 agent_type=body.agent_type,
                 system_prompt=body.system_prompt,
                 status=body.status or "idle",
-                model_alias=body.model_alias or "sonnet",
+                model_alias=body.model_alias or "default",
             )
             db.add(agent)
             db.commit()
@@ -292,19 +258,21 @@ def setup_cerberus_agent_routes() -> APIRouter:
         if not (body.prompt or "").strip():
             raise HTTPException(400, "Prompt is required")
 
-        # Read agent config before streaming
         db = SessionLocal()
         try:
             agent = _get_agent_for_owner(db, agent_id, owner)
             system_prompt = agent.system_prompt or ""
-            agent_name = agent.name
             agent_id_val = agent.id
-            # Flip to active immediately
+            model_alias = agent.model_alias or "default"
             agent.status = "active"
             agent.current_action = f"Invoking: {body.prompt[:80]}"
             db.commit()
         finally:
             db.close()
+
+        # Resolve endpoint before opening the stream so auth errors surface
+        # immediately rather than mid-stream.
+        url, model, headers = _resolve_agent_endpoint(model_alias, owner)
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -312,10 +280,17 @@ def setup_cerberus_agent_routes() -> APIRouter:
         ]
 
         async def _generate():
-            from src.claude_subscription import stream_completion
+            from src.llm_core import stream_llm
+            if not url or not model:
+                yield (
+                    f'event: error\ndata: {json.dumps({"error": "No LLM provider configured."
+                    " Add a model in Settings → Add Models.", "status": 503})}\n\n'
+                )
+                _finalize_invocation(agent_id_val, owner, False)
+                return
             success = True
             try:
-                async for chunk in stream_completion(messages):
+                async for chunk in stream_llm(url, model, messages, headers=headers):
                     yield chunk
             except Exception as exc:
                 success = False

@@ -362,6 +362,31 @@ def setup_task_routes(task_scheduler) -> APIRouter:
         finally:
             db.close()
 
+    @router.get("/active")
+    def get_active_tasks(request: Request):
+        """Read-only list of currently running tasks for the dashboard feed."""
+        user = _owner(request)
+        db = SessionLocal()
+        try:
+            q = db.query(ScheduledTask).filter(ScheduledTask.status == "active")
+            if user:
+                q = q.filter(ScheduledTask.owner == user)
+            tasks = q.order_by(ScheduledTask.updated_at.desc()).limit(20).all()
+            return {
+                "tasks": [
+                    {
+                        "id": t.id,
+                        "title": _display_task_name(t),
+                        "status": t.status,
+                        "agent": t.agent or None,
+                        "started_at": t.updated_at.isoformat() + "Z" if t.updated_at else None,
+                    }
+                    for t in tasks
+                ]
+            }
+        finally:
+            db.close()
+
     @router.get("/onboarding")
     async def get_tasks_onboarding(request: Request):
         user = _owner(request)
