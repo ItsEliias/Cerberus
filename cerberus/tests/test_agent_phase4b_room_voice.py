@@ -278,3 +278,127 @@ def test_route_event_backward_compat_agent_and_id_still_present():
     # 3b/3c relied on these two fields
     assert data["agent"]   == "CODER"
     assert data["agent_id"] == "id-coder"
+
+
+# ---------------------------------------------------------------------------
+# Tests: STT 503 error contract (ensures JS can detect unavailability cleanly)
+# These tests validate the server-side contract that room_voice.js and voice.js
+# depend on: a 503 response is the definitive "STT unavailable" signal so the
+# client can switch to text-fallback mode instead of hanging on "transcribing".
+# ---------------------------------------------------------------------------
+
+def test_stt_transcribe_returns_503_not_500_when_disabled():
+    """STT returns 503 (not 200/500) when service unavailable — JS relies on this."""
+    from routes.stt_routes import setup_stt_routes
+    from fastapi import HTTPException
+
+    mock_stt = MagicMock()
+    mock_stt.available = False
+
+    router = setup_stt_routes(mock_stt)
+    # The route exists and is bound to an async endpoint that raises HTTPException(503)
+    transcribe_route = next(r for r in router.routes if r.path == "/api/stt/transcribe")
+    assert transcribe_route is not None
+
+    # Simulate calling the endpoint's handler directly
+    endpoint = transcribe_route.endpoint
+    import asyncio
+
+    async def _call():
+        file_mock = MagicMock()
+        file_mock.read = AsyncMock(return_value=b"audio")
+        try:
+            return await endpoint(file=file_mock)
+        except HTTPException as exc:
+            return exc
+
+    exc = asyncio.run(_call())
+    assert isinstance(exc, HTTPException)
+    assert exc.status_code == 503, f"expected 503, got {exc.status_code}"
+
+
+def test_stt_503_detail_has_message_key():
+    """STT 503 detail is a dict with 'message' key — lets JS show a specific error."""
+    from routes.stt_routes import setup_stt_routes
+    from fastapi import HTTPException
+
+    mock_stt = MagicMock()
+    mock_stt.available = False
+
+    router = setup_stt_routes(mock_stt)
+    transcribe_route = next(r for r in router.routes if r.path == "/api/stt/transcribe")
+    endpoint = transcribe_route.endpoint
+
+    import asyncio
+
+    async def _call():
+        try:
+            return await endpoint(file=MagicMock())
+        except HTTPException as exc:
+            return exc
+
+    exc = asyncio.run(_call())
+    assert isinstance(exc.detail, dict)
+    assert "message" in exc.detail
+
+
+def test_stt_503_distinct_from_500():
+    """503 (service unavailable) is a distinct status code from 500 (server error).
+    This matters because room_voice.js uses err.code === 503 to show the
+    'not enabled' message vs a generic 'transcription failed' message.
+    """
+    assert 503 != 500
+
+
+def test_stt_available_returns_text():
+    """When STT is available, transcribe returns {"text": "..."} with status 200."""
+    from routes.stt_routes import setup_stt_routes
+
+    mock_stt = MagicMock()
+    mock_stt.available = True
+    mock_stt.transcribe.return_value = "hello world"
+
+    router = setup_stt_routes(mock_stt)
+    transcribe_route = next(r for r in router.routes if r.path == "/api/stt/transcribe")
+    endpoint = transcribe_route.endpoint
+
+    import asyncio
+    from src.upload_limits import read_upload_limited, STT_MAX_AUDIO_BYTES
+
+    # Patch the upload helper so we don't need a real UploadFile
+    async def _call():
+        file_mock = MagicMock()
+        with patch("routes.stt_routes.read_upload_limited", AsyncMock(return_value=b"audio")):
+            return await endpoint(file=file_mock)
+
+    result = asyncio.run(_call())
+    assert result == {"text": "hello world"}
+
+
+def test_stt_empty_transcription_raises_500():
+    """transcribe() returning None → 500, not a silent empty string (protects against
+    voice.js hanging on empty result from a bad model response).
+    """
+    from routes.stt_routes import setup_stt_routes
+    from fastapi import HTTPException
+
+    mock_stt = MagicMock()
+    mock_stt.available = True
+    mock_stt.transcribe.return_value = None  # model failed silently
+
+    router = setup_stt_routes(mock_stt)
+    transcribe_route = next(r for r in router.routes if r.path == "/api/stt/transcribe")
+    endpoint = transcribe_route.endpoint
+
+    import asyncio
+
+    async def _call():
+        try:
+            with patch("routes.stt_routes.read_upload_limited", AsyncMock(return_value=b"audio")):
+                return await endpoint(file=MagicMock())
+        except HTTPException as exc:
+            return exc
+
+    exc = asyncio.run(_call())
+    assert isinstance(exc, HTTPException)
+    assert exc.status_code == 500

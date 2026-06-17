@@ -93,6 +93,12 @@ function _appendTurn(transcriptEl, role, senderName, text, color) {
   transcriptEl.scrollTop = transcriptEl.scrollHeight;
 }
 
+function _showSttNotice(transcriptEl, msg) {
+  transcriptEl.insertAdjacentHTML('beforeend',
+    `<div class="cc-rv-stt-notice">${_esc(msg)}</div>`);
+  transcriptEl.scrollTop = transcriptEl.scrollHeight;
+}
+
 function _startStreamingTurn(transcriptEl, agentName, color) {
   const div = document.createElement('div');
   div.className = 'cc-chat-msg cc-chat-msg--assistant';
@@ -389,8 +395,14 @@ export async function openRoomVoiceCall(container, room) {
           const text = await _transcribeBlob(blob);
           resolve(text);
         } catch (err) {
-          if (err.code === 503) _revealTextFallback();
-          resolve('');
+          const msg = err.code === 503
+            ? "Voice input isn't enabled — turn on STT in Settings, or type instead."
+            : "Transcription failed — type instead.";
+          _showSttNotice(transcript, msg);
+          _revealTextFallback();
+          _setState(panel, RV_STATES.USER_FLOOR);
+          // _textMode is now true; recurse to get message via text input
+          _getUserMessage().then(resolve);
         }
       }
       async function _onDown() {
@@ -557,7 +569,15 @@ export async function openRoomVoiceCall(container, room) {
           const text = await _transcribeBlob(blob);
           if (text) await _runLoop(text);
         } catch (err) {
-          if (err.code === 503) _revealTextFallback();
+          const msg = err.code === 503
+            ? "Voice input isn't enabled — turn on STT in Settings, or type instead."
+            : "Transcription failed — type instead.";
+          _showSttNotice(transcript, msg);
+          _revealTextFallback();
+          _setState(panel, RV_STATES.IDLE);
+          textSend?.addEventListener('click', _handleInitialTextSubmit);
+          textInput?.addEventListener('keydown', _initKd);
+          textInput?.focus();
         }
       }
       micBtn.addEventListener('mouseup',   _initUp);

@@ -312,14 +312,18 @@ export async function openVoiceCall(container, agentId, agentName, agentAvatar, 
       if (!text) { _setState(panel, 'your-turn'); return; }
       await _processTurn(text);
     } catch (err) {
-      if (err.code === 503) {
-        // STT unavailable — fall back to text input
-        textMode = true;
-        fallbackDiv.style.display = 'flex';
-        micBtn.style.display = 'none';
-        toggleText.textContent = 'Use mic';
-      }
+      const msg = err.code === 503
+        ? "Voice input isn't enabled — turn on STT in Settings, or type instead."
+        : "Transcription failed — type instead.";
+      transcriptEl.insertAdjacentHTML('beforeend',
+        `<div class="cc-voice-stt-notice">${_esc(msg)}</div>`);
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+      textMode = true;
+      fallbackDiv.style.display = 'flex';
+      micBtn.style.display = 'none';
+      toggleText.textContent = 'Use mic';
       _setState(panel, 'your-turn');
+      textInput?.focus();
     }
   }
 
