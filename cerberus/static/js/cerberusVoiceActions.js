@@ -96,13 +96,22 @@ function _resolveAgent(query) {
 
 const OVERLAY_CLOSE = /^(?:close|exit|dismiss)\s+(?:the\s+)?(?:notes?|library|cook\s*book|calendar|brain|memory|tasks?)$/;
 
+const _CLOSE_VERBS = /^(?:close|exit|dismiss|hide|shut)\s+(?:the\s+)?/;
 function _parseCloseOverlay(norm) {
-  if (norm === 'close notes' || norm === 'close note') return 'notes';
-  if (norm === 'close library') return 'library';
-  if (norm === 'close cookbook' || norm === 'close cook book') return 'cookbook';
-  if (norm === 'close calendar') return 'calendar';
-  if (norm === 'close brain' || norm === 'close memory') return 'brain';
-  if (norm === 'close tasks' || norm === 'close task') return 'tasks';
+  const stripped = norm.replace(_CLOSE_VERBS, '').trim();
+  if (stripped === 'notes' || stripped === 'note') return 'notes';
+  if (stripped === 'library') return 'library';
+  if (stripped === 'cookbook' || stripped === 'cook book') return 'cookbook';
+  if (stripped === 'calendar') return 'calendar';
+  if (stripped === 'brain' || stripped === 'memory') return 'brain';
+  if (stripped === 'tasks' || stripped === 'task') return 'tasks';
+  if (stripped === 'finance') return 'finance';
+  if (stripped === 'projects' || stripped === 'project') return 'projects';
+  if (stripped === 'settings') return 'settings';
+  if (stripped === 'assistant') return 'assistant';
+  if (stripped === 'offices' || stripped === 'agents' || stripped === 'agent') return 'offices';
+  if (stripped === 'tools') return 'tools';
+  if (stripped === 'monitor' || stripped === 'system monitor') return 'monitor';
   return null;
 }
 
@@ -453,7 +462,12 @@ async function _executeParsed(parsed) {
 
   if (parsed.action === 'close_overlay') {
     const tool = parsed.payload?.tool || parsed.objectName;
-    const closed = await cerberusOverlayTools.closeOverlayTool?.(tool);
+    let closed = await cerberusOverlayTools.closeOverlayTool?.(tool);
+    if (!closed) {
+      // Fall back to shell modal close for modals not tracked as overlay tools
+      const shellClosed = await import('./cerberusShellModals.js').then((m) => m.closeShellModal?.(tool)).catch(() => false);
+      if (shellClosed) closed = true;
+    }
     return cmdHandled(!!closed, closed ? 'Closed.' : 'Nothing to close.', {
       uiAction: closed ? { type: 'close_overlay', payload: { tool } } : null,
       uiActivity: closed ? 'Done: Closed' : 'Error: Nothing to close',

@@ -63,7 +63,7 @@ const COMMAND_GROUPS = [
       { say: '”Close all” / “Close everything”', does: 'Closes all open panels at once' },
       { say: '”Help” / “What can I say”', does: 'Opens this cheat sheet' },
       { say: '”What time is it”', does: 'Reads back the current time' },
-      { say: '”What's the date” / “What day is it”', does: 'Reads back today's date' },
+      { say: '”What\'s the date” / “What day is it”', does: 'Reads back today\'s date' },
       { say: '”Mute” / “Pause listening”', does: 'Pauses the microphone (say “Hey Cerberus” to resume)' },
       { say: '”Read that back” / “Say that again”', does: 'Re-reads Cerberus\'s last spoken reply' },
       { say: '”Dark mode” / “Light mode”', does: 'Switches the UI theme' },
@@ -136,8 +136,7 @@ function _esc(s) {
 
 export function renderVoiceCheatSheet() {
   const body = document.getElementById('cerberus-voice-cheatsheet-body');
-  if (!body || body.dataset.rendered) return;
-  body.dataset.rendered = '1';
+  if (!body) return;
 
   body.innerHTML = `
     <p class="cerberus-cheatsheet-intro">

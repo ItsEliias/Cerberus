@@ -624,13 +624,19 @@ export function speakText(text, { onEnd, short = true, style } = {}) {
       _setStatus('speaking');
       _notifyStatus('speaking', 'Speaking');
     };
+    let _doneFired = false;
     const done = () => {
+      if (_doneFired) return;
+      _doneFired = true;
+      clearTimeout(_safetyTimer);
       setTimeout(() => {
         _setMicPaused(false);
         if (onEnd) onEnd();
         resolve();
       }, SELF_TRANSCRIPT_COOLDOWN_MS);
     };
+    // Safety valve: Chrome TTS sometimes silently drops onend/onerror
+    const _safetyTimer = setTimeout(done, 12000);
     utt.onend = done;
     utt.onerror = done;
     window.speechSynthesis.speak(utt);
