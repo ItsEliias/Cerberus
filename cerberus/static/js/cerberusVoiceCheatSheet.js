@@ -16,7 +16,8 @@ const COMMAND_GROUPS = [
       { say: '“Open settings”', does: 'Opens Settings' },
       { say: '“Open voice commands”', does: 'Opens this cheat sheet' },
       { say: '“Open system monitor”', does: 'Opens the System Monitor' },
-      { say: '”Go to home”', does: 'Returns to the Cerberus home view' },
+      { say: '”Go to home” / “Go to Nexus”', does: 'Returns to the Cerberus home view' },
+      { say: '”Go to dashboard” / “Open dashboard”', does: 'Opens the Dashboard' },
     ],
   },
   {

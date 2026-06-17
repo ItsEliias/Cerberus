@@ -14,7 +14,8 @@ let _councilStatus = 'IDLE';
 // cerberusShellModals.openShellModal. Voice MUST use the exact same path as a
 // mouse click on the globe node, so the two can never drift apart again.
 const NAV_TARGETS = {
-  home: { label: 'Home', paths: ['/home', '/'], navigate: () => _goHome() },
+  home: { label: 'Home', paths: ['/home', '/'], navigate: () => _goHome(), aliases: ['nexus', 'cerberus home', 'go home'] },
+  dashboard: { label: 'Dashboard', paths: ['/dashboard'], navigate: () => _goDashboard(), aliases: ['dash', 'the dashboard'] },
   assistant: { label: 'Assistant', paths: ['/assistant'], navigate: () => _openModal('assistant') },
   projects: { label: 'Projects', paths: ['/projects'], navigate: () => _openModal('projects') },
   agents: { label: 'Agents', paths: ['/agents'], navigate: () => _openModal('offices') },
@@ -60,6 +61,10 @@ async function _goHome() {
   await cerberusShellModals.closeAllModals();
   await window.homeModule?.showHome?.({ skipHistory: false });
   history.pushState({ atlasView: 'home' }, '', '/home');
+}
+
+function _goDashboard() {
+  window.dashModule?.open?.();
 }
 
 async function _openModal(id) {
