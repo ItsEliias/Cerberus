@@ -1,11 +1,8 @@
 /**
  * agents.js — AGENTS/SWARM sub-tab for Command Center.
  *
- * Fetches /api/agents and renders a card grid. Each card supports:
- *   • Invoke (SSE streaming prompt)
- *   • Edit (inline fields for name/role/agent_type/prompt/model/avatar)
- *   • Delete (confirm step; seeded defaults stay gone after refresh)
- * "New Agent" button opens a create form at the top of the grid.
+ * Phase 1 — Jarvis-v2 cards, deterministic sigils, expand/details panel,
+ * grouped by category (CORE / SECURITY / OPS / DATA / COMMS / CUSTOM).
  */
 
 function _esc(s) {
@@ -15,29 +12,88 @@ function _esc(s) {
 }
 
 const STATUS_META = {
-  active:  { cls: 'cc-ag-status--active',  label: 'ACTIVE' },
-  idle:    { cls: 'cc-ag-status--idle',    label: 'IDLE' },
-  alert:   { cls: 'cc-ag-status--alert',   label: 'ALERT' },
-  standby: { cls: 'cc-ag-status--standby', label: 'STANDBY' },
-  ready:   { cls: 'cc-ag-status--ready',   label: 'READY' },
+  active:  { cls: 'cc-ag-status--active',  label: 'ACTIVE'   },
+  idle:    { cls: 'cc-ag-status--idle',    label: 'IDLE'     },
+  alert:   { cls: 'cc-ag-status--alert',   label: 'ALERT'    },
+  standby: { cls: 'cc-ag-status--standby', label: 'STANDBY'  },
+  ready:   { cls: 'cc-ag-status--ready',   label: 'READY'    },
 };
 
 function _statusMeta(status) {
-  return STATUS_META[status] || { cls: 'cc-ag-status--idle', label: _esc(status || 'UNKNOWN').toUpperCase() };
+  return STATUS_META[status] || { cls: 'cc-ag-status--idle', label: (status || 'UNKNOWN').toUpperCase() };
 }
+
+// ---------------------------------------------------------------------------
+// Category map
+// ---------------------------------------------------------------------------
+
+const CATEGORY_MAP = {
+  ARCHITECT: 'CORE', CODER: 'CORE', TESTER: 'CORE', RESEARCHER: 'CORE', REVIEWER: 'CORE',
+  SECURITY: 'SECURITY',
+  ORCHESTRATOR: 'OPS', DEVOPS: 'OPS', DEBUGGER: 'OPS', PLANNER: 'OPS',
+  'DATA-ANALYST': 'DATA', LIBRARIAN: 'DATA', OPTIMIZER: 'DATA',
+  SCRIBE: 'COMMS', DESIGNER: 'COMMS', PROMPTSMITH: 'COMMS',
+};
+
+const CAT_ACCENT = {
+  CORE:     '#3498db',
+  SECURITY: '#e74c3c',
+  OPS:      '#e67e22',
+  DATA:     '#2ecc71',
+  COMMS:    '#9b59b6',
+  CUSTOM:   'rgba(197,201,208,0.45)',
+};
+
+const CAT_ORDER = ['CORE', 'SECURITY', 'OPS', 'DATA', 'COMMS', 'CUSTOM'];
+
+function _getCategory(name) {
+  return CATEGORY_MAP[(name || '').toUpperCase()] || 'CUSTOM';
+}
+
+// Deterministic color from name, styled initial sigil
+function _sigil(agent) {
+  let h = 0;
+  const n = agent.name || '?';
+  for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) >>> 0;
+  const PALETTE = ['#2980b9','#e67e22','#27ae60','#8e44ad','#16a085','#c0392b','#d35400','#2c3e50'];
+  const bg = PALETTE[h % PALETTE.length];
+  const glyph = agent.avatar || n[0];
+  return `<span class="cc-ag-sigil" style="background:${bg}">${_esc(glyph)}</span>`;
+}
+
+function _groupAgents(agents) {
+  const groups = {};
+  for (const a of agents) {
+    const cat = _getCategory(a.name);
+    (groups[cat] = groups[cat] || []).push(a);
+  }
+  return groups;
+}
+
+// ---------------------------------------------------------------------------
+// Card HTML
+// ---------------------------------------------------------------------------
 
 function _agentCard(agent) {
   const { cls, label } = _statusMeta(agent.status);
-  const score = (agent.score != null && agent.score > 0) ? `<span class="cc-ag-score">${_esc(agent.score)}</span>` : '';
-  const avatarHtml = agent.avatar
-    ? `<span class="cc-ag-avatar">${_esc(agent.avatar)}</span>`
-    : `<span class="cc-ag-avatar cc-ag-avatar--sigil">${_esc((agent.name || '?')[0])}</span>`;
+  const score   = (agent.score > 0) ? `<span class="cc-ag-score">${_esc(agent.score)}</span>` : '';
+  const accent  = CAT_ACCENT[_getCategory(agent.name)] || CAT_ACCENT.CUSTOM;
+  const inTok   = agent.total_input_tokens  || 0;
+  const outTok  = agent.total_output_tokens || 0;
+  const lastAt  = agent.last_active_at
+    ? new Date(agent.last_active_at + 'Z').toLocaleString() : null;
+  const snip    = (agent.system_prompt || '').slice(0, 180);
+  const hasMore = (agent.system_prompt || '').length > 180;
+  const id      = _esc(agent.id);
   return `
-<div class="cc-ag-card" data-agent-id="${_esc(agent.id)}">
+<div class="cc-ag-card cc-ag-card--v2" data-agent-id="${id}" style="--cat-accent:${accent}">
+  <div class="jx2-bracket-tl"></div>
+  <div class="jx2-bracket-br"></div>
   <div class="cc-ag-card-header">
-    ${avatarHtml}
+    ${_sigil(agent)}
     <span class="cc-ag-name">${_esc(agent.name || agent.id)}</span>
     <span class="cc-ag-status ${cls}">${label}</span>
+    <button class="cc-ag-expand-btn" data-target="cc-ag-details-${id}" title="Details">›</button>
   </div>
   <div class="cc-ag-card-meta">
     <span class="cc-ag-role">${_esc(agent.role || agent.agent_type || '—')}</span>
@@ -45,37 +101,45 @@ function _agentCard(agent) {
     ${score}
   </div>
   ${agent.model_alias ? `<div class="cc-ag-model-chip">${_esc(agent.model_alias)}</div>` : ''}
-  <div class="cc-ag-card-actions">
-    <button class="cc-ag-invoke-btn" data-agent-id="${_esc(agent.id)}">Invoke</button>
-    <button class="cc-ag-edit-btn"   data-agent-id="${_esc(agent.id)}">Edit</button>
-    <button class="cc-ag-delete-btn" data-agent-id="${_esc(agent.id)}">Delete</button>
+  <div class="cc-ag-details" id="cc-ag-details-${id}" style="display:none">
+    <div class="cc-ag-details-prompt">${_esc(snip)}${hasMore ? '…' : ''}</div>
+    <div class="cc-ag-details-stats">
+      <span title="input tokens">↑ ${inTok.toLocaleString()}</span>
+      <span title="output tokens">↓ ${outTok.toLocaleString()}</span>
+      ${lastAt ? `<span class="cc-ag-last-active">${_esc(lastAt)}</span>` : ''}
+    </div>
   </div>
-  <div class="cc-ag-invoke-form" id="cc-ag-invoke-${_esc(agent.id)}" style="display:none">
+  <div class="cc-ag-card-actions">
+    <button class="cc-ag-invoke-btn" data-agent-id="${id}">Invoke</button>
+    <button class="cc-ag-edit-btn"   data-agent-id="${id}">Edit</button>
+    <button class="cc-ag-delete-btn" data-agent-id="${id}">Del</button>
+  </div>
+  <div class="cc-ag-invoke-form" id="cc-ag-invoke-${id}" style="display:none">
     <textarea class="cc-ag-invoke-input" placeholder="Enter prompt…" rows="3"></textarea>
     <div class="cc-ag-invoke-actions">
-      <button class="cc-ag-submit-btn"  data-agent-id="${_esc(agent.id)}">Send</button>
-      <button class="cc-ag-cancel-btn"  data-agent-id="${_esc(agent.id)}">Cancel</button>
+      <button class="cc-ag-submit-btn" data-agent-id="${id}">Send</button>
+      <button class="cc-ag-cancel-btn" data-agent-id="${id}">Cancel</button>
     </div>
-    <div class="cc-ag-result" id="cc-ag-result-${_esc(agent.id)}"></div>
+    <div class="cc-ag-result" id="cc-ag-result-${id}"></div>
   </div>
-  <div class="cc-ag-edit-form" id="cc-ag-edit-${_esc(agent.id)}" style="display:none">
+  <div class="cc-ag-edit-form" id="cc-ag-edit-${id}" style="display:none">
     <label>Avatar (emoji)</label>
-    <input class="cc-ag-edit-avatar"       value="${_esc(agent.avatar || '')}" placeholder="🤖" maxlength="4">
+    <input class="cc-ag-edit-avatar"     value="${_esc(agent.avatar || '')}" placeholder="🤖" maxlength="4">
     <label>Name</label>
-    <input class="cc-ag-edit-name"         value="${_esc(agent.name || '')}" placeholder="Agent name">
+    <input class="cc-ag-edit-name"       value="${_esc(agent.name || '')}" placeholder="Agent name">
     <label>Role</label>
-    <input class="cc-ag-edit-role"         value="${_esc(agent.role || '')}" placeholder="e.g. coder">
+    <input class="cc-ag-edit-role"       value="${_esc(agent.role || '')}" placeholder="e.g. coder">
     <label>Type</label>
-    <input class="cc-ag-edit-agent-type"   value="${_esc(agent.agent_type || '')}" placeholder="e.g. backend-dev">
+    <input class="cc-ag-edit-agent-type" value="${_esc(agent.agent_type || '')}" placeholder="e.g. backend-dev">
     <label>Model alias</label>
-    <input class="cc-ag-edit-model"        value="${_esc(agent.model_alias || 'default')}" placeholder="default">
+    <input class="cc-ag-edit-model"      value="${_esc(agent.model_alias || 'default')}" placeholder="default">
     <label>System prompt</label>
     <textarea class="cc-ag-edit-prompt" rows="5">${_esc(agent.system_prompt || '')}</textarea>
     <div class="cc-ag-invoke-actions">
-      <button class="cc-ag-save-btn"   data-agent-id="${_esc(agent.id)}">Save</button>
-      <button class="cc-ag-discard-btn" data-agent-id="${_esc(agent.id)}">Cancel</button>
+      <button class="cc-ag-save-btn"    data-agent-id="${id}">Save</button>
+      <button class="cc-ag-discard-btn" data-agent-id="${id}">Cancel</button>
     </div>
-    <div class="cc-ag-edit-msg" id="cc-ag-edit-msg-${_esc(agent.id)}"></div>
+    <div class="cc-ag-edit-msg" id="cc-ag-edit-msg-${id}"></div>
   </div>
 </div>`.trim();
 }
@@ -104,7 +168,9 @@ function _createForm() {
 </div>`.trim();
 }
 
-// ---- Wire a single card's interaction buttons ----
+// ---------------------------------------------------------------------------
+// Wire a single card's interaction buttons
+// ---------------------------------------------------------------------------
 
 function _wireCard(container, agentId) {
   const card = container.querySelector(`.cc-ag-card[data-agent-id="${agentId}"]`);
@@ -116,12 +182,21 @@ function _wireCard(container, agentId) {
   const cancelBtn  = card.querySelector('.cc-ag-cancel-btn');
   const textarea   = card.querySelector('.cc-ag-invoke-input');
   const result     = card.querySelector(`#cc-ag-result-${agentId}`);
-
   const editBtn    = card.querySelector('.cc-ag-edit-btn');
   const editForm   = card.querySelector(`#cc-ag-edit-${agentId}`);
   const saveBtn    = card.querySelector('.cc-ag-save-btn');
   const discardBtn = card.querySelector('.cc-ag-discard-btn');
   const deleteBtn  = card.querySelector('.cc-ag-delete-btn');
+  const expandBtn  = card.querySelector('.cc-ag-expand-btn');
+  const details    = expandBtn ? card.querySelector(`#${expandBtn.dataset.target}`) : null;
+
+  expandBtn?.addEventListener('click', () => {
+    if (!details) return;
+    const open = details.style.display !== 'none';
+    details.style.display = open ? 'none' : 'block';
+    expandBtn.textContent = open ? '›' : '⌄';
+    expandBtn.classList.toggle('cc-ag-expand-btn--open', !open);
+  });
 
   invokeBtn?.addEventListener('click', () => {
     invokeForm.style.display = invokeForm.style.display === 'none' ? 'block' : 'none';
@@ -142,12 +217,12 @@ function _wireCard(container, agentId) {
 async function _saveAgent(agentId, card, editForm) {
   const msgEl = editForm.querySelector(`#cc-ag-edit-msg-${agentId}`);
   const body = {
-    name:        editForm.querySelector('.cc-ag-edit-name')?.value?.trim(),
-    role:        editForm.querySelector('.cc-ag-edit-role')?.value?.trim(),
-    agent_type:  editForm.querySelector('.cc-ag-edit-agent-type')?.value?.trim(),
-    model_alias: editForm.querySelector('.cc-ag-edit-model')?.value?.trim() || 'default',
+    name:         editForm.querySelector('.cc-ag-edit-name')?.value?.trim(),
+    role:         editForm.querySelector('.cc-ag-edit-role')?.value?.trim(),
+    agent_type:   editForm.querySelector('.cc-ag-edit-agent-type')?.value?.trim(),
+    model_alias:  editForm.querySelector('.cc-ag-edit-model')?.value?.trim() || 'default',
     system_prompt: editForm.querySelector('.cc-ag-edit-prompt')?.value ?? '',
-    avatar:      editForm.querySelector('.cc-ag-edit-avatar')?.value?.trim() || '',
+    avatar:       editForm.querySelector('.cc-ag-edit-avatar')?.value?.trim() || '',
   };
   if (!body.name) { if (msgEl) msgEl.textContent = 'Name is required'; return; }
   try {
@@ -158,17 +233,16 @@ async function _saveAgent(agentId, card, editForm) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
-    // Refresh the card header in-place
     const nameEl  = card.querySelector('.cc-ag-name');
     const roleEl  = card.querySelector('.cc-ag-role');
     const typeEl  = card.querySelector('.cc-ag-type-badge');
     const modelEl = card.querySelector('.cc-ag-model-chip');
-    const avatarEl = card.querySelector('.cc-ag-avatar');
+    const sigilEl = card.querySelector('.cc-ag-sigil');
     if (nameEl)  nameEl.textContent  = data.name  || '';
     if (roleEl)  roleEl.textContent  = data.role  || data.agent_type || '—';
     if (typeEl)  typeEl.textContent  = data.agent_type || '—';
     if (modelEl) modelEl.textContent = data.model_alias || 'default';
-    if (avatarEl) avatarEl.textContent = data.avatar || (data.name || '?')[0];
+    if (sigilEl) sigilEl.textContent = data.avatar || (data.name || '?')[0];
     editForm.style.display = 'none';
     if (msgEl) msgEl.textContent = '';
   } catch (e) {
@@ -187,8 +261,13 @@ async function _deleteAgent(agentId, card) {
     }
     card.remove();
     const grid = document.getElementById('cc-ag-grid');
-    const count = document.getElementById('cc-ag-count');
-    if (count && grid) count.textContent = grid.querySelectorAll('.cc-ag-card').length;
+    if (grid) {
+      grid.querySelectorAll('.cc-ag-category-section').forEach(sec => {
+        if (!sec.querySelector('.cc-ag-card')) sec.remove();
+      });
+      const count = document.getElementById('cc-ag-count');
+      if (count) count.textContent = grid.querySelectorAll('.cc-ag-card').length;
+    }
   } catch (e) {
     alert(`Could not delete agent: ${e.message}`);
   }
@@ -234,10 +313,7 @@ async function _streamSSE(body, resultEl) {
     const lines = buffer.split('\n');
     buffer = lines.pop() ?? '';
     for (const line of lines) {
-      if (line.startsWith('event:')) {
-        eventType = line.slice(6).trim();
-        continue;
-      }
+      if (line.startsWith('event:')) { eventType = line.slice(6).trim(); continue; }
       if (!line.startsWith('data:')) { eventType = 'message'; continue; }
       const raw = line.slice(5).trim();
       if (raw === '[DONE]') { eventType = 'message'; return; }
@@ -254,8 +330,7 @@ async function _streamSSE(body, resultEl) {
       try {
         const obj = JSON.parse(raw);
         if (obj.type === 'usage') continue;
-        const chunk = obj.delta || obj.text || obj.content || '';
-        resultEl.textContent += chunk;
+        resultEl.textContent += obj.delta || obj.text || obj.content || '';
       } catch (_) {
         resultEl.textContent += raw;
       }
@@ -264,9 +339,11 @@ async function _streamSSE(body, resultEl) {
   }
 }
 
-// ---- Wire the "New Agent" create form ----
+// ---------------------------------------------------------------------------
+// Create form wiring (onCreated callback = full grid refresh)
+// ---------------------------------------------------------------------------
 
-function _wireCreateForm(container) {
+function _wireCreateForm(container, onCreated) {
   const form     = container.querySelector('#cc-ag-create-form');
   const submitEl = container.querySelector('#cc-create-submit');
   const cancelEl = container.querySelector('#cc-create-cancel');
@@ -279,9 +356,9 @@ function _wireCreateForm(container) {
 
   submitEl?.addEventListener('click', async () => {
     const body = {
-      name:          (container.querySelector('#cc-create-name')?.value || '').trim(),
-      role:          (container.querySelector('#cc-create-role')?.value || '').trim(),
-      agent_type:    (container.querySelector('#cc-create-type')?.value || '').trim(),
+      name:          (container.querySelector('#cc-create-name')?.value  || '').trim(),
+      role:          (container.querySelector('#cc-create-role')?.value  || '').trim(),
+      agent_type:    (container.querySelector('#cc-create-type')?.value  || '').trim(),
       model_alias:   (container.querySelector('#cc-create-model')?.value || 'default').trim(),
       system_prompt: (container.querySelector('#cc-create-prompt')?.value || ''),
       avatar:        (container.querySelector('#cc-create-avatar')?.value || '').trim(),
@@ -293,30 +370,18 @@ function _wireCreateForm(container) {
     submitEl.disabled = true;
     try {
       const res = await fetch('/api/agents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
-      // Append new card to grid
-      const grid = container.querySelector('#cc-ag-grid');
-      const countEl = container.querySelector('#cc-ag-count');
-      const tmp = document.createElement('div');
-      tmp.innerHTML = _agentCard(data);
-      const card = tmp.firstChild;
-      grid.appendChild(card);
-      _wireCard(container, data.id);
-      if (countEl) countEl.textContent = grid.querySelectorAll('.cc-ag-card').length;
       form.style.display = 'none';
       if (msgEl) msgEl.textContent = '';
-      // Reset fields
-      ['#cc-create-name','#cc-create-role','#cc-create-type','#cc-create-prompt','#cc-create-avatar'].forEach(sel => {
-        const el = container.querySelector(sel);
-        if (el) el.value = '';
-      });
+      ['#cc-create-name','#cc-create-role','#cc-create-type','#cc-create-prompt','#cc-create-avatar']
+        .forEach(sel => { const el = container.querySelector(sel); if (el) el.value = ''; });
       const modelEl = container.querySelector('#cc-create-model');
       if (modelEl) modelEl.value = 'default';
+      if (onCreated) onCreated();
     } catch (e) {
       if (msgEl) msgEl.textContent = `Error: ${e.message}`;
     } finally {
@@ -325,7 +390,45 @@ function _wireCreateForm(container) {
   });
 }
 
-// ---- Public API ----
+// ---------------------------------------------------------------------------
+// Grid refresh (renders category sections)
+// ---------------------------------------------------------------------------
+
+async function _refreshGrid(container) {
+  const grid    = container.querySelector('#cc-ag-grid');
+  const countEl = container.querySelector('#cc-ag-count');
+  if (!grid) return;
+  try {
+    const res = await fetch('/api/agents');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { agents = [] } = await res.json();
+    if (!agents.length) {
+      grid.innerHTML = '<div class="cc-empty">No agents registered.</div>';
+      return;
+    }
+    if (countEl) countEl.textContent = agents.length;
+    const grouped = _groupAgents(agents);
+    grid.innerHTML = CAT_ORDER
+      .filter(cat => grouped[cat]?.length)
+      .map(cat => {
+        const accent = CAT_ACCENT[cat] || CAT_ACCENT.CUSTOM;
+        return `<div class="cc-ag-category-section">
+  <div class="cc-ag-category-header" style="--cat-accent:${accent}">
+    <span class="cc-ag-cat-label">${cat}</span>
+    <span class="cc-ag-cat-count">${grouped[cat].length}</span>
+  </div>
+  <div class="cc-ag-category-grid">${grouped[cat].map(_agentCard).join('')}</div>
+</div>`;
+      }).join('');
+    agents.forEach(a => _wireCard(container, a.id));
+  } catch (e) {
+    grid.innerHTML = `<div class="cc-empty">Could not load agents — ${_esc(e.message)}</div>`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 export function buildAgentsTab() {
   return `
@@ -343,31 +446,12 @@ export function buildAgentsTab() {
 }
 
 export async function loadAgents(container) {
-  const grid    = container.querySelector('#cc-ag-grid');
-  const countEl = container.querySelector('#cc-ag-count');
-  const newBtn  = container.querySelector('#cc-ag-new-btn');
+  const newBtn     = container.querySelector('#cc-ag-new-btn');
   const createForm = container.querySelector('#cc-ag-create-form');
-  if (!grid) return;
-
   newBtn?.addEventListener('click', () => {
     if (!createForm) return;
     createForm.style.display = createForm.style.display === 'none' ? 'block' : 'none';
   });
-  _wireCreateForm(container);
-
-  try {
-    const res = await fetch('/api/agents');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const agents = data.agents || (Array.isArray(data) ? data : []);
-    if (!agents.length) {
-      grid.innerHTML = '<div class="cc-empty">No agents registered.</div>';
-      return;
-    }
-    if (countEl) countEl.textContent = agents.length;
-    grid.innerHTML = agents.map(a => _agentCard(a)).join('');
-    agents.forEach(a => _wireCard(container, a.id));
-  } catch (e) {
-    grid.innerHTML = `<div class="cc-empty">Could not load agents — ${_esc(e.message)}</div>`;
-  }
+  _wireCreateForm(container, () => _refreshGrid(container));
+  await _refreshGrid(container);
 }

@@ -1230,6 +1230,126 @@
 .cc-ag-cancel-btn { font-size: 9px; padding: 3px 8px; border-radius: 3px; cursor: pointer; background: transparent; border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
 .cc-ag-result { font-size: 9px; line-height: 1.5; opacity: 0.75; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
 
+/* ---- AGENTS tab Phase 1 — Jarvis-v2 upgrades ---- */
+
+/* cc-ag-grid becomes a flex column of category sections */
+.cc-ag-grid { display: flex; flex-direction: column; gap: 14px; }
+
+/* Category section */
+.cc-ag-category-section { display: flex; flex-direction: column; gap: 6px; }
+.cc-ag-category-header {
+  --cat-accent: rgba(197,201,208,0.45);
+  display: flex; align-items: center; gap: 6px;
+  border-left: 2px solid var(--cat-accent); padding-left: 6px;
+}
+.cc-ag-cat-label {
+  font-size: 8px; letter-spacing: 0.18em; font-weight: 700; text-transform: uppercase;
+  color: var(--cat-accent);
+}
+.cc-ag-cat-count {
+  font-size: 8px; padding: 1px 5px; border-radius: 2px;
+  background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.35);
+}
+.cc-ag-category-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px;
+}
+
+/* V2 card — bracket corners + cat-accent glow on hover */
+.cc-ag-card--v2 { --cat-accent: rgba(197,201,208,0.45); position: relative; }
+.cc-ag-card--v2 .jx2-bracket-tl,
+.cc-ag-card--v2 .jx2-bracket-br {
+  position: absolute; width: 9px; height: 9px; opacity: 0; transition: opacity 0.15s;
+}
+.cc-ag-card--v2 .jx2-bracket-tl {
+  top: 3px; left: 3px; border-top: 1px solid var(--cat-accent); border-left: 1px solid var(--cat-accent);
+}
+.cc-ag-card--v2 .jx2-bracket-br {
+  bottom: 3px; right: 3px; border-bottom: 1px solid var(--cat-accent); border-right: 1px solid var(--cat-accent);
+}
+.cc-ag-card--v2:hover .jx2-bracket-tl,
+.cc-ag-card--v2:hover .jx2-bracket-br { opacity: 1; }
+.cc-ag-card--v2:hover {
+  border-color: color-mix(in srgb, var(--cat-accent) 45%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--cat-accent) 12%, transparent);
+}
+
+/* Sigil */
+.cc-ag-sigil {
+  width: 24px; height: 24px; border-radius: 3px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.9); text-transform: uppercase;
+  user-select: none;
+}
+
+/* Expand button */
+.cc-ag-expand-btn {
+  margin-left: auto; background: transparent; border: none; cursor: pointer;
+  color: rgba(255,255,255,0.25); font-size: 14px; line-height: 1; padding: 0 2px; flex-shrink: 0;
+  transition: color 0.15s, transform 0.2s; font-family: inherit;
+}
+.cc-ag-expand-btn:hover { color: var(--cc-fg); }
+.cc-ag-expand-btn--open { transform: rotate(90deg); color: var(--cc-fg); }
+
+/* Details panel */
+.cc-ag-details {
+  border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.cc-ag-details-prompt {
+  font-size: 9px; opacity: 0.4; line-height: 1.5; max-height: 66px;
+  overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+}
+.cc-ag-details-stats {
+  display: flex; gap: 8px; font-size: 8px; opacity: 0.4;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
+}
+.cc-ag-last-active { margin-left: auto; }
+
+/* Card actions row */
+.cc-ag-card-actions { display: flex; gap: 4px; margin-top: 2px; }
+.cc-ag-edit-btn, .cc-ag-delete-btn {
+  font-size: 9px; letter-spacing: 0.06em; padding: 3px 7px;
+  border: 1px solid var(--cc-border, rgba(255,255,255,0.1));
+  background: transparent; color: rgba(255,255,255,0.45);
+  border-radius: 3px; cursor: pointer; font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cc-ag-edit-btn:hover   { border-color: #3498db; color: #3498db; }
+.cc-ag-delete-btn:hover { border-color: var(--cc-crimson); color: var(--cc-crimson); }
+
+/* New agent button */
+.cc-ag-new-btn {
+  margin-left: auto; font-size: 9px; letter-spacing: 0.08em; padding: 3px 10px;
+  border: 1px solid var(--cc-border); background: transparent; color: var(--cc-crimson);
+  border-radius: 2px; cursor: pointer; font-family: inherit; transition: background 0.15s;
+}
+.cc-ag-new-btn:hover { background: color-mix(in srgb, var(--red) 12%, transparent); }
+
+/* Create form */
+.cc-ag-create-form {
+  border: 1px solid var(--cc-border); border-radius: 4px; padding: 12px;
+  background: rgba(255,255,255,0.02); display: flex; flex-direction: column; gap: 3px;
+  margin-bottom: 4px;
+}
+.cc-ag-create-title {
+  font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--cc-crimson); margin-bottom: 4px;
+}
+.cc-req { color: var(--cc-crimson); }
+
+/* Edit / create field labels and inputs */
+.cc-ag-edit-form label, .cc-ag-create-form label {
+  font-size: 8px; letter-spacing: 0.1em; opacity: 0.38; margin-top: 4px; display: block;
+}
+.cc-ag-edit-form input, .cc-ag-edit-form textarea,
+.cc-ag-create-form input, .cc-ag-create-form textarea {
+  width: 100%; box-sizing: border-box; padding: 4px 6px; font-size: 10px;
+  background: rgba(0,0,0,0.25); border: 1px solid var(--cc-border, rgba(255,255,255,0.1));
+  color: var(--cc-fg, #e0e0e0); border-radius: 3px; font-family: inherit;
+}
+.cc-ag-edit-form textarea, .cc-ag-create-form textarea { resize: vertical; min-height: 52px; }
+.cc-ag-edit-msg, #cc-create-msg { font-size: 9px; color: var(--cc-crimson); margin-top: 4px; min-height: 14px; }
+
 /* ---- OBSERVABILITY tab ---- */
 .cc-obs-tab { display: flex; flex-direction: column; padding: 12px 16px; gap: 12px; overflow-y: auto; }
 .cc-obs-header { display: flex; align-items: center; }
