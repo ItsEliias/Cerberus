@@ -286,25 +286,48 @@ def setup_cerberus_agent_routes() -> APIRouter:
                     f'event: error\ndata: {json.dumps({"error": "No LLM provider configured."
                     " Add a model in Settings → Add Models.", "status": 503})}\n\n'
                 )
-                _finalize_invocation(agent_id_val, owner, False)
+                _finalize_invocation(agent_id_val, owner, False, 0, 0, "")
                 return
-            success = True
+            state = {"success": True, "in_tok": 0, "out_tok": 0}
             try:
                 async for chunk in stream_llm(url, model, messages, headers=headers):
+                    if chunk.startswith("event: error"):
+                        state["success"] = False
+                    elif '"type": "usage"' in chunk:
+                        for line in chunk.split("\n"):
+                            if line.startswith("data:") and "[DONE]" not in line:
+                                try:
+                                    obj = json.loads(line[5:].strip())
+                                    if obj.get("type") == "usage":
+                                        d = obj.get("data", {})
+                                        state["in_tok"] = d.get("input_tokens", state["in_tok"])
+                                        state["out_tok"] = d.get("output_tokens", state["out_tok"])
+                                except Exception:
+                                    pass
                     yield chunk
             except Exception as exc:
-                success = False
+                state["success"] = False
                 yield f'event: error\ndata: {json.dumps({"error": str(exc), "status": 500})}\n\n'
             finally:
-                _finalize_invocation(agent_id_val, owner, success)
+                _finalize_invocation(
+                    agent_id_val, owner, state["success"],
+                    state["in_tok"], state["out_tok"], url or "",
+                )
 
         return StreamingResponse(_generate(), media_type="text/event-stream")
 
     return router
 
 
-def _finalize_invocation(agent_id: str, owner: str, success: bool) -> None:
-    """Post-stream: update status, score, last_active_at."""
+def _finalize_invocation(
+    agent_id: str,
+    owner: str,
+    success: bool,
+    in_tokens: int = 0,
+    out_tokens: int = 0,
+    endpoint_url: str = "",
+) -> None:
+    """Post-stream: update status, score, token totals, last_active_at."""
     db = SessionLocal()
     try:
         agent = db.query(CerberusAgent).filter(CerberusAgent.id == agent_id).first()
@@ -317,6 +340,11 @@ def _finalize_invocation(agent_id: str, owner: str, success: bool) -> None:
             agent.current_action = None
             agent.score = (agent.score or 0) + 1
         agent.last_active_at = _utcnow()
+        if in_tokens or out_tokens:
+            agent.total_input_tokens = (agent.total_input_tokens or 0) + in_tokens
+            agent.total_output_tokens = (agent.total_output_tokens or 0) + out_tokens
+        if endpoint_url:
+            agent.last_run_url = endpoint_url
         db.commit()
     except Exception as exc:
         logger.warning("_finalize_invocation failed: %s", exc)

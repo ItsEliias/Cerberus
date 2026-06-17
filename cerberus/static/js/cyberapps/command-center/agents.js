@@ -99,6 +99,7 @@ async function _streamSSE(body, resultEl) {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let eventType = 'message';
   resultEl.textContent = '';
   while (true) {
     const { done, value } = await reader.read();
@@ -107,16 +108,32 @@ async function _streamSSE(body, resultEl) {
     const lines = buffer.split('\n');
     buffer = lines.pop() ?? '';
     for (const line of lines) {
-      if (!line.startsWith('data:')) continue;
+      if (line.startsWith('event:')) {
+        eventType = line.slice(6).trim();
+        continue;
+      }
+      if (!line.startsWith('data:')) { eventType = 'message'; continue; }
       const raw = line.slice(5).trim();
-      if (raw === '[DONE]') return;
+      if (raw === '[DONE]') { eventType = 'message'; return; }
+      if (eventType === 'error') {
+        try {
+          const obj = JSON.parse(raw);
+          resultEl.innerHTML += `<span style="color:var(--cc-danger,#f66)">[Error] ${_esc(obj.error || raw)}</span>`;
+        } catch (_) {
+          resultEl.innerHTML += `<span style="color:var(--cc-danger,#f66)">[Error] ${_esc(raw)}</span>`;
+        }
+        eventType = 'message';
+        continue;
+      }
       try {
         const obj = JSON.parse(raw);
+        if (obj.type === 'usage') continue;
         const chunk = obj.delta || obj.text || obj.content || '';
         resultEl.textContent += chunk;
       } catch (_) {
         resultEl.textContent += raw;
       }
+      eventType = 'message';
     }
   }
 }

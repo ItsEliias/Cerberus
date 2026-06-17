@@ -704,29 +704,64 @@ def setup_session_routes(session_manager: SessionManager, config: dict, webhook_
     def get_token_usage(request: Request):
         """Read-only: aggregated token usage for the owner.
 
-        Returns total tokens, estimated cost (USD), and a per-day breakdown
-        over the last 30 days for the Dashboard usage chart.
-        Cost is estimated at $0.000003 / token as a rough blended average;
-        the UI should treat this as informational, not billing-accurate.
+        Includes both chat-session tokens and agent invocation tokens.
+        Cost: local endpoints (localhost/127.x/0.0.0.0) = $0; cloud = $0.000003/token.
         """
         from datetime import timedelta
         from sqlalchemy import func
+        from core.database import CerberusAgent
+
+        _LOCAL_HINTS = ("localhost", "127.", "0.0.0.0", "::1")
+
+        def _is_local(url: str | None) -> bool:
+            if not url:
+                return False
+            return any(h in url for h in _LOCAL_HINTS)
+
         user = effective_user(request)
         db = SessionLocal()
         try:
-            q = db.query(
-                func.sum(DbSession.total_input_tokens + DbSession.total_output_tokens),
-                func.sum(DbSession.total_input_tokens),
-                func.sum(DbSession.total_output_tokens),
+            # --- Session tokens ---
+            sess_q = db.query(
+                DbSession.total_input_tokens,
+                DbSession.total_output_tokens,
+                DbSession.endpoint_url,
             )
             if user:
-                q = q.filter(DbSession.owner == user)
-            row = q.first()
-            total = int((row[0] or 0))
-            total_in = int((row[1] or 0))
-            total_out = int((row[2] or 0))
+                sess_q = sess_q.filter(DbSession.owner == user)
+            sess_in = sess_out = sess_paid = 0
+            for row in sess_q.all():
+                si = row.total_input_tokens or 0
+                so = row.total_output_tokens or 0
+                sess_in += si
+                sess_out += so
+                if not _is_local(row.endpoint_url):
+                    sess_paid += si + so
 
-            # Per-day breakdown — last 30 days
+            # --- Agent tokens ---
+            agent_q = db.query(
+                CerberusAgent.total_input_tokens,
+                CerberusAgent.total_output_tokens,
+                CerberusAgent.last_run_url,
+            )
+            if user:
+                agent_q = agent_q.filter(CerberusAgent.owner == user)
+            agent_in = agent_out = agent_paid = 0
+            for row in agent_q.all():
+                ai = row.total_input_tokens or 0
+                ao = row.total_output_tokens or 0
+                agent_in += ai
+                agent_out += ao
+                if not _is_local(row.last_run_url):
+                    agent_paid += ai + ao
+
+            total_in = sess_in + agent_in
+            total_out = sess_out + agent_out
+            total = total_in + total_out
+            paid_tokens = sess_paid + agent_paid
+            cost_usd = round(paid_tokens * 0.000003, 4)
+
+            # Per-day breakdown — last 30 days (sessions only; agent runs lack timestamps)
             cutoff = datetime.utcnow() - timedelta(days=30)
             daily_q = db.query(
                 func.date(DbSession.created_at).label("day"),
@@ -741,7 +776,6 @@ def setup_session_routes(session_manager: SessionManager, config: dict, webhook_
                 {"date": str(r.day), "tokens": int(r.tokens or 0)}
                 for r in daily_q.all()
             ]
-            cost_usd = round(total * 0.000003, 4)
             return {
                 "total_tokens": total,
                 "input_tokens": total_in,
