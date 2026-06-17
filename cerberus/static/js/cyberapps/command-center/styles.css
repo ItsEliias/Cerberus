@@ -1360,6 +1360,54 @@
 }
 .cc-ag-chat-btn:hover { background: rgba(52,152,219,0.14); border-color: #3498db; }
 
+/* Memory button */
+.cc-ag-memory-btn {
+  font-size: 9px; letter-spacing: 0.08em; padding: 3px 7px;
+  border: 1px solid rgba(155,89,182,0.4);
+  background: rgba(155,89,182,0.06); color: #9b59b6;
+  border-radius: 3px; cursor: pointer; font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+.cc-ag-memory-btn:hover { background: rgba(155,89,182,0.14); border-color: #9b59b6; }
+
+/* Memory panel (inside agent card) */
+.cc-ag-memory-panel {
+  margin-top: 6px; border: 1px solid rgba(155,89,182,0.25);
+  border-radius: 4px; background: rgba(155,89,182,0.04); overflow: hidden;
+}
+.cc-ag-memory-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 8px; background: rgba(155,89,182,0.1);
+  border-bottom: 1px solid rgba(155,89,182,0.2);
+}
+.cc-ag-memory-title {
+  font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 0.14em;
+  color: #9b59b6; text-transform: uppercase;
+}
+.cc-ag-memory-close-btn {
+  font-size: 9px; background: none; border: none; color: rgba(255,255,255,0.4);
+  cursor: pointer; padding: 0 2px; line-height: 1;
+}
+.cc-ag-memory-close-btn:hover { color: rgba(255,255,255,0.8); }
+.cc-ag-memory-list { padding: 6px 8px; max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.cc-ag-mem-row {
+  display: flex; align-items: flex-start; gap: 6px;
+  padding: 4px 6px; border-radius: 3px; background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.cc-ag-mem-text { flex: 1; font-size: 9px; line-height: 1.4; color: rgba(255,255,255,0.7); }
+.cc-ag-mem-cat {
+  display: inline-block; margin-left: 5px; font-size: 7px; letter-spacing: 0.08em;
+  color: #9b59b6; opacity: 0.7; text-transform: uppercase; vertical-align: middle;
+}
+.cc-ag-mem-del-btn {
+  flex-shrink: 0; background: none; border: none; color: rgba(255,255,255,0.25);
+  cursor: pointer; font-size: 9px; padding: 0; line-height: 1; margin-top: 2px;
+  transition: color 0.15s;
+}
+.cc-ag-mem-del-btn:hover { color: var(--cc-crimson, #e74c3c); }
+.cc-ag-mem-loading { font-size: 9px; }
+
 /* ---- AGENT CHAT panel (Phase 2) ---- */
 .cc-agent-chat {
   display: flex; flex-direction: column; height: 100%; overflow: hidden;
