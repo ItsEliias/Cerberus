@@ -13,7 +13,7 @@ Audit date: 2026-06-11
 |-------|-------|
 | Source | `https://github.com/pewdiepie-archdaemon/odysseus` |
 | Role | Backbone — chat, agent loop, UI, email, calendar, memory |
-| License | MIT |
+| License | AGPL-3.0 |
 | Pinned commit SHA | `d5603ee57551c00e59f9a6c7b4b07075fb66ef6f` |
 | Tag | `d5603ee` (no release tag; HEAD of default branch) |
 | Commit date | 2026-06-11 02:17:02 +0300 |
@@ -52,5 +52,6 @@ Audit date: 2026-06-11
 
 ## Notes
 
-- All three repos are pinned to their HEAD commit at clone time. Before Phase 1 begins, these SHAs should be recorded as git submodule pins or frozen vendor snapshots so the build remains reproducible.
-- The Apache-2.0 NOTICE file for OpenSandbox must be carried forward per license terms. See `THIRD_PARTY_LICENSES.md` (to be created in Phase 1).
+- All three repos are pinned to the SHAs above as **git submodule commits** under `vendor/`. The `.gitmodules` file at the repository root maps each path to its upstream URL, so the build is reproducible: `git clone --recurse-submodules` (or `git submodule update --init`) checks out exactly these commits.
+- The Apache-2.0 NOTICE requirement for OpenSandbox is satisfied: no NOTICE file was present in the OpenSandbox repository at the pinned SHA, so there is nothing to carry forward. This is recorded in `THIRD_PARTY_LICENSES.md`.
+- Full license texts for all three upstreams are in `cerberus/THIRD_PARTY_LICENSES.md`.
