@@ -700,6 +700,58 @@ def setup_session_routes(session_manager: SessionManager, config: dict, webhook_
         finally:
             db.close()
 
+    @router.get("/usage/tokens")
+    def get_token_usage(request: Request):
+        """Read-only: aggregated token usage for the owner.
+
+        Returns total tokens, estimated cost (USD), and a per-day breakdown
+        over the last 30 days for the Dashboard usage chart.
+        Cost is estimated at $0.000003 / token as a rough blended average;
+        the UI should treat this as informational, not billing-accurate.
+        """
+        from datetime import timedelta
+        from sqlalchemy import func
+        user = effective_user(request)
+        db = SessionLocal()
+        try:
+            q = db.query(
+                func.sum(DbSession.total_input_tokens + DbSession.total_output_tokens),
+                func.sum(DbSession.total_input_tokens),
+                func.sum(DbSession.total_output_tokens),
+            )
+            if user:
+                q = q.filter(DbSession.owner == user)
+            row = q.first()
+            total = int((row[0] or 0))
+            total_in = int((row[1] or 0))
+            total_out = int((row[2] or 0))
+
+            # Per-day breakdown — last 30 days
+            cutoff = datetime.utcnow() - timedelta(days=30)
+            daily_q = db.query(
+                func.date(DbSession.created_at).label("day"),
+                func.sum(
+                    DbSession.total_input_tokens + DbSession.total_output_tokens
+                ).label("tokens"),
+            ).filter(DbSession.created_at >= cutoff)
+            if user:
+                daily_q = daily_q.filter(DbSession.owner == user)
+            daily_q = daily_q.group_by(func.date(DbSession.created_at)).order_by("day")
+            by_day = [
+                {"date": str(r.day), "tokens": int(r.tokens or 0)}
+                for r in daily_q.all()
+            ]
+            cost_usd = round(total * 0.000003, 4)
+            return {
+                "total_tokens": total,
+                "input_tokens": total_in,
+                "output_tokens": total_out,
+                "cost_usd": cost_usd,
+                "by_day": by_day,
+            }
+        finally:
+            db.close()
+
     @router.get("/sessions/archived")
     def list_archived_sessions(request: Request, search: str = "", offset: int = 0, limit: int = 20, sort: str = "recent", model: str = ""):
         """List archived sessions for the archive browser."""

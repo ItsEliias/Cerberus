@@ -2227,6 +2227,34 @@ def setup_model_routes(model_discovery):
         finally:
             db.close()
 
+    @router.get("/model/status")
+    def get_model_status(request: Request):
+        """Read-only: the owner's configured default model + context window.
+
+        Returns { model, ctx_used, ctx_limit } for the Command Center panel.
+        ctx_used is not tracked server-side (it's per-session client state),
+        so it is always returned as 0; the UI can fill it from session data.
+        """
+        from src.auth_helpers import get_current_user as _gcu
+        from src.endpoint_resolver import resolve_endpoint
+        from src.model_context import get_context_length
+        try:
+            _user = _gcu(request) or ""
+        except Exception:
+            _user = ""
+        url, model, _headers = resolve_endpoint("default", owner=_user)
+        ctx_limit = 0
+        if url and model:
+            try:
+                ctx_limit = get_context_length(url, model)
+            except Exception:
+                ctx_limit = 0
+        return {
+            "model": model or "—",
+            "ctx_used": 0,
+            "ctx_limit": ctx_limit,
+        }
+
     # ── Tool management ──
 
     @router.get("/tools")

@@ -321,11 +321,11 @@ export function buildCommandTab() {
       </div>
     </div>
     <div class="cc-card cc-card-tasks">
-      <div class="cc-card-title">Running Tasks <span class="cc-flag-badge">MOCK</span></div>
-      <div class="cc-tasks-feed" id="cc-tasks-feed">${_mockTasksHTML()}</div>
+      <div class="cc-card-title">Running Tasks</div>
+      <div class="cc-tasks-feed" id="cc-tasks-feed"><div class="cc-empty">Loading…</div></div>
     </div>
     <div class="cc-card cc-card-model">
-      <div class="cc-card-title">Model Status <span class="cc-flag-badge">MOCK</span></div>
+      <div class="cc-card-title">Model Status</div>
       <div class="cc-model-panel" id="cc-model-panel">${_mockModelHTML()}</div>
     </div>
   </div>
@@ -427,6 +427,25 @@ export function applyGateway(root, gw) {
       status.textContent = p.status === 'unconfigured' ? 'off' : `${p.status} · ${rel}`;
     }
   }
+}
+
+// Live model status — /api/model/status (FLAG 3)
+export function applyModelStatus(root, status) {
+  const panel = root.querySelector('#cc-model-panel');
+  if (!panel || !status) return;
+  const used  = status.ctx_used  ?? 0;
+  const limit = status.ctx_limit ?? 0;
+  const pct   = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const limitLabel = limit >= 1000 ? Math.round(limit / 1000) + 'K' : limit || '—';
+  panel.innerHTML = `
+    <div class="cc-model-row"><span class="cc-model-lbl">MODEL</span><span class="cc-model-val">${_esc(status.model || '—')}</span></div>
+    <div class="cc-model-row"><span class="cc-model-lbl">CTX USED</span>
+      <div class="cc-model-bar-wrap"><div class="cc-model-bar" style="width:${pct}%"></div></div>
+      <span class="cc-model-val cc-model-pct">${pct}%</span>
+    </div>
+    <div class="cc-model-row"><span class="cc-model-lbl">CTX LIMIT</span><span class="cc-model-val">${_esc(limitLabel)}</span></div>
+    <div class="cc-model-row"><span class="cc-model-lbl">STATUS</span><span class="cc-model-val cc-model-ok">READY</span></div>
+  `.trim();
 }
 
 // Live tasks — replace mock once /api/tasks/active exists (FLAG 2)

@@ -308,10 +308,9 @@ function _startGlobeAnimation() {
 }
 
 async function _loadData() {
-  await Promise.all([_loadSessions(), _loadVitals(), _loadAgents()]);
+  await Promise.all([_loadSessions(), _loadVitals(), _loadAgents(), _loadTokenUsage()]);
   _vitalsTimer = setInterval(_loadVitals, 8000);
   _agentsTimer = setInterval(_loadAgents, 12000);
-  _drawUsageChart();
 }
 
 async function _loadSessions() {
@@ -397,64 +396,68 @@ async function _loadAgents() {
   const el = document.getElementById('dash-agents-list');
   if (!el) return;
   try {
-    const res = await fetch('/api/cyberapps/operations/agents', { credentials: 'same-origin' });
-    if (!res.ok) throw new Error(res.status);
-    const data = await res.json();
+    const [opsRes, rosterRes] = await Promise.all([
+      fetch('/api/cyberapps/operations/agents', { credentials: 'same-origin' }),
+      fetch('/api/agents', { credentials: 'same-origin' }).catch(() => null),
+    ]);
+    if (!opsRes.ok) throw new Error(opsRes.status);
+    const data = await opsRes.json();
     const agents = data.agents || [];
-    const cntEl = document.getElementById('dash-cnt-agents');
-    if (cntEl) _animCounter('dash-cnt-agents', agents.length);
-    if (!agents.length) {
-      el.innerHTML = '<div class="dash-empty">No active agents.</div>';
-      return;
-    }
+    if (rosterRes?.ok) {
+      const rd = await rosterRes.json();
+      const cnt = (rd.agents || (Array.isArray(rd) ? rd : [])).length;
+      _animCounter('dash-cnt-agents', cnt);
+    } else { _animCounter('dash-cnt-agents', agents.length); }
+    if (!agents.length) { el.innerHTML = '<div class="dash-empty">No active agents.</div>'; return; }
     el.innerHTML = agents.slice(0, 6).map(a => {
-      const status = a.status || 'idle';
-      const name = _esc(a.name || a.id || 'Agent');
+      const s = a.status || 'idle';
       return `<div class="dash-agent-row">
-        <span class="dash-agent-dot dash-agent-dot--${status}"></span>
-        <span class="dash-agent-name">${name}</span>
-        <span class="dash-agent-status">${_esc(status).toUpperCase()}</span>
+        <span class="dash-agent-dot dash-agent-dot--${s}"></span>
+        <span class="dash-agent-name">${_esc(a.name || a.id || 'Agent')}</span>
+        <span class="dash-agent-status">${_esc(s).toUpperCase()}</span>
       </div>`;
     }).join('');
   } catch (_) {
-    const el2 = document.getElementById('dash-agents-list');
-    if (el2) el2.innerHTML = '<div class="dash-empty">Agents unavailable.</div>';
+    el.innerHTML = '<div class="dash-empty">Agents unavailable.</div>';
   }
 }
 
-function _drawUsageChart() {
+async function _loadTokenUsage() {
   const canvas = document.getElementById('dash-usage-canvas');
-  if (!canvas || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-  const days = 14;
-  const data = Array.from({length: days}, (_, i) => Math.round(4000 + Math.sin(i * 0.9) * 1800 + Math.random() * 1200));
-  const total = data.reduce((s, v) => s + v, 0);
-  if (document.getElementById('dash-usage-total')) _animCounter('dash-usage-total', Math.round(total / 1000), 'K');
-  const max = Math.max(...data);
+  const totalEl = document.getElementById('dash-usage-total');
+  const titleEl = document.querySelector('.dash-usage .dash-card-title');
+  try {
+    const res = await fetch('/api/usage/tokens', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    const total = data.total_tokens ?? 0, cost = data.cost_usd ?? 0;
+    if (titleEl) titleEl.innerHTML = `TOKEN USAGE <span class="dash-mock-badge">$${cost.toFixed(4)}</span>`;
+    if (totalEl) _animCounter('dash-usage-total', total >= 1000 ? Math.round(total / 1000) : total, total >= 1000 ? 'K' : '');
+    if (canvas) _drawUsageChart(canvas, data.by_day ?? []);
+  } catch (_) { if (totalEl) totalEl.textContent = '—'; }
+}
+
+function _drawUsageChart(canvas, byDay) {
+  if (!canvas) return;
+  const raw = byDay.length ? byDay.slice(-14).map(d => d.tokens || 0) : Array.from({length: 14}, (_, i) => Math.round(4000 + Math.sin(i * 0.9) * 1800));
+  const max = Math.max(...raw, 1), days = raw.length;
   const W = canvas.parentElement?.clientWidth || 220, H = 54;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.floor(W * dpr); canvas.height = Math.floor(H * dpr);
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
   const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const [pl, pr, pt, pb] = [4, 4, 6, 4];
-  const iw = W - pl - pr, ih = H - pt - pb;
-  let phase = 0;
-  function draw() {
-    if (!document.getElementById(PANEL_ID)) return;
-    phase += 0.018; ctx.clearRect(0, 0, W, H);
-    const [r, g, b] = _getRgb();
-    const pts = data.map((v, i) => [pl + (i/(days-1))*iw, pt + ih - (v/max)*ih*(1+Math.sin(phase+i*0.7)*0.04)]);
-    ctx.beginPath(); ctx.moveTo(pts[0][0], H-pb); ctx.lineTo(pts[0][0], pts[0][1]);
-    pts.forEach(([x,y]) => ctx.lineTo(x, y)); ctx.lineTo(pts[pts.length-1][0], H-pb); ctx.closePath();
-    const grd = ctx.createLinearGradient(0, pt, 0, H);
-    grd.addColorStop(0, `rgba(${r},${g},${b},0.28)`); grd.addColorStop(0.7, `rgba(${r},${g},${b},0.06)`); grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
-    ctx.fillStyle = grd; ctx.fill();
-    ctx.beginPath(); pts.forEach(([x,y], i) => i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
-    ctx.strokeStyle=`rgba(${r},${g},${b},0.75)`; ctx.lineWidth=1.5; ctx.lineJoin='round'; ctx.stroke();
-    const [lx,ly]=pts[pts.length-1]; ctx.beginPath(); ctx.arc(lx,ly,2.5,0,Math.PI*2);
-    ctx.fillStyle=`rgba(${r},${g},${b},0.9)`; ctx.fill();
-    _usageRaf = requestAnimationFrame(draw);
-  }
-  draw();
+  const [pl, pr, pt, pb] = [4, 4, 6, 4], iw = W - pl - pr, ih = H - pt - pb;
+  ctx.clearRect(0, 0, W, H);
+  const [r, g, b] = _getRgb();
+  const pts = raw.map((v, i) => [pl + (i / Math.max(days - 1, 1)) * iw, pt + ih - (v / max) * ih]);
+  ctx.beginPath(); ctx.moveTo(pts[0][0], H - pb); ctx.lineTo(pts[0][0], pts[0][1]);
+  pts.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(pts[pts.length - 1][0], H - pb); ctx.closePath();
+  const grd = ctx.createLinearGradient(0, pt, 0, H);
+  grd.addColorStop(0, `rgba(${r},${g},${b},0.28)`); grd.addColorStop(0.7, `rgba(${r},${g},${b},0.06)`); grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = grd; ctx.fill();
+  ctx.beginPath(); pts.forEach(([x, y], i) => i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y));
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.75)`; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
+  const [lx, ly] = pts[pts.length - 1]; ctx.beginPath(); ctx.arc(lx, ly, 2.5, 0, Math.PI * 2); ctx.fillStyle = `rgba(${r},${g},${b},0.9)`; ctx.fill();
 }
 
 function _drawActivityChart(sessions) {
