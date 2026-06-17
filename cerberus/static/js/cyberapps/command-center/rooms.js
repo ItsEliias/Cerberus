@@ -1,10 +1,6 @@
 /**
  * rooms.js — Conference Rooms tab (Phase 3).
  *
- * Rooms let an owner send a single message to a set of agents; the
- * ORCHESTRATOR (if present) routes to the best participant, otherwise
- * the first participant responds.  History persists across sessions.
- *
  * Exports: buildRoomsTab, loadRooms
  */
 
@@ -38,11 +34,15 @@ function _roomCard(room) {
   const count = room.participant_ids?.length || 0;
   const lastAt = room.last_message_at
     ? new Date(room.last_message_at + 'Z').toLocaleString() : '—';
+  const modeBadge = room.mode === 'open'
+    ? '<span class="cc-room-mode-badge cc-room-mode-open">OPEN</span>'
+    : '<span class="cc-room-mode-badge cc-room-mode-routed">ROUTED</span>';
   return `
 <div class="cc-room-card" data-room-id="${_esc(room.id)}" data-room-name="${_esc(room.name)}">
   <div class="cc-room-card-header">
     <span class="cc-room-name">${_esc(room.name)}</span>
     <span class="cc-room-count">${count} agent${count !== 1 ? 's' : ''}</span>
+    ${modeBadge}
   </div>
   <div class="cc-room-last">${_esc(lastAt)}</div>
   <div class="cc-room-card-actions">
@@ -104,6 +104,20 @@ function _agentAccent(name) {
   return MAP[(name || '').toUpperCase()] || 'rgba(197,201,208,0.6)';
 }
 
+// ---- Token meter helper ----
+
+function _tokenMeter(room) {
+  const total = (room.total_input_tokens || 0) + (room.total_output_tokens || 0);
+  if (!total) return '';
+  return `<span class="cc-room-token-meter" title="${room.total_input_tokens || 0} in / ${room.total_output_tokens || 0} out">${_fmtTokens(total)}</span>`;
+}
+
+function _fmtTokens(n) {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M tk`;
+  if (n >= 1000)    return `${(n / 1000).toFixed(1)}k tk`;
+  return `${n} tk`;
+}
+
 // ---- Room chat view ----
 
 function _buildRoomChatView(room) {
@@ -112,12 +126,18 @@ function _buildRoomChatView(room) {
     return a ? `<span class="cc-room-participant-chip" style="border-color:${_agentAccent(a.name)};color:${_agentAccent(a.name)}">${_esc(a.name)}</span>` : '';
   }).join('');
 
+  const isOpen = room.mode === 'open';
+  const modeClass = isOpen ? 'cc-room-mode-open' : 'cc-room-mode-routed';
+  const modeLabel = isOpen ? `OPEN (cap ${room.round_cap || 5})` : 'ROUTED';
+
   return `
 <div class="cc-agents-tab cc-room-chat" id="cc-room-chat">
   <div class="cc-agent-chat-header">
     <button class="cc-chat-back-btn">← Rooms</button>
     <span class="cc-agent-chat-name">${_esc(room.name)}</span>
     <div class="cc-room-participants">${participants}</div>
+    <button class="cc-room-mode-toggle cc-room-mode-badge ${modeClass}" data-room-id="${_esc(room.id)}" data-current-mode="${_esc(room.mode || 'routed')}" title="Click to toggle mode">${_esc(modeLabel)}</button>
+    ${_tokenMeter(room)}
     <button class="cc-room-chat-clear-btn" title="Clear messages">Clear</button>
   </div>
   <div class="cc-chat-messages" id="cc-room-messages">
@@ -131,9 +151,27 @@ function _buildRoomChatView(room) {
 </div>`.trim();
 }
 
-// ---- SSE streaming with route event ----
+// ---- Continue-checkpoint prompt ----
 
-async function _streamRoom(body, messagesEl) {
+function _insertContinuePrompt(messagesEl, roomId, rounds, cap, onContinue) {
+  const el = document.createElement('div');
+  el.className = 'cc-room-cap-prompt';
+  el.innerHTML = `
+<span class="cc-room-cap-msg">${rounds} round${rounds !== 1 ? 's' : ''} completed (cap ${cap}).</span>
+<button class="cc-room-cap-yes">Continue ${cap} more</button>
+<button class="cc-room-cap-no">Done</button>`.trim();
+  el.querySelector('.cc-room-cap-yes').addEventListener('click', () => {
+    el.remove();
+    onContinue();
+  });
+  el.querySelector('.cc-room-cap-no').addEventListener('click', () => el.remove());
+  messagesEl.appendChild(el);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+// ---- SSE streaming with route + cap_reached events ----
+
+async function _streamRoom(body, messagesEl, roomId, onCapReached) {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -152,10 +190,12 @@ async function _streamRoom(body, messagesEl) {
       if (line.startsWith('event:')) { eventType = line.slice(6).trim(); continue; }
       if (!line.startsWith('data:')) { eventType = 'message'; continue; }
       const raw = line.slice(5).trim();
-      if (raw === '[DONE]') { if (currentContent) currentContent.classList.remove('cc-chat-streaming'); return; }
+      if (raw === '[DONE]') {
+        if (currentContent) currentContent.classList.remove('cc-chat-streaming');
+        return;
+      }
 
       if (eventType === 'route') {
-        // Create agent bubble
         try {
           const { agent } = JSON.parse(raw);
           const color = _agentAccent(agent);
@@ -168,6 +208,16 @@ async function _streamRoom(body, messagesEl) {
           currentContent = currentBubble.querySelector('.cc-chat-msg-content');
           messagesEl.appendChild(currentBubble);
           messagesEl.scrollTop = messagesEl.scrollHeight;
+        } catch (_) {}
+        eventType = 'message'; continue;
+      }
+
+      if (eventType === 'cap_reached') {
+        if (currentContent) currentContent.classList.remove('cc-chat-streaming');
+        currentContent = null;
+        try {
+          const meta = JSON.parse(raw);
+          if (onCapReached) onCapReached(meta);
         } catch (_) {}
         eventType = 'message'; continue;
       }
@@ -195,6 +245,27 @@ async function _streamRoom(body, messagesEl) {
   if (currentContent) currentContent.classList.remove('cc-chat-streaming');
 }
 
+// ---- Mode toggle ----
+
+async function _toggleMode(btn, container) {
+  const roomId = btn.dataset.roomId;
+  const current = btn.dataset.currentMode || 'routed';
+  const next = current === 'routed' ? 'open' : 'routed';
+  try {
+    const res = await fetch(`/api/rooms/${encodeURIComponent(roomId)}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: next }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const room = await res.json();
+    btn.dataset.currentMode = room.mode;
+    btn.className = `cc-room-mode-toggle cc-room-mode-badge ${room.mode === 'open' ? 'cc-room-mode-open' : 'cc-room-mode-routed'}`;
+    btn.textContent = room.mode === 'open' ? `OPEN (cap ${room.round_cap || 5})` : 'ROUTED';
+  } catch (e) {
+    console.warn('[rooms] toggle mode failed:', e.message);
+  }
+}
+
 // ---- Open a room (chat view) ----
 
 async function _openRoom(container, room) {
@@ -204,6 +275,9 @@ async function _openRoom(container, room) {
   const sendBtn    = container.querySelector('#cc-room-send-btn');
   const backBtn    = container.querySelector('.cc-chat-back-btn');
   const clearBtn   = container.querySelector('.cc-room-chat-clear-btn');
+  const modeBtn    = container.querySelector('.cc-room-mode-toggle');
+
+  modeBtn?.addEventListener('click', () => _toggleMode(modeBtn, container));
 
   backBtn?.addEventListener('click', async () => {
     container.innerHTML = buildRoomsTab();
@@ -214,7 +288,6 @@ async function _openRoom(container, room) {
     if (!confirm('Clear all messages in this room?')) return;
     try {
       await fetch(`/api/rooms/${encodeURIComponent(room.id)}`, { method: 'DELETE' });
-      // Recreate fresh room — server deletes, so just reload list
       container.innerHTML = buildRoomsTab();
       await loadRooms(container);
     } catch (e) { alert(`Failed: ${e.message}`); }
@@ -237,6 +310,32 @@ async function _openRoom(container, room) {
     messagesEl.innerHTML = '<div class="cc-empty">Could not load messages.</div>';
   }
 
+  async function _doSend(endpoint, method = 'POST', payload = null) {
+    sendBtn.disabled = true;
+    sendBtn.textContent = '…';
+    try {
+      const opts = {
+        method,
+        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      };
+      if (payload) opts.body = JSON.stringify(payload);
+      const res = await fetch(endpoint, opts);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await _streamRoom(res.body, messagesEl, room.id, (meta) => {
+        _insertContinuePrompt(messagesEl, room.id, meta.rounds, meta.cap, () => {
+          _doSend(`/api/rooms/${encodeURIComponent(room.id)}/continue`);
+        });
+      });
+    } catch (e) {
+      messagesEl.insertAdjacentHTML('beforeend',
+        `<div class="cc-chat-error" style="font-size:9px;padding:4px 0">Error: ${_esc(e.message)}</div>`);
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Send';
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+  }
+
   async function _sendMsg() {
     const text = input?.value?.trim();
     if (!text) return;
@@ -244,24 +343,12 @@ async function _openRoom(container, room) {
       role: 'user', sender_name: 'USER', content: text, timestamp: null,
     }));
     input.value = '';
-    sendBtn.disabled = true;
-    sendBtn.textContent = '…';
     messagesEl.scrollTop = messagesEl.scrollHeight;
-    try {
-      const res = await fetch(`/api/rooms/${encodeURIComponent(room.id)}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify({ message: text }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      await _streamRoom(res.body, messagesEl);
-    } catch (e) {
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="cc-chat-error" style="font-size:9px;padding:4px 0">Error: ${_esc(e.message)}</div>`);
-    } finally {
-      sendBtn.disabled = false;
-      sendBtn.textContent = 'Send';
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
+    await _doSend(
+      `/api/rooms/${encodeURIComponent(room.id)}/send`,
+      'POST',
+      { message: text },
+    );
   }
 
   sendBtn?.addEventListener('click', _sendMsg);
@@ -274,7 +361,7 @@ async function _openRoom(container, room) {
 // ---- Room list view ----
 
 async function _loadRoomList(container) {
-  const grid   = container.querySelector('#cc-rooms-grid');
+  const grid    = container.querySelector('#cc-rooms-grid');
   const countEl = container.querySelector('#cc-rooms-count');
   if (!grid) return;
 
@@ -317,7 +404,7 @@ function _wireNewRoomForm(container) {
   cancelBtn?.addEventListener('click', () => { if (form) form.style.display = 'none'; });
 
   createBtn?.addEventListener('click', async () => {
-    const name = container.querySelector('#cc-room-name-input')?.value?.trim();
+    const name    = container.querySelector('#cc-room-name-input')?.value?.trim();
     const checked = [...container.querySelectorAll('.cc-room-agent-cb:checked')].map(cb => cb.value);
     if (!name)           { if (msgEl) msgEl.textContent = 'Room name is required'; return; }
     if (!checked.length) { if (msgEl) msgEl.textContent = 'Select at least one agent'; return; }
@@ -358,10 +445,9 @@ export function buildRoomsTab() {
 }
 
 export async function loadRooms(container) {
-  _agentCache = [];  // Reset cache on each mount
+  _agentCache = [];
   await _ensureAgents();
 
-  // Build and inject new room form
   const mount = container.querySelector('#cc-room-new-form-mount');
   if (mount) {
     mount.innerHTML = _newRoomForm(_agentCache);

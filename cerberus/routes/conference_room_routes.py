@@ -1,12 +1,13 @@
 """Conference Room routes — ORCHESTRATOR-routed multi-agent rooms.
 
 Endpoints (all require auth):
-  GET    /api/rooms                — list owner's rooms
-  POST   /api/rooms                — create room {name, participant_ids}
-  GET    /api/rooms/{id}           — room detail + message history
-  PATCH  /api/rooms/{id}           — update name / participant_ids
-  DELETE /api/rooms/{id}           — delete room + messages
-  POST   /api/rooms/{id}/send      — send message → ORCHESTRATOR routes → SSE stream
+  GET    /api/rooms                   — list owner's rooms
+  POST   /api/rooms                   — create room {name, participant_ids}
+  GET    /api/rooms/{id}              — room detail + message history
+  PATCH  /api/rooms/{id}              — update name / participant_ids / mode / round_cap
+  DELETE /api/rooms/{id}              — delete room + messages
+  POST   /api/rooms/{id}/send         — send message → SSE stream (routed or open mode)
+  POST   /api/rooms/{id}/continue     — continue open discussion for another cap turns
 """
 
 from __future__ import annotations
@@ -26,6 +27,9 @@ from src.auth_helpers import require_user
 
 logger = logging.getLogger(__name__)
 
+_VALID_MODES = {"routed", "open"}
+MAX_CAP = 20
+
 
 class RoomCreate(BaseModel):
     name: str
@@ -35,6 +39,8 @@ class RoomCreate(BaseModel):
 class RoomPatch(BaseModel):
     name: Optional[str] = None
     participant_ids: Optional[List[str]] = None
+    mode: Optional[str] = None        # 'routed' | 'open'
+    round_cap: Optional[int] = None   # 1-20
 
 
 class RoomSend(BaseModel):
@@ -69,10 +75,10 @@ def _save_room_message(
 
 
 async def _route_message(agents: list, message: str, owner: str):
-    """Choose which agent should respond.
+    """Choose which agent should respond (used by both routes and engine).
 
-    If ORCHESTRATOR is a participant and there are other agents, ask it to route.
-    Falls back to the first non-ORCHESTRATOR participant (or the first agent).
+    If ORCHESTRATOR is a participant and others exist, ask it to route via LLM.
+    Falls back to first non-ORCHESTRATOR participant (or first agent).
     Returns (target_agent, route_note).
     """
     if not agents:
@@ -84,7 +90,6 @@ async def _route_message(agents: list, message: str, owner: str):
     if not orchestrator or not others:
         return (others[0] if others else agents[0]), ""
 
-    # Ask ORCHESTRATOR to pick a target
     names = ", ".join(a.name for a in others)
     routing_msgs = [
         {
@@ -99,7 +104,6 @@ async def _route_message(agents: list, message: str, owner: str):
 
     from routes.cerberus_agent_routes import _resolve_agent_endpoint
     url, model, headers = _resolve_agent_endpoint(orchestrator.model_alias, owner)
-
     if not url or not model:
         return others[0], ""
 
@@ -184,6 +188,15 @@ def setup_conference_room_routes() -> APIRouter:
                 room.name = name
             if body.participant_ids is not None:
                 room.participant_ids = json.dumps(body.participant_ids)
+            if body.mode is not None:
+                if body.mode not in _VALID_MODES:
+                    raise HTTPException(400, f"mode must be one of: {', '.join(_VALID_MODES)}")
+                room.mode = body.mode
+            if body.round_cap is not None:
+                cap = int(body.round_cap)
+                if cap < 1 or cap > MAX_CAP:
+                    raise HTTPException(400, f"round_cap must be between 1 and {MAX_CAP}")
+                room.round_cap = cap
             db.commit()
             db.refresh(room)
             return _room_dict(room)
@@ -228,12 +241,11 @@ def setup_conference_room_routes() -> APIRouter:
             room = _get_room_or_404(db, room_id, owner)
             pids = json.loads(room.participant_ids or "[]")
             agents = (
-                db.query(CerberusAgent)
-                .filter(CerberusAgent.id.in_(pids))
-                .all()
+                db.query(CerberusAgent).filter(CerberusAgent.id.in_(pids)).all()
             ) if pids else []
-
-            # Persist user message immediately
+            mode = getattr(room, "mode", None) or "routed"
+            cap  = _effective_cap(room)
+            room_snap = room  # room object still valid within this try block
             db.add(RoomMessage(
                 id=str(uuid.uuid4()), room_id=room_id,
                 role="user", sender_name="USER", content=text,
@@ -244,60 +256,56 @@ def setup_conference_room_routes() -> APIRouter:
         finally:
             db.close()
 
+        from routes.conference_room_engine import routed_stream, open_stream
+
         async def _generate():
             if not agents:
-                yield (
-                    f'event: error\ndata: {json.dumps({"error": "Room has no participants."})}\n\n'
-                )
+                yield f'event: error\ndata: {json.dumps({"error": "Room has no participants."})}\n\n'
                 return
-
-            target, _note = await _route_message(agents, text, owner)
-            if not target:
-                yield f'event: error\ndata: {json.dumps({"error": "Routing failed."})}\n\n'
-                return
-
-            yield (
-                f'event: route\ndata: {json.dumps({"agent": target.name, "agent_id": target.id})}\n\n'
-            )
-
-            from routes.cerberus_agent_routes import _resolve_agent_endpoint
-            from src.llm_core import stream_llm
-
-            url, model, headers = _resolve_agent_endpoint(target.model_alias, owner)
-            if not url or not model:
-                yield (
-                    f'event: error\ndata: {json.dumps({"error": "No LLM provider configured."})}\n\n'
-                )
-                return
-
-            messages = [
-                {"role": "system", "content": target.system_prompt or ""},
-                {"role": "user",   "content": text},
-            ]
-            parts: list[str] = []
-            try:
-                async for chunk in stream_llm(url, model, messages, headers=headers):
-                    for line in chunk.split("\n"):
-                        if line.startswith("data:") and "[DONE]" not in line:
-                            try:
-                                obj = json.loads(line[5:].strip())
-                                if obj.get("type") != "usage":
-                                    delta = (
-                                        obj.get("delta") or obj.get("text")
-                                        or obj.get("content") or ""
-                                    )
-                                    if delta:
-                                        parts.append(delta)
-                            except Exception:
-                                pass
+            if mode == "open":
+                async for chunk in open_stream(room_id, room_snap, agents, text, owner, cap, SessionLocal):
                     yield chunk
-            except Exception as exc:
-                yield f'event: error\ndata: {json.dumps({"error": str(exc)})}\n\n'
-            finally:
-                if parts:
-                    _save_room_message(
-                        room_id, "agent", target.id, target.name, "".join(parts)
-                    )
+            else:
+                async for chunk in routed_stream(room_id, room_snap, agents, text, owner, SessionLocal):
+                    yield chunk
+
+        return StreamingResponse(_generate(), media_type="text/event-stream")
+
+    # ---- Continue (open mode only) ----
+    @router.post("/{room_id}/continue")
+    async def continue_room(room_id: str, request: Request) -> StreamingResponse:
+        """Resume open discussion for another cap turns, using transcript as context."""
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            room = _get_room_or_404(db, room_id, owner)
+            pids = json.loads(room.participant_ids or "[]")
+            agents = (
+                db.query(CerberusAgent).filter(CerberusAgent.id.in_(pids)).all()
+            ) if pids else []
+            cap = _effective_cap(room)
+            # Use the last user message from transcript as the user_text for agent context
+            last_user = (
+                db.query(RoomMessage)
+                .filter(RoomMessage.room_id == room_id, RoomMessage.role == "user")
+                .order_by(RoomMessage.timestamp.desc())
+                .first()
+            )
+            user_text = last_user.content if last_user else ""
+        finally:
+            db.close()
+
+        from routes.conference_room_engine import open_stream
+
+        async def _generate():
+            if not agents:
+                yield f'event: error\ndata: {json.dumps({"error": "Room has no participants."})}\n\n'
+                return
+            if not user_text:
+                yield f'event: error\ndata: {json.dumps({"error": "No prior message to continue."})}\n\n'
+                return
+            async for chunk in open_stream(room_id, None, agents, user_text, owner, cap, SessionLocal):
+                yield chunk
 
         return StreamingResponse(_generate(), media_type="text/event-stream")
 
@@ -315,6 +323,11 @@ def _get_room_or_404(db, room_id: str, owner: str) -> ConferenceRoom:
     return room
 
 
+def _effective_cap(room) -> int:
+    from routes.conference_room_engine import effective_cap
+    return effective_cap(room)
+
+
 def _room_dict(room: ConferenceRoom) -> Dict[str, Any]:
     return {
         "id": room.id,
@@ -324,6 +337,10 @@ def _room_dict(room: ConferenceRoom) -> Dict[str, Any]:
         "created_at": room.created_at.isoformat() if room.created_at else None,
         "last_message_at": room.last_message_at.isoformat() if room.last_message_at else None,
         "message_count": room.message_count or 0,
+        "mode": getattr(room, "mode", None) or "routed",
+        "round_cap": getattr(room, "round_cap", None) or 5,
+        "total_input_tokens": getattr(room, "total_input_tokens", None) or 0,
+        "total_output_tokens": getattr(room, "total_output_tokens", None) or 0,
     }
 
 

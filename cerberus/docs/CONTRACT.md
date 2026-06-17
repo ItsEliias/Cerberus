@@ -53,6 +53,11 @@ After Phase B/C land, the diff against this doc is the acceptance test.
 | **Agent edit** (v3.1-A) | AGENTS | On save | `PATCH /api/agents/{id}` (name/role/type/prompt/model/avatar) | ✅ live |
 | **Agent delete** (v3.1-A) | AGENTS | On confirm | `DELETE /api/agents/{id}` (soft-suppress defaults; hard-delete custom) | ✅ live |
 | **Token observability** (total, cost, 30d sparkline, split) | OBSERVE (new) | Fetched on tab open | `/api/usage/tokens` | ✅ live |
+| **Conference Rooms** (Phase 3a) | ROOMS | CRUD + SSE | `/api/rooms`, `/api/rooms/{id}/send` | ✅ live |
+| **Room transcript context** (Phase 3b) | ROOMS | Auto-injected per turn | Last 20 `RoomMessage` rows → system prompt | ✅ live |
+| **Room mode toggle** (Phase 3b) | ROOMS | Click badge in chat header | `PATCH /api/rooms/{id}` `{mode: 'routed'\|'open'}` | ✅ live |
+| **Room cap + continue-checkpoint** (Phase 3b) | ROOMS | Inline prompt after cap hit | `POST /api/rooms/{id}/continue` | ✅ live |
+| **Room token meter** (Phase 3b) | ROOMS | Header display | `total_input_tokens + total_output_tokens` from room dict | ✅ live |
 
 ---
 
