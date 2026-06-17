@@ -726,6 +726,41 @@ class CerberusAgent(TimestampMixin, Base):
         }
 
 
+class AgentThread(Base):
+    """Persistent 1:1 chat thread between an owner and a CerberusAgent persona."""
+    __tablename__ = "agent_threads"
+
+    id              = Column(String, primary_key=True, index=True)
+    agent_id        = Column(String, ForeignKey("cerberus_agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    owner           = Column(String, nullable=False, index=True)
+    created_at      = Column(DateTime, default=utcnow_naive)
+    last_message_at = Column(DateTime, nullable=True)
+    message_count   = Column(Integer, default=0)
+
+    messages = relationship(
+        "AgentMessage", back_populates="thread",
+        cascade="all, delete-orphan",
+        order_by="AgentMessage.timestamp",
+    )
+
+    __table_args__ = (
+        Index("ix_agent_threads_agent_owner", "agent_id", "owner", unique=True),
+    )
+
+
+class AgentMessage(Base):
+    """A single message within an AgentThread."""
+    __tablename__ = "agent_messages"
+
+    id        = Column(String, primary_key=True, index=True)
+    thread_id = Column(String, ForeignKey("agent_threads.id", ondelete="CASCADE"), nullable=False, index=True)
+    role      = Column(String, nullable=False)   # user | assistant
+    content   = Column(Text, nullable=False)
+    timestamp = Column(DateTime, default=utcnow_naive)
+
+    thread = relationship("AgentThread", back_populates="messages")
+
+
 def _migrate_add_last_message_at_column():
     """Add last_message_at to sessions + backfill from the latest message
     timestamp per session (fallback to last_accessed / created_at when a

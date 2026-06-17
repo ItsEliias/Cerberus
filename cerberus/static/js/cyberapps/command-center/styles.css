@@ -1350,6 +1350,106 @@
 .cc-ag-edit-form textarea, .cc-ag-create-form textarea { resize: vertical; min-height: 52px; }
 .cc-ag-edit-msg, #cc-create-msg { font-size: 9px; color: var(--cc-crimson); margin-top: 4px; min-height: 14px; }
 
+/* Chat button on agent card */
+.cc-ag-chat-btn {
+  font-size: 9px; letter-spacing: 0.08em; padding: 3px 7px;
+  border: 1px solid rgba(52,152,219,0.4);
+  background: rgba(52,152,219,0.06); color: #3498db;
+  border-radius: 3px; cursor: pointer; font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+.cc-ag-chat-btn:hover { background: rgba(52,152,219,0.14); border-color: #3498db; }
+
+/* ---- AGENT CHAT panel (Phase 2) ---- */
+.cc-agent-chat {
+  display: flex; flex-direction: column; height: 100%; overflow: hidden;
+}
+.cc-agent-chat-header {
+  --cat-accent: rgba(197,201,208,0.45);
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  border-bottom: 1px solid var(--cc-border); flex-shrink: 0;
+}
+.cc-chat-back-btn {
+  font-size: 9px; padding: 3px 8px; border: 1px solid var(--cc-border);
+  background: transparent; color: rgba(255,255,255,0.5);
+  border-radius: 3px; cursor: pointer; font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+.cc-chat-back-btn:hover { color: var(--cc-fg); border-color: rgba(255,255,255,0.3); }
+.cc-agent-chat-sigil {
+  width: 22px; height: 22px; border-radius: 3px; display: inline-flex;
+  align-items: center; justify-content: center; font-size: 10px;
+  font-weight: 700; color: rgba(255,255,255,0.9); flex-shrink: 0; user-select: none;
+}
+.cc-agent-chat-name {
+  font-family: 'Orbitron', monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--cat-accent);
+}
+.cc-chat-clear-btn {
+  margin-left: auto; font-size: 8px; letter-spacing: 0.08em; padding: 2px 7px;
+  border: 1px solid var(--cc-border); background: transparent;
+  color: rgba(255,255,255,0.3); border-radius: 2px; cursor: pointer; font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+.cc-chat-clear-btn:hover { color: var(--cc-crimson); border-color: var(--cc-crimson); }
+
+/* Messages area */
+.cc-chat-messages {
+  flex: 1; overflow-y: auto; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.cc-chat-msg { display: flex; flex-direction: column; gap: 3px; max-width: 88%; }
+.cc-chat-msg--user { align-self: flex-end; }
+.cc-chat-msg--assistant { align-self: flex-start; }
+.cc-chat-msg-meta {
+  display: flex; align-items: center; gap: 6px;
+}
+.cc-chat-msg-role {
+  font-size: 7px; letter-spacing: 0.14em; font-weight: 700; text-transform: uppercase;
+  opacity: 0.4;
+}
+.cc-chat-msg-ts { font-size: 7px; opacity: 0.3; font-variant-numeric: tabular-nums; }
+.cc-chat-msg-content {
+  font-size: 11px; line-height: 1.55; padding: 8px 10px; border-radius: 4px;
+  white-space: pre-wrap; word-break: break-word;
+}
+.cc-chat-msg--user .cc-chat-msg-content {
+  background: rgba(52,152,219,0.12); border: 1px solid rgba(52,152,219,0.25);
+  color: var(--cc-fg);
+}
+.cc-chat-msg--assistant .cc-chat-msg-content {
+  background: rgba(255,255,255,0.04); border: 1px solid var(--cc-border);
+  color: var(--cc-fg);
+}
+.cc-chat-streaming::after {
+  content: '▊'; animation: cc-blink 0.8s step-start infinite;
+  display: inline; color: var(--cc-crimson);
+}
+@keyframes cc-blink { 50% { opacity: 0; } }
+.cc-chat-error { color: var(--cc-crimson) !important; }
+
+/* Input row */
+.cc-chat-input-row {
+  display: flex; gap: 8px; padding: 10px 14px;
+  border-top: 1px solid var(--cc-border); flex-shrink: 0;
+}
+.cc-chat-input {
+  flex: 1; resize: none; padding: 6px 8px; font-size: 11px;
+  background: rgba(0,0,0,0.25); border: 1px solid var(--cc-border, rgba(255,255,255,0.1));
+  color: var(--cc-fg); border-radius: 3px; font-family: inherit; min-height: 38px;
+  transition: border-color 0.15s;
+}
+.cc-chat-input:focus { outline: none; border-color: rgba(52,152,219,0.4); }
+.cc-chat-send-btn {
+  font-size: 9px; letter-spacing: 0.08em; padding: 6px 14px; align-self: flex-end;
+  border: 1px solid rgba(52,152,219,0.4); background: rgba(52,152,219,0.1);
+  color: #3498db; border-radius: 3px; cursor: pointer; font-family: inherit;
+  transition: background 0.15s; white-space: nowrap;
+}
+.cc-chat-send-btn:hover   { background: rgba(52,152,219,0.2); }
+.cc-chat-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
 /* ---- OBSERVABILITY tab ---- */
 .cc-obs-tab { display: flex; flex-direction: column; padding: 12px 16px; gap: 12px; overflow-y: auto; }
 .cc-obs-header { display: flex; align-items: center; }

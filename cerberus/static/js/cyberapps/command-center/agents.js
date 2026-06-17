@@ -2,8 +2,11 @@
  * agents.js — AGENTS/SWARM sub-tab for Command Center.
  *
  * Phase 1 — Jarvis-v2 cards, deterministic sigils, expand/details panel,
- * grouped by category (CORE / SECURITY / OPS / DATA / COMMS / CUSTOM).
+ *            grouped by category (CORE / SECURITY / OPS / DATA / COMMS / CUSTOM).
+ * Phase 2 — "Chat" button on each card opens a persistent 1:1 thread (chat.js).
  */
+
+import { openAgentChat } from './chat.js';
 
 function _esc(s) {
   const d = document.createElement('div');
@@ -86,7 +89,7 @@ function _agentCard(agent) {
   const hasMore = (agent.system_prompt || '').length > 180;
   const id      = _esc(agent.id);
   return `
-<div class="cc-ag-card cc-ag-card--v2" data-agent-id="${id}" style="--cat-accent:${accent}">
+<div class="cc-ag-card cc-ag-card--v2" data-agent-id="${id}" data-agent-name="${_esc(agent.name || '')}" data-agent-avatar="${_esc(agent.avatar || '')}" data-cat-accent="${accent}" style="--cat-accent:${accent}">
   <div class="jx2-bracket-tl"></div>
   <div class="jx2-bracket-br"></div>
   <div class="cc-ag-card-header">
@@ -110,6 +113,7 @@ function _agentCard(agent) {
     </div>
   </div>
   <div class="cc-ag-card-actions">
+    <button class="cc-ag-chat-btn"   data-agent-id="${id}">Chat</button>
     <button class="cc-ag-invoke-btn" data-agent-id="${id}">Invoke</button>
     <button class="cc-ag-edit-btn"   data-agent-id="${id}">Edit</button>
     <button class="cc-ag-delete-btn" data-agent-id="${id}">Del</button>
@@ -187,6 +191,7 @@ function _wireCard(container, agentId) {
   const saveBtn    = card.querySelector('.cc-ag-save-btn');
   const discardBtn = card.querySelector('.cc-ag-discard-btn');
   const deleteBtn  = card.querySelector('.cc-ag-delete-btn');
+  const chatBtn    = card.querySelector('.cc-ag-chat-btn');
   const expandBtn  = card.querySelector('.cc-ag-expand-btn');
   const details    = expandBtn ? card.querySelector(`#${expandBtn.dataset.target}`) : null;
 
@@ -196,6 +201,13 @@ function _wireCard(container, agentId) {
     details.style.display = open ? 'none' : 'block';
     expandBtn.textContent = open ? '›' : '⌄';
     expandBtn.classList.toggle('cc-ag-expand-btn--open', !open);
+  });
+
+  chatBtn?.addEventListener('click', () => {
+    const name   = card.dataset.agentName   || agentId;
+    const avatar = card.dataset.agentAvatar || '';
+    const accent = card.dataset.catAccent   || 'rgba(197,201,208,0.5)';
+    openAgentChat(container, agentId, name, avatar, accent);
   });
 
   invokeBtn?.addEventListener('click', () => {
