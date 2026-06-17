@@ -5,6 +5,7 @@ import cerberusOverlayTools from './cerberusOverlayTools.js';
 import cerberusPersonality from './cerberusPersonality.js';
 import { cmdHandled, cmdUnhandled } from './cerberusCommandResult.js';
 import officesModal from './officesModal.js';
+import * as cerberusShellModals from './cerberusShellModals.js';
 
 let _deps = {};
 let _councilStatus = 'IDLE';
@@ -56,6 +57,7 @@ function _norm(text) {
 }
 
 async function _goHome() {
+  await cerberusShellModals.closeAllModals();
   await window.homeModule?.showHome?.({ skipHistory: false });
   history.pushState({ atlasView: 'home' }, '', '/home');
 }

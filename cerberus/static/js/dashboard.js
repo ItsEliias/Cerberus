@@ -239,7 +239,7 @@ function _buildPanel() {
   });
   // Navigation buttons close dashboard first
   panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('rail-new-session')?.click(); }));
-  panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _go(() => { window.location.href = '/home'; }));
+  panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _go(() => { sessionStorage.setItem('cerberus_skip_modal_restore', '1'); window.location.href = '/home'; }));
   panel.querySelector('#dash-act-cerberus')?.addEventListener('click', () => _go(() => { window.location.href = '/'; }));
   panel.querySelector('#dash-act-cc')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('sidebar-command-center-btn')?.click(); }));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); }, { once: true });

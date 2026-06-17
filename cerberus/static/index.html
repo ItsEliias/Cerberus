@@ -237,20 +237,24 @@
 </head>
 <body>
   <!-- Loading overlay — hides all flashing until app is ready -->
-  <div id="app-loader" style="position:fixed;inset:0;z-index:99999;background:var(--bg,#1a1d23);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;transition:opacity .3s">
-    <div id="loader-wave" style="color:var(--brand-color,var(--red,#c0392b));font-family:monospace;font-size:11px;opacity:.5">▁▂▃</div>
+  <style>
+    @keyframes cerb-pulse{0%,100%{opacity:.3;transform:scale(.92)}50%{opacity:.95;transform:scale(1.04)}}
+    @keyframes cerb-ring{0%,100%{opacity:.15;transform:scale(.85)}50%{opacity:.4;transform:scale(1.1)}}
+    #cerb-loader-shield{animation:cerb-pulse 2s ease-in-out infinite;transform-origin:center;filter:drop-shadow(0 0 10px rgba(192,57,43,.35))}
+    #cerb-loader-ring{animation:cerb-ring 2s ease-in-out infinite;transform-origin:center}
+  </style>
+  <div id="app-loader" style="position:fixed;inset:0;z-index:99999;background:var(--bg,#1a1d23);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;transition:opacity .3s">
+    <div style="position:relative;width:64px;height:64px;display:flex;align-items:center;justify-content:center">
+      <svg id="cerb-loader-ring" style="position:absolute" width="64" height="64" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke="var(--brand-color,#c0392b)" stroke-width="1" stroke-dasharray="6 4"/></svg>
+      <svg id="cerb-loader-shield" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--brand-color,#c0392b)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2 L19 5 V11 C19 16 12 22 12 22 C12 22 5 16 5 11 V5 L12 2 Z" fill="rgba(192,57,43,.1)"/>
+        <circle cx="12" cy="11" r="2.4" fill="var(--brand-color,#c0392b)" stroke="none"/>
+      </svg>
+    </div>
+    <div style="color:var(--brand-color,#c0392b);font-family:monospace;font-size:9px;letter-spacing:.3em;opacity:.5">CERBERUS</div>
   </div>
   <script nonce="{{CSP_NONCE}}">
   (function(){
-    var el=document.getElementById('loader-wave');
-    if(!el)return;
-    var frames=['▁▂▃','▂▃▄','▃▄▅','▄▅▆','▅▆▅','▆▅▄','▅▄▃','▄▃▂','▃▂▁'];
-    var i=0;
-    var iv=setInterval(function(){
-      if(!document.getElementById('app-loader')){clearInterval(iv);return}
-      el.textContent=frames[i%frames.length];
-      i++;
-    },150);
     setTimeout(function(){var l=document.getElementById('app-loader');if(l){l.style.opacity='0';setTimeout(function(){l.remove()},300)}},5000);
   })();
   </script>

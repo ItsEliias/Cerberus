@@ -369,7 +369,10 @@ export function bootAtlasHome() {
   try {
     initCerberusGraph({ onNodeClick: (action) => openAtlasModal(action), projects: _projects });
     initCerberusPowerLinks();
-    void cerberusShellModals.restoreSessionModals();
+    if (!sessionStorage.getItem('cerberus_skip_modal_restore')) {
+      void cerberusShellModals.restoreSessionModals();
+    }
+    sessionStorage.removeItem('cerberus_skip_modal_restore');
   } catch (err) {
     console.error('[cerberus] graph init failed:', err);
   }
