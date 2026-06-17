@@ -8,11 +8,35 @@
  * Vanilla CSS custom properties only. No Tailwind build required.
  * ==================================================================== */
 
-/* ── Fonts (self-hostable; Google Fonts fallback) ──────────────────── */
+/* ── Fonts (self-hosted woff2 — no CDN) ────────────────────────────── */
 /* Orbitron + JetBrains Mono confirmed by both frontend-design AND
    ui-ux-pro-max ("cyberpunk, neon, glitch, hud, sci-fi, tactical").
-   IBM Plex Sans for body — legible, avoids banned Inter/Roboto list. */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+   IBM Plex Sans for body — legible, avoids banned Inter/Roboto list.
+   All three are variable fonts; a single woff2 covers the full weight axis. */
+
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('/static/fonts/Orbitron-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/static/fonts/JetBrainsMono-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/static/fonts/IBMPlexSans-latin.woff2') format('woff2');
+}
 
 :root {
   /* ── CRIMSON SPINE (7 shades) ─────────────────────────────────────
