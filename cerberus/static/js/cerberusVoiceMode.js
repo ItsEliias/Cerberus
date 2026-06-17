@@ -1983,6 +1983,10 @@ export function resumeHomeConversation() {
   if (_conversationActive) enterCommandListening();
 }
 
+export function getLastSpokenText() {
+  return _lastSpokenText;
+}
+
 const cerberusVoiceMode = {
   initAtlasVoiceMode,
   initHomeConversation,

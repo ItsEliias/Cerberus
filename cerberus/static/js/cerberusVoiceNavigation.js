@@ -6,6 +6,7 @@ import cerberusPersonality from './cerberusPersonality.js';
 import { cmdHandled, cmdUnhandled } from './cerberusCommandResult.js';
 import officesModal from './officesModal.js';
 import * as cerberusShellModals from './cerberusShellModals.js';
+import * as cerberusVoiceMode from './cerberusVoiceMode.js';
 
 let _deps = {};
 let _councilStatus = 'IDLE';
@@ -33,7 +34,7 @@ const NAV_TARGETS = {
     label: 'Voice Commands',
     paths: [],
     navigate: () => _openModal('voice'),
-    aliases: ['voice command cheat sheet', 'voice cheat sheet', 'voice commands list', 'cheat sheet'],
+    aliases: ['voice command cheat sheet', 'voice cheat sheet', 'voice commands list', 'cheat sheet', 'help', 'what can i say', 'what can you do'],
   },
   monitor: {
     label: 'System Monitor',
@@ -209,6 +210,110 @@ export async function tryHandleAtlasCommands(text) {
   if (norm === 'refresh workspace') {
     await window.homeModule?.prefetchAtlasData?.();
     return cmdHandled(true, 'Workspace refreshed.');
+  }
+
+  // ── New chat ──────────────────────────────────────────────────────────────
+  if (norm === 'new chat' || norm === 'new session' || norm === 'start new chat' || norm === 'start new session' || norm === 'start a new chat') {
+    document.getElementById('rail-new-session')?.click();
+    return cmdHandled(true, 'Starting a new session.');
+  }
+
+  // ── Close all modals ──────────────────────────────────────────────────────
+  if (norm === 'close all' || norm === 'close everything' || norm === 'dismiss all' || norm === 'dismiss everything') {
+    await cerberusShellModals.closeAllModals();
+    return cmdHandled(true, 'All panels closed.');
+  }
+
+  // ── Time & date ───────────────────────────────────────────────────────────
+  if (norm === 'what time is it' || norm === 'what is the time' || norm === "what's the time") {
+    const t = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return cmdHandled(true, `It is ${t}.`);
+  }
+  if (norm === "what's the date" || norm === 'what is the date' || norm === "what's today" || norm === "what's today's date" || norm === 'what day is it' || norm === 'what is today') {
+    const d = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    return cmdHandled(true, `Today is ${d}.`);
+  }
+
+  // ── Finance — log work ────────────────────────────────────────────────────
+  const logWork = norm.match(/^log\s+(?:a\s+)?(?:(full|half)\s+day|work\s+day)$/);
+  if (logWork) {
+    const type = logWork[1] === 'half' ? 'Half Day' : 'Full Day';
+    await _fetchJson('/api/cerberus/finance/work-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type }),
+    });
+    return cmdHandled(true, `${type} logged.`);
+  }
+
+  // ── Finance — weekly due ──────────────────────────────────────────────────
+  if (norm === 'how much do i owe this week' || norm === 'what do i owe this week' || norm === "what's due this week" || norm === 'weekly due') {
+    const data = await _fetchJson('/api/cerberus/finance/overview');
+    const ov = (data.overview || data);
+    const due = Number(ov.weekly_due || 0);
+    const fmt = '£' + due.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return cmdHandled(true, `You owe ${fmt} this week.`);
+  }
+
+  // ── Tasks — add ───────────────────────────────────────────────────────────
+  const addTask = norm.match(/^(?:add|create|new)\s+task\s+(.+)$/);
+  if (addTask) {
+    const prompt = addTask[1];
+    await _fetchJson('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, task_type: 'llm', trigger_type: 'manual' }),
+    });
+    return cmdHandled(true, `Task created: "${prompt}".`);
+  }
+
+  // ── Tasks — list ──────────────────────────────────────────────────────────
+  if (norm === 'what are my tasks' || norm === 'show my tasks' || norm === 'list my tasks' || norm === 'list tasks' || norm === 'show tasks') {
+    const data = await _fetchJson('/api/tasks');
+    const tasks = (data.tasks || data || []).filter((t) => t.status !== 'deleted' && t.status !== 'archived').slice(0, 5);
+    if (!tasks.length) return cmdHandled(true, 'You have no active tasks.');
+    const names = tasks.map((t, i) => `${i + 1}. ${t.name || t.prompt || 'Untitled'}`).join('; ');
+    return cmdHandled(true, `Your tasks: ${names}.`);
+  }
+
+  // ── Mute microphone ───────────────────────────────────────────────────────
+  if (norm === 'mute' || norm === 'pause listening' || norm === 'mute microphone' || norm === 'stop listening') {
+    cerberusVoiceMode.pauseHomeConversation?.();
+    return cmdHandled(true, 'Microphone paused. Say "Hey Cerberus" to resume.');
+  }
+
+  // ── Read last reply back ──────────────────────────────────────────────────
+  if (norm === 'read that back' || norm === 'read it back' || norm === 'say that again' || norm === 'repeat that') {
+    const last = cerberusVoiceMode.getLastSpokenText?.();
+    if (!last) return cmdHandled(true, 'Nothing to repeat.');
+    await cerberusVoiceMode.speakText?.(last, { short: false });
+    return cmdHandled(true, last, { spoken: true });
+  }
+
+  // ── Theme ─────────────────────────────────────────────────────────────────
+  if (norm === 'dark mode' || norm === 'switch to dark mode' || norm === 'enable dark mode') {
+    const th = window.themeModule;
+    const colors = th?.THEMES?.dark;
+    if (colors) { th.save('dark', colors); th.applyColors(colors); }
+    return cmdHandled(true, 'Dark mode enabled.');
+  }
+  if (norm === 'light mode' || norm === 'switch to light mode' || norm === 'enable light mode') {
+    const th = window.themeModule;
+    const colors = th?.THEMES?.light;
+    if (colors) { th.save('light', colors); th.applyColors(colors); }
+    else return cmdHandled(false, 'Open Settings to pick a light theme.');
+    return cmdHandled(true, 'Light mode enabled.');
+  }
+
+  // ── Agent status ──────────────────────────────────────────────────────────
+  const agentQuery = norm.match(/^what(?:'s|\s+is)\s+(.+?)\s+(?:doing|working on|up to)(?:\s+right\s+now)?$/);
+  if (agentQuery) {
+    const nameQ = agentQuery[1];
+    const data = await _fetchJson('/api/agents');
+    const agents = data.agents || data || [];
+    const agent = agents.find((a) => _norm(a.name || '').includes(_norm(nameQ)));
+    if (!agent) return cmdHandled(true, `I couldn't find an agent named "${nameQ}".`);
+    return cmdHandled(true, `${agent.name} is currently ${agent.status || 'idle'}.`);
   }
 
   return cmdUnhandled();
