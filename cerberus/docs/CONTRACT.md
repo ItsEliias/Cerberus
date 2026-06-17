@@ -49,6 +49,9 @@ After Phase B/C land, the diff against this doc is the acceptance test.
 | Assistant tab | ASSISTANT | Streaming | existing assistant API | ✅ live |
 | Gateway tab | GATEWAY | Fetched on tab open | existing gateway API | ✅ live |
 | **Agent roster + invoke** | AGENTS (new) | Fetched on tab open | `/api/agents`, `/api/agents/{id}/invoke` | ✅ live |
+| **Agent create** (v3.1-A) | AGENTS | On form submit | `POST /api/agents` | ✅ live |
+| **Agent edit** (v3.1-A) | AGENTS | On save | `PATCH /api/agents/{id}` (name/role/type/prompt/model/avatar) | ✅ live |
+| **Agent delete** (v3.1-A) | AGENTS | On confirm | `DELETE /api/agents/{id}` (soft-suppress defaults; hard-delete custom) | ✅ live |
 | **Token observability** (total, cost, 30d sparkline, split) | OBSERVE (new) | Fetched on tab open | `/api/usage/tokens` | ✅ live |
 
 ---

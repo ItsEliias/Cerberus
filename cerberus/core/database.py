@@ -697,6 +697,8 @@ class CerberusAgent(TimestampMixin, Base):
     total_input_tokens  = Column(Integer, default=0)                       # cumulative across all runs
     total_output_tokens = Column(Integer, default=0)
     last_run_url        = Column(String, nullable=True)                    # endpoint URL of the last run
+    avatar              = Column(String, nullable=True)                    # emoji or short identifier
+    is_suppressed       = Column(Boolean, default=False, nullable=False)   # owner-deleted default: skip back-fill
 
     __table_args__ = (
         Index('ix_cerberus_agents_owner_name', 'owner', 'name', unique=True),
@@ -719,6 +721,8 @@ class CerberusAgent(TimestampMixin, Base):
             "metadata_json": self.metadata_json,
             "total_input_tokens": self.total_input_tokens or 0,
             "total_output_tokens": self.total_output_tokens or 0,
+            "avatar": self.avatar or "",
+            "is_suppressed": bool(self.is_suppressed),
         }
 
 
@@ -1817,6 +1821,7 @@ def init_db():
     _migrate_encrypt_endpoint_keys()
     _migrate_backfill_task_folders()
     _migrate_add_agent_usage_columns()
+    _migrate_add_agent_phase_a_columns()
 
 
 def _migrate_add_agent_usage_columns():
@@ -1832,6 +1837,21 @@ def _migrate_add_agent_usage_columns():
                 logging.getLogger(__name__).info("Migrated: added usage tracking columns to cerberus_agents")
     except Exception as e:
         logging.getLogger(__name__).warning(f"cerberus_agents usage columns migration: {e}")
+
+
+def _migrate_add_agent_phase_a_columns():
+    """Add avatar and is_suppressed columns to cerberus_agents (Phase A)."""
+    try:
+        with engine.connect() as conn:
+            cols = [r[1] for r in conn.execute(text("PRAGMA table_info(cerberus_agents)"))]
+            if "avatar" not in cols:
+                conn.execute(text("ALTER TABLE cerberus_agents ADD COLUMN avatar VARCHAR"))
+            if "is_suppressed" not in cols:
+                conn.execute(text("ALTER TABLE cerberus_agents ADD COLUMN is_suppressed BOOLEAN DEFAULT 0 NOT NULL"))
+            conn.commit()
+            logging.getLogger(__name__).info("cerberus_agents phase-a migration complete")
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"cerberus_agents phase-a migration: {e}")
 
 
 def _migrate_backfill_task_folders():

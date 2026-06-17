@@ -3,8 +3,8 @@
 Endpoints:
   GET    /api/agents                — list owner's agents (lazy-seeds + back-fills defaults)
   POST   /api/agents                — create an agent
-  PATCH  /api/agents/{id}           — update fields
-  DELETE /api/agents/{id}           — delete
+  PATCH  /api/agents/{id}           — update fields (name, role, agent_type, system_prompt, model_alias, avatar, status)
+  DELETE /api/agents/{id}           — delete (soft-suppress for seeded defaults; hard-delete for custom)
   POST   /api/agents/{id}/invoke    — run agent via the provider-agnostic LLM engine (SSE)
 
 Invocation resolves each agent's model_alias against the owner's configured
@@ -18,7 +18,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -29,6 +29,9 @@ from routes.cerberus_agent_defaults import _DEFAULT_AGENTS
 from src.auth_helpers import require_user
 
 logger = logging.getLogger(__name__)
+
+# Set of names that belong to the seeded defaults — used to choose soft vs hard delete.
+_DEFAULT_NAMES: Set[str] = {d["name"] for d in _DEFAULT_AGENTS}
 
 
 # ---------------------------------------------------------------------------
@@ -89,22 +92,25 @@ def _resolve_agent_endpoint(
 
 
 def _seed_defaults(db, owner: str) -> None:
-    """Insert any missing default agent personas for an owner. Idempotent.
+    """Insert any missing (and non-suppressed) default agent personas for an owner.
 
-    Called on every GET /api/agents so new defaults are back-filled for
-    existing owners without duplicating already-present names.
+    Called on every GET /api/agents — idempotent; skips names that already exist
+    (active or suppressed) so deleted defaults are not resurrected.
     """
+    # One query to get all names already in DB (active + suppressed)
+    existing_names: Set[str] = {
+        row[0] for row in
+        db.query(CerberusAgent.name)
+        .filter(CerberusAgent.owner == owner)
+        .all()
+    }
     for defn in _DEFAULT_AGENTS:
-        existing = (
-            db.query(CerberusAgent)
-            .filter(CerberusAgent.owner == owner, CerberusAgent.name == defn["name"])
-            .first()
-        )
-        if existing:
+        if defn["name"] in existing_names:
             continue
         agent = CerberusAgent(
             id=str(uuid.uuid4()),
             owner=owner,
+            is_suppressed=False,
             **defn,
         )
         db.add(agent)
@@ -132,14 +138,19 @@ class AgentCreate(BaseModel):
     system_prompt: str
     status: Optional[str] = "idle"
     model_alias: Optional[str] = "default"
+    avatar: Optional[str] = ""
 
 
 class AgentPatch(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    agent_type: Optional[str] = None
     status: Optional[str] = None
     current_action: Optional[str] = None
     system_prompt: Optional[str] = None
     model_alias: Optional[str] = None
     score: Optional[int] = None
+    avatar: Optional[str] = None
 
 
 class AgentInvoke(BaseModel):
@@ -158,12 +169,13 @@ def setup_cerberus_agent_routes() -> APIRouter:
         owner = require_user(request)
         db = SessionLocal()
         try:
-            # Always call seed — it's idempotent and back-fills new defaults
-            # for existing owners without duplicating already-present names.
             _seed_defaults(db, owner)
             agents = (
                 db.query(CerberusAgent)
-                .filter(CerberusAgent.owner == owner)
+                .filter(
+                    CerberusAgent.owner == owner,
+                    CerberusAgent.is_suppressed.is_(False),
+                )
                 .order_by(CerberusAgent.created_at)
                 .all()
             )
@@ -174,26 +186,41 @@ def setup_cerberus_agent_routes() -> APIRouter:
     @router.post("")
     def create_agent(request: Request, body: AgentCreate) -> Dict[str, Any]:
         owner = require_user(request)
-        if not body.name.strip():
+        name = (body.name or "").strip()
+        if not name:
             raise HTTPException(400, "Agent name is required")
         db = SessionLocal()
         try:
             existing = (
                 db.query(CerberusAgent)
-                .filter(CerberusAgent.owner == owner, CerberusAgent.name == body.name.strip())
+                .filter(CerberusAgent.owner == owner, CerberusAgent.name == name)
                 .first()
             )
             if existing:
-                raise HTTPException(409, f"Agent '{body.name}' already exists")
+                if existing.is_suppressed:
+                    # Un-suppress: restore the deleted default
+                    existing.is_suppressed = False
+                    existing.role = body.role
+                    existing.agent_type = body.agent_type
+                    existing.system_prompt = body.system_prompt
+                    existing.status = body.status or "idle"
+                    existing.model_alias = body.model_alias or "default"
+                    existing.avatar = body.avatar or ""
+                    db.commit()
+                    db.refresh(existing)
+                    return existing.to_dict()
+                raise HTTPException(409, f"Agent '{name}' already exists")
             agent = CerberusAgent(
                 id=str(uuid.uuid4()),
                 owner=owner,
-                name=body.name.strip(),
+                name=name,
                 role=body.role,
                 agent_type=body.agent_type,
                 system_prompt=body.system_prompt,
                 status=body.status or "idle",
                 model_alias=body.model_alias or "default",
+                avatar=body.avatar or "",
+                is_suppressed=False,
             )
             db.add(agent)
             db.commit()
@@ -214,6 +241,27 @@ def setup_cerberus_agent_routes() -> APIRouter:
         db = SessionLocal()
         try:
             agent = _get_agent_for_owner(db, agent_id, owner)
+            if body.name is not None:
+                new_name = body.name.strip()
+                if not new_name:
+                    raise HTTPException(400, "Agent name cannot be empty")
+                # Check uniqueness (ignore self)
+                clash = (
+                    db.query(CerberusAgent)
+                    .filter(
+                        CerberusAgent.owner == owner,
+                        CerberusAgent.name == new_name,
+                        CerberusAgent.id != agent_id,
+                    )
+                    .first()
+                )
+                if clash:
+                    raise HTTPException(409, f"Agent name '{new_name}' already exists")
+                agent.name = new_name
+            if body.role is not None:
+                agent.role = body.role
+            if body.agent_type is not None:
+                agent.agent_type = body.agent_type
             if body.status is not None:
                 agent.status = body.status
             if body.current_action is not None:
@@ -224,6 +272,8 @@ def setup_cerberus_agent_routes() -> APIRouter:
                 agent.model_alias = body.model_alias
             if body.score is not None:
                 agent.score = body.score
+            if body.avatar is not None:
+                agent.avatar = body.avatar
             db.commit()
             db.refresh(agent)
             return agent.to_dict()
@@ -237,12 +287,23 @@ def setup_cerberus_agent_routes() -> APIRouter:
 
     @router.delete("/{agent_id}")
     def delete_agent(agent_id: str, request: Request) -> Dict[str, Any]:
+        """Delete an agent.
+
+        Seeded defaults are soft-deleted (is_suppressed=True) so the back-fill
+        on GET /api/agents does not resurrect them. Custom agents are hard-deleted.
+        """
         owner = require_user(request)
         db = SessionLocal()
         try:
             agent = _get_agent_for_owner(db, agent_id, owner)
-            db.delete(agent)
-            db.commit()
+            if agent.name in _DEFAULT_NAMES:
+                agent.is_suppressed = True
+                agent.status = "idle"
+                agent.current_action = None
+                db.commit()
+            else:
+                db.delete(agent)
+                db.commit()
             return {"deleted": agent_id}
         except HTTPException:
             raise
@@ -270,8 +331,6 @@ def setup_cerberus_agent_routes() -> APIRouter:
         finally:
             db.close()
 
-        # Resolve endpoint before opening the stream so auth errors surface
-        # immediately rather than mid-stream.
         url, model, headers = _resolve_agent_endpoint(model_alias, owner)
 
         messages = [
