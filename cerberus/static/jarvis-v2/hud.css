@@ -12,6 +12,12 @@
   /* Fixed brand-red — permanent Cerberus signature, never changes with theme */
   --jx2-hud-brand-red: #c0392b;
 
+  /* Neutral wordmark body color — NOT --fg, which carries the theme accent hue
+     (green on forest/terminal, cyan on ocean/cyberpunk, etc.).
+     theme.js toggles :root.light when bg luminance ≥ 50, so this is the right
+     hook for light-bg JS themes (paper, lavender, cute) too. */
+  --jx2-hud-fg-neutral: #e0e0e4;
+
   /* Header / footer depths — follows active theme panel color */
   --jx2-hud-surface:      var(--panel, #111);
   --jx2-hud-border:       var(--jx2-border-default);
@@ -59,6 +65,11 @@
     var(--jx2-crimson-700) 75%,
     transparent
   );
+}
+
+/* Light-bg themes: theme.js sets :root.light when background luminance ≥ 50 */
+:root.light {
+  --jx2-hud-fg-neutral: #2b2b2b;
 }
 
 /* ── Reusable HUD chip component ────────────────────────────────────── */
@@ -167,7 +178,7 @@ body.reduce-hud .sidebar-inner::before {
   font-size: var(--jx2-hud-wordmark-size) !important;
   font-weight: 700 !important;
   letter-spacing: var(--jx2-hud-wordmark-tracking) !important;
-  color: var(--fg, #c5c9d0) !important;
+  color: var(--jx2-hud-fg-neutral) !important;
   text-shadow: var(--jx2-hud-wordmark-glow) !important;
   text-transform: uppercase;
   white-space: nowrap;
