@@ -1,0 +1,324 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/tool-tabs-hud.css
+ * Nexus Core chrome for Command Center inner tab panels.
+ *
+ * Scope: body.jx2-active.
+ * Covers: Gateway (cc-gw-*), Observability (cc-obs-*), Voice call
+ *   (cc-voice-panel), Conference rooms (cc-room-*), Agent-chat header,
+ *   Workspace tab (cc-ws-*). Overrides hardcoded hex values and raw
+ *   rgba() constants with jx2-* design tokens.
+ * ==================================================================== */
+
+/* ── Gateway — section label ──────────────────────────────────────── */
+
+body.jx2-active .cc-section-label {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 7px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-crimson-500) !important;
+}
+
+body.jx2-active .cc-section-label::before {
+  content: "// ";
+  color: var(--jx2-hud-prefix-color);
+  font-weight: 400;
+}
+
+/* ── Gateway — section card backgrounds ──────────────────────────── */
+
+body.jx2-active .cc-gw-section,
+body.jx2-active .cc-gw-form {
+  background: var(--jx2-surface-raised) !important;
+  border-color: var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cc-gw-job-row {
+  background: var(--jx2-surface-base) !important;
+  border-color: var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cc-gw-input {
+  background: var(--jx2-surface-void) !important;
+  border-color: var(--jx2-border-hairline) !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .cc-gw-input:focus {
+  border-color: var(--jx2-crimson-500) !important;
+  box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.15) !important;
+  outline: none !important;
+}
+
+/* Crimson inline error color */
+body.jx2-active .cc-gw-delete-btn:hover {
+  color: var(--jx2-crimson-300) !important;
+  border-color: var(--jx2-crimson-500) !important;
+  background: rgba(192, 57, 43, 0.12) !important;
+}
+
+body.jx2-active .cc-gw-form-error {
+  color: var(--jx2-crimson-300) !important;
+  background: rgba(192, 57, 43, 0.08) !important;
+  border-color: var(--jx2-crimson-600) !important;
+}
+
+body.jx2-active .cc-gw-platform-row {
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+  padding-bottom: 6px !important;
+}
+
+/* ── Observability panel ──────────────────────────────────────────── */
+
+/* Section title: "TOKEN OBSERVABILITY" → mono HUD label */
+body.jx2-active .cc-obs-title {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 7px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.18em !important;
+  color: var(--jx2-crimson-500) !important;
+  opacity: 1 !important;
+}
+
+body.jx2-active .cc-obs-title::before {
+  content: "// ";
+  color: var(--jx2-hud-prefix-color);
+}
+
+body.jx2-active .cc-obs-counter-card {
+  background: var(--jx2-surface-raised) !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+}
+
+/* Replace hardcoded #e74c3c with token crimson */
+body.jx2-active .cc-obs-counter-val {
+  color: var(--jx2-crimson-300) !important;
+  font-family: var(--jx2-font-display) !important;
+}
+
+body.jx2-active .cc-obs-counter-lbl {
+  font-family: var(--jx2-font-mono) !important;
+}
+
+body.jx2-active .cc-obs-split {
+  border-color: var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cc-obs-split-divider {
+  background: var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cc-obs-split-pct {
+  color: var(--jx2-crimson-400) !important;
+}
+
+body.jx2-active .cc-obs-spark-label {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 7px !important;
+  letter-spacing: 0.12em !important;
+}
+
+/* ── Voice call panel (1:1 agent voice chat) ──────────────────────── */
+
+body.jx2-active .cc-voice-header {
+  background: var(--jx2-hud-surface) !important;
+  border-bottom-color: var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cc-voice-back-btn {
+  border-color: var(--jx2-border-hairline) !important;
+  color: var(--jx2-fg-muted) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.06em !important;
+}
+
+body.jx2-active .cc-voice-back-btn:hover {
+  border-color: var(--jx2-crimson-500) !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .cc-voice-state-badge {
+  font-family: var(--jx2-font-mono) !important;
+  border-color: var(--jx2-border-hairline) !important;
+  color: var(--jx2-fg-muted) !important;
+}
+
+body.jx2-active .cc-voice-controls {
+  border-top-color: var(--jx2-border-hairline) !important;
+}
+
+/* Override hardcoded-blue focus/send to crimson */
+body.jx2-active .cc-voice-text-input {
+  background: var(--jx2-surface-void) !important;
+  border-color: var(--jx2-border-hairline) !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .cc-voice-text-input:focus {
+  border-color: var(--jx2-crimson-500) !important;
+  outline: none !important;
+}
+
+body.jx2-active .cc-voice-text-send {
+  border-color: var(--jx2-crimson-600) !important;
+  background: rgba(192, 57, 43, 0.10) !important;
+  color: var(--jx2-crimson-300) !important;
+}
+
+body.jx2-active .cc-voice-text-send:hover {
+  background: rgba(192, 57, 43, 0.20) !important;
+}
+
+body.jx2-active .cc-voice-toggle-text {
+  color: var(--jx2-fg-muted) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+}
+
+body.jx2-active .cc-voice-toggle-text:hover {
+  color: var(--jx2-fg-secondary) !important;
+}
+
+body.jx2-active .cc-voice-turn-label {
+  font-family: var(--jx2-font-mono) !important;
+  letter-spacing: 0.14em !important;
+}
+
+/* ── Agent chat header (1:1 and room) ────────────────────────────── */
+
+body.jx2-active .cc-agent-chat-header {
+  background: var(--jx2-hud-surface) !important;
+  border-bottom-color: var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cc-chat-back-btn {
+  border-color: var(--jx2-border-hairline) !important;
+  color: var(--jx2-fg-muted) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+}
+
+body.jx2-active .cc-chat-back-btn:hover {
+  border-color: var(--jx2-crimson-500) !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+/* ── Conference rooms list ───────────────────────────────────────── */
+
+body.jx2-active .cc-room-card {
+  background: var(--jx2-surface-raised) !important;
+  border-color: var(--jx2-border-hairline) !important;
+  border-left: 2px solid transparent !important;
+  transition: border-left-color var(--jx2-dur-fast) var(--jx2-ease-out),
+              border-color var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .cc-room-card:hover {
+  border-color: var(--jx2-border-default) !important;
+  border-left-color: var(--jx2-hud-hover-border) !important;
+}
+
+body.jx2-active .cc-room-name {
+  font-family: var(--jx2-font-mono) !important;
+}
+
+/* Override blue "Open" button to crimson */
+body.jx2-active .cc-room-open-btn {
+  border-color: var(--jx2-crimson-600) !important;
+  background: rgba(192, 57, 43, 0.06) !important;
+  color: var(--jx2-crimson-300) !important;
+}
+
+body.jx2-active .cc-room-open-btn:hover {
+  background: rgba(192, 57, 43, 0.14) !important;
+}
+
+/* New room form */
+body.jx2-active .cc-room-new-form {
+  background: var(--jx2-surface-raised) !important;
+  border-color: var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cc-room-form-title {
+  color: var(--jx2-crimson-400) !important;
+}
+
+body.jx2-active .cc-room-new-form input {
+  background: var(--jx2-surface-void) !important;
+  border-color: var(--jx2-border-hairline) !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .cc-room-new-form input:focus {
+  border-color: var(--jx2-crimson-500) !important;
+  outline: none !important;
+}
+
+/* Agent toggle pills — override blue checked state */
+body.jx2-active .cc-room-agent-toggle {
+  border-color: var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cc-room-agent-toggle:hover {
+  border-color: var(--jx2-border-default) !important;
+}
+
+body.jx2-active .cc-room-agent-toggle:has(input:checked) {
+  border-color: var(--jx2-crimson-600) !important;
+  background: rgba(192, 57, 43, 0.08) !important;
+}
+
+body.jx2-active .cc-room-agent-toggle input:checked ~ .cc-room-agent-toggle-name {
+  color: var(--jx2-crimson-300) !important;
+}
+
+/* Room chat header */
+body.jx2-active .cc-room-chat-clear-btn {
+  border-color: var(--jx2-border-hairline) !important;
+  color: var(--jx2-fg-muted) !important;
+  font-family: var(--jx2-font-mono) !important;
+}
+
+body.jx2-active .cc-room-chat-clear-btn:hover {
+  border-color: var(--jx2-crimson-500) !important;
+  color: var(--jx2-crimson-300) !important;
+}
+
+/* Mode badge: "ROUTED" (was blue) → crimson */
+body.jx2-active .cc-room-mode-routed {
+  border-color: var(--jx2-crimson-600) !important;
+  color: var(--jx2-crimson-300) !important;
+}
+
+/* ── Workspace tab ────────────────────────────────────────────────── */
+
+body.jx2-active .cc-ws-item {
+  background: var(--jx2-surface-raised) !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  padding: 8px 10px !important;
+}
+
+body.jx2-active .cc-ws-item-row {
+  border-bottom-color: var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cc-ws-label {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 10px !important;
+  color: var(--jx2-fg-secondary) !important;
+}
+
+body.jx2-active .cc-ws-meta {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  color: var(--jx2-fg-muted) !important;
+  opacity: 1 !important;
+}
+
+/* ── Reduced-motion ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  body.jx2-active .cc-room-card { transition: none !important; }
+}
