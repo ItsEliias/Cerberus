@@ -1,0 +1,479 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/shell-panels-hud.css
+ * Nexus Core chrome for shell panels and HQ modals.
+ *
+ * Scope: body.jx2-active.
+ * Covers:
+ *   1. Projects panel (content: toolbar, project grid, cards, forms)
+ *   2. Finance panel (tabs, overview cards, transaction rows)
+ *   3. System Monitor panel (sysmon grid rows, values)
+ *   4. Agents HQ / Cerberus Office (header, network, briefing strip)
+ *   5. HQ modals content (project summary, reasoning audit, report, council)
+ *   6. Setup wizard
+ *   7. Cerberus project buttons (shared CTA style)
+ * ==================================================================== */
+
+/* ────────────────────────────────────────────────────────────────────
+ *  1. PROJECTS PANEL
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Projects toolbar */
+body.jx2-active .cerberus-projects-toolbar {
+  background: var(--jx2-surface-raised) !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+  padding: 8px 12px !important;
+}
+
+/* Project grid cards */
+body.jx2-active .cerberus-projects-grid {
+  background: var(--jx2-surface-base) !important;
+}
+
+body.jx2-active .cerberus-project-card {
+  background: var(--jx2-surface-raised) !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  border-left: 2px solid transparent !important;
+  border-radius: var(--jx2-radius-md) !important;
+  transition: border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+              box-shadow var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .cerberus-project-card:hover {
+  border-left-color: var(--jx2-hud-hover-border) !important;
+  box-shadow: var(--jx2-glow-panel-hover) !important;
+}
+
+body.jx2-active .cerberus-project-card.active,
+body.jx2-active .cerberus-project-card[aria-selected="true"] {
+  border-left-color: var(--jx2-crimson-500) !important;
+  background: var(--jx2-hud-active-bg) !important;
+}
+
+body.jx2-active .cerberus-project-card-name {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .cerberus-project-card-type,
+body.jx2-active .cerberus-project-card-status {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  color: var(--jx2-fg-muted) !important;
+  letter-spacing: 0.10em !important;
+  text-transform: uppercase !important;
+}
+
+/* Detail view */
+body.jx2-active .cerberus-projects-detail {
+  background: var(--jx2-surface-base) !important;
+  border-left: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cerberus-projects-detail-name {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .cerberus-projects-changes {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  color: var(--jx2-fg-muted) !important;
+}
+
+/* Workspace details section */
+body.jx2-active .cerberus-workspace-section > summary {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-fg-muted) !important;
+  cursor: pointer;
+  padding: 6px 0 !important;
+  border-top: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cerberus-workspace-section > summary::before {
+  content: "// ";
+  color: var(--jx2-crimson-500);
+}
+
+body.jx2-active .cerberus-workspace-mount-badge {
+  background: var(--jx2-status-active-tint) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+  color: var(--jx2-status-active) !important;
+  border-radius: var(--jx2-radius-pill) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+}
+
+/* ── Project / workspace CTA buttons (shared) ─────────────────────── */
+
+body.jx2-active .cerberus-project-btn {
+  background: transparent !important;
+  border: 1px solid var(--jx2-border-default) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--jx2-fg-secondary) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.08em !important;
+  transition: background var(--jx2-dur-fast) var(--jx2-ease-out),
+              border-color var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .cerberus-project-btn:hover {
+  background: rgba(192, 57, 43, 0.08) !important;
+  border-color: var(--jx2-border-glow) !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .cerberus-project-btn--primary {
+  background: var(--jx2-crimson-500) !important;
+  border-color: var(--jx2-crimson-500) !important;
+  color: #ffffff !important;
+}
+
+body.jx2-active .cerberus-project-btn--primary:hover {
+  background: var(--jx2-crimson-400) !important;
+  box-shadow: 0 0 16px rgba(192, 57, 43, 0.35) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  2. FINANCE PANEL
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .cerberus-finance-tabs {
+  background: var(--jx2-surface-raised) !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cerberus-finance-tab {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.10em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-fg-muted) !important;
+  border-bottom: 2px solid transparent !important;
+  transition: color var(--jx2-dur-fast) var(--jx2-ease-out),
+              border-color var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .cerberus-finance-tab:hover {
+  color: var(--jx2-fg-secondary) !important;
+}
+
+body.jx2-active .cerberus-finance-tab.active,
+body.jx2-active .cerberus-finance-tab[aria-selected="true"] {
+  color: var(--jx2-fg-primary) !important;
+  border-bottom-color: var(--jx2-crimson-500) !important;
+}
+
+/* Overview stat cards */
+body.jx2-active .cerberus-finance-overview-cards {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+
+body.jx2-active .cerberus-finance-stat-card {
+  background: var(--jx2-surface-raised) !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  border-top: 1px solid var(--jx2-border-default) !important;
+  border-radius: var(--jx2-radius-md) !important;
+}
+
+body.jx2-active .cerberus-finance-stat-label {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 7px !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-fg-muted) !important;
+}
+
+body.jx2-active .cerberus-finance-stat-label::before {
+  content: "// ";
+  color: var(--jx2-crimson-500);
+}
+
+body.jx2-active .cerberus-finance-stat-value {
+  font-family: var(--jx2-font-display) !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: var(--jx2-fg-primary) !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* Transaction rows */
+body.jx2-active .cerberus-finance-row {
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 10px !important;
+  transition: background var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .cerberus-finance-row:hover {
+  background: rgba(192, 57, 43, 0.05) !important;
+}
+
+body.jx2-active .cerberus-finance-amount-positive {
+  color: var(--jx2-status-active) !important;
+  font-family: var(--jx2-font-mono) !important;
+}
+
+body.jx2-active .cerberus-finance-amount-negative {
+  color: var(--jx2-status-alert) !important;
+  font-family: var(--jx2-font-mono) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  3. SYSTEM MONITOR PANEL
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .cerberus-sysmon-body {
+  background: var(--jx2-surface-base) !important;
+}
+
+body.jx2-active .cerberus-sysmon-grid {
+  background: var(--jx2-surface-raised) !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  border-radius: var(--jx2-radius-md) !important;
+}
+
+body.jx2-active .cerberus-sysmon-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 6px 12px !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cerberus-sysmon-row:last-child {
+  border-bottom: none !important;
+}
+
+body.jx2-active .cerberus-sysmon-label {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.10em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-fg-muted) !important;
+}
+
+body.jx2-active .cerberus-sysmon-label::before {
+  content: "// ";
+  color: var(--jx2-crimson-500);
+}
+
+body.jx2-active .cerberus-sysmon-value {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--jx2-fg-primary) !important;
+  letter-spacing: 0.04em !important;
+}
+
+body.jx2-active .cerberus-sysmon-note {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  color: var(--jx2-fg-muted) !important;
+  margin-top: 8px !important;
+  line-height: 1.5 !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  4. AGENTS HQ / CERBERUS OFFICE
+ *  The full-screen HQ section and its header.
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .cerberus-agents-header,
+body.jx2-active .cerberus-hq-header {
+  background: var(--jx2-hud-surface) !important;
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+}
+
+body.jx2-active .cerberus-agents-title {
+  font-family: var(--jx2-font-display) !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .cerberus-agents-subtitle {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  color: var(--jx2-crimson-500) !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+}
+
+body.jx2-active .cerberus-agents-subtitle::before {
+  content: "// ";
+}
+
+/* Briefing strip */
+body.jx2-active .cerberus-hq-briefing-strip {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  color: var(--jx2-fg-secondary) !important;
+  letter-spacing: 0.06em !important;
+}
+
+/* Network section label */
+body.jx2-active .cerberus-agents-network-label {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-fg-muted) !important;
+}
+
+body.jx2-active .cerberus-agents-network-label::before {
+  content: "// ";
+  color: var(--jx2-crimson-500);
+}
+
+/* Core hub button */
+body.jx2-active .cerberus-council-hub,
+body.jx2-active .cerberus-agents-core-hub {
+  border: 1px solid var(--jx2-border-glow) !important;
+  box-shadow: 0 0 20px rgba(192, 57, 43, 0.20) !important;
+  transition: box-shadow var(--jx2-dur-normal) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .cerberus-council-hub:hover,
+body.jx2-active .cerberus-agents-core-hub:hover {
+  box-shadow: 0 0 36px rgba(192, 57, 43, 0.35),
+              0 0 0 1px var(--jx2-crimson-500) !important;
+}
+
+body.jx2-active .cerberus-agents-core-label {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.08em !important;
+  color: var(--jx2-fg-primary) !important;
+  text-transform: uppercase !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  5. HQ MODAL CONTENT (project summary, reasoning audit, report, council)
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Reasoning audit body */
+body.jx2-active .cerberus-reasoning-audit-body {
+  background: var(--jx2-surface-base) !important;
+}
+
+body.jx2-active .cerberus-reasoning-audit-body pre,
+body.jx2-active .cerberus-reasoning-audit-body code {
+  background: var(--jx2-surface-void) !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 11px !important;
+}
+
+/* Report modal */
+body.jx2-active .cerberus-report-badges {
+  display: flex; flex-wrap: wrap; gap: 5px;
+}
+
+body.jx2-active .cerberus-report-badge {
+  background: var(--jx2-surface-raised) !important;
+  border: 1px solid var(--jx2-border-default) !important;
+  border-radius: var(--jx2-radius-pill) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 7px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-fg-muted) !important;
+}
+
+body.jx2-active .cerberus-report-context {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  color: var(--jx2-fg-muted) !important;
+  letter-spacing: 0.06em !important;
+}
+
+body.jx2-active .cerberus-report-summary {
+  font-family: var(--jx2-font-body) !important;
+  font-size: 13px !important;
+  color: var(--jx2-fg-primary) !important;
+  line-height: 1.6 !important;
+}
+
+body.jx2-active .cerberus-report-body {
+  font-family: var(--jx2-font-body) !important;
+  font-size: 13px !important;
+  color: var(--jx2-fg-secondary) !important;
+  line-height: 1.7 !important;
+}
+
+body.jx2-active .cerberus-report-actions {
+  background: var(--jx2-surface-raised) !important;
+  border-top: 1px solid var(--jx2-border-hairline) !important;
+}
+
+/* Council modal body */
+body.jx2-active .cerberus-council-modal-body {
+  background: var(--jx2-surface-base) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  6. SETUP WIZARD
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .cerberus-setup-wizard {
+  background: var(--jx2-surface-modal) !important;
+  border: 1px solid var(--jx2-hud-border) !important;
+  border-top: 1px solid var(--jx2-border-glow) !important;
+  box-shadow: var(--jx2-glow-lift), var(--jx2-glow-ambient) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+body.jx2-active .cerberus-setup-wizard-header {
+  background: var(--jx2-hud-surface) !important;
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+}
+
+body.jx2-active .cerberus-setup-wizard-title {
+  font-family: var(--jx2-font-display) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.10em !important;
+  color: var(--jx2-fg-primary) !important;
+  text-transform: uppercase !important;
+}
+
+body.jx2-active .cerberus-setup-wizard-step {
+  border-left: 2px solid transparent !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .cerberus-setup-wizard-step.active {
+  border-left-color: var(--jx2-crimson-500) !important;
+  background: var(--jx2-hud-active-bg) !important;
+}
+
+body.jx2-active .cerberus-setup-wizard-step.done {
+  border-left-color: var(--jx2-status-active) !important;
+}
+
+body.jx2-active .cerberus-setup-wizard-step-label {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.10em !important;
+  text-transform: uppercase !important;
+}
+
+/* ── Reduced-motion ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  body.jx2-active .cerberus-project-card,
+  body.jx2-active .cerberus-finance-tab,
+  body.jx2-active .cerberus-finance-row,
+  body.jx2-active .cerberus-council-hub {
+    transition: none !important;
+  }
+}
