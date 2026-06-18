@@ -68,7 +68,7 @@ function _buildPanel() {
 
         <!-- ── Hero counters ─────────────────────────────────── -->
         <div class="dash-hero-row">
-          <div class="dash-hero-stat">
+          <div class="dash-hero-stat" data-hero="sessions">
             <div class="dash-hero-num" id="dash-cnt-sessions" aria-live="polite">—</div>
             <div class="dash-hero-label">TOTAL SESSIONS</div>
             <div class="dash-hero-sub" id="dash-datetime"></div>
@@ -78,7 +78,7 @@ function _buildPanel() {
             </div>
           </div>
           <div class="dash-hero-divider" aria-hidden="true"></div>
-          <div class="dash-hero-stat">
+          <div class="dash-hero-stat" data-hero="tokens">
             <div class="dash-hero-num dash-hero-num--tok" id="dash-usage-total" aria-live="polite">—</div>
             <div class="dash-hero-label">TOTAL TOKENS</div>
             <div class="dash-hero-sub" id="dash-token-cost">—</div>
@@ -92,17 +92,17 @@ function _buildPanel() {
         <!-- ── Token flow graph band ─────────────────────────── -->
         <div class="dash-graph-band">
           <div class="dash-graph-header">
-            <span class="dash-section-title">TOKEN FLOW · LAST 30 DAYS</span>
+            <span class="dash-section-title">TOKEN FLOW · LAST 24H</span>
             <div class="dash-graph-meta" id="dash-graph-meta" aria-hidden="true">
               <span>PEAK&thinsp;<span id="dash-graph-peak">—</span></span>
               <span>AVG&thinsp;<span id="dash-graph-avg">—</span></span>
             </div>
           </div>
           <div class="dash-graph-wrap">
-            <canvas id="dash-usage-canvas" aria-label="Token usage last 30 days" role="img"></canvas>
+            <canvas id="dash-usage-canvas" aria-label="Token usage graph" role="img"></canvas>
           </div>
           <div class="dash-graph-axis" aria-hidden="true">
-            <span>30D AGO</span><span>15D AGO</span><span>NOW</span>
+            <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>now</span>
           </div>
         </div>
 
@@ -512,15 +512,23 @@ function _animCounter(id, to, suffix) {
 // Token flow graph — draws in from left on load, respects tab visibility.
 function _drawTokenFlowGraph(canvas, byDay) {
   if (!canvas) return;
-  // Graceful fallback when no data: a low-activity reference curve
+  // Defer one rAF to guarantee flex layout has been measured
+  requestAnimationFrame(() => _drawTokenFlowGraphImmediate(canvas, byDay));
+}
+
+function _drawTokenFlowGraphImmediate(canvas, byDay) {
+  if (!canvas || !document.getElementById(PANEL_ID)) return;
+  // Graceful fallback when no data: a flat low-activity reference baseline
   const raw = byDay.length
     ? byDay.slice(-30).map(d => d.tokens || 0)
-    : Array.from({length: 14}, (_, i) => Math.round(1200 + Math.sin(i * 0.9) * 600));
+    : Array.from({length: 24}, (_, i) => Math.round(800 + Math.sin(i * 0.55) * 400 + i * 12));
 
   const parent = canvas.parentElement;
-  const W  = (parent?.clientWidth || 800);
-  const H  = 120;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  // getBoundingClientRect is reliable inside overflow/flex; clientWidth can be 0 before first paint
+  const rect = parent?.getBoundingClientRect();
+  const W    = (rect && rect.width > 10 ? rect.width : parent?.clientWidth || 900);
+  const H    = 130;
+  const dpr  = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width  = Math.floor(W * dpr);
   canvas.height = Math.floor(H * dpr);
   canvas.style.width  = W + 'px';
