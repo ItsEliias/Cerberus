@@ -1,9 +1,7 @@
 /**
- * agents.js — AGENTS/SWARM sub-tab for Command Center.
- *
- * Phase 1 — Jarvis-v2 cards, deterministic sigils, expand/details panel,
- *            grouped by category (CORE / SECURITY / OPS / DATA / COMMS / CUSTOM).
- * Phase 2 — "Chat" button on each card opens a persistent 1:1 thread (chat.js).
+ * agents.js — AGENTS tab for Command Center.
+ * Variant A — Dense Roster Table: compact columnar rows grouped by category,
+ * expand-on-click detail panel with inline invoke + edit + memory.
  */
 
 import { openAgentChat } from './chat.js';
@@ -15,53 +13,51 @@ function _esc(s) {
 }
 
 const STATUS_META = {
-  active:  { cls: 'cc-ag-status--active',  label: 'ACTIVE'   },
-  idle:    { cls: 'cc-ag-status--idle',    label: 'IDLE'     },
-  alert:   { cls: 'cc-ag-status--alert',   label: 'ALERT'    },
-  standby: { cls: 'cc-ag-status--standby', label: 'STANDBY'  },
-  ready:   { cls: 'cc-ag-status--ready',   label: 'READY'    },
+  active:  { label: 'ACTIVE'   },
+  idle:    { label: 'IDLE'     },
+  alert:   { label: 'ALERT'    },
+  standby: { label: 'STANDBY'  },
+  ready:   { label: 'READY'    },
 };
-
-function _statusMeta(status) {
-  return STATUS_META[status] || { cls: 'cc-ag-status--idle', label: (status || 'UNKNOWN').toUpperCase() };
+function _statusLabel(status) {
+  return (STATUS_META[status] || { label: (status || 'UNKNOWN').toUpperCase() }).label;
 }
 
 // ---------------------------------------------------------------------------
-// Category map
+// Category config
 // ---------------------------------------------------------------------------
 
 const CATEGORY_MAP = {
+  ORCHESTRATOR: 'COORDINATOR',
   ARCHITECT: 'CORE', CODER: 'CORE', TESTER: 'CORE', RESEARCHER: 'CORE', REVIEWER: 'CORE',
   SECURITY: 'SECURITY',
-  ORCHESTRATOR: 'OPS', DEVOPS: 'OPS', DEBUGGER: 'OPS', PLANNER: 'OPS',
+  DEVOPS: 'OPS', DEBUGGER: 'OPS', PLANNER: 'OPS',
   'DATA-ANALYST': 'DATA', LIBRARIAN: 'DATA', OPTIMIZER: 'DATA',
   SCRIBE: 'COMMS', DESIGNER: 'COMMS', PROMPTSMITH: 'COMMS',
 };
 
 const CAT_ACCENT = {
-  CORE:     '#3498db',
-  SECURITY: '#e74c3c',
-  OPS:      '#e67e22',
-  DATA:     '#2ecc71',
-  COMMS:    '#9b59b6',
-  CUSTOM:   'rgba(197,201,208,0.45)',
+  COORDINATOR: '#c0392b',
+  CORE:        '#3498db',
+  SECURITY:    '#e74c3c',
+  OPS:         '#e67e22',
+  DATA:        '#2ecc71',
+  COMMS:       '#9b59b6',
+  CUSTOM:      'rgba(197,201,208,0.45)',
 };
 
-const CAT_ORDER = ['CORE', 'SECURITY', 'OPS', 'DATA', 'COMMS', 'CUSTOM'];
+const CAT_ORDER = ['COORDINATOR', 'CORE', 'SECURITY', 'OPS', 'DATA', 'COMMS', 'CUSTOM'];
 
 function _getCategory(name) {
   return CATEGORY_MAP[(name || '').toUpperCase()] || 'CUSTOM';
 }
 
-// Deterministic color from name, styled initial sigil
-function _sigil(agent) {
+function _sigilBg(agent) {
   let h = 0;
   const n = agent.name || '?';
   for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) >>> 0;
   const PALETTE = ['#2980b9','#e67e22','#27ae60','#8e44ad','#16a085','#c0392b','#d35400','#2c3e50'];
-  const bg = PALETTE[h % PALETTE.length];
-  const glyph = agent.avatar || n[0];
-  return `<span class="cc-ag-sigil" style="background:${bg}">${_esc(glyph)}</span>`;
+  return PALETTE[h % PALETTE.length];
 }
 
 function _groupAgents(agents) {
@@ -74,51 +70,81 @@ function _groupAgents(agents) {
 }
 
 // ---------------------------------------------------------------------------
-// Card HTML
+// Row HTML
 // ---------------------------------------------------------------------------
 
-function _agentCard(agent) {
-  const { cls, label } = _statusMeta(agent.status);
-  const score   = (agent.score > 0) ? `<span class="cc-ag-score">${_esc(agent.score)}</span>` : '';
-  const accent  = CAT_ACCENT[_getCategory(agent.name)] || CAT_ACCENT.CUSTOM;
-  const inTok   = agent.total_input_tokens  || 0;
-  const outTok  = agent.total_output_tokens || 0;
-  const lastAt  = agent.last_active_at
-    ? new Date(agent.last_active_at + 'Z').toLocaleString() : null;
-  const snip    = (agent.system_prompt || '').slice(0, 180);
-  const hasMore = (agent.system_prompt || '').length > 180;
-  const id      = _esc(agent.id);
+function _agentRow(agent) {
+  const id     = _esc(agent.id);
+  const status = agent.status || 'idle';
+  const bg     = _sigilBg(agent);
+  const glyph  = _esc(agent.avatar || (agent.name || '?')[0]);
+  const score  = agent.score > 0 ? _esc(agent.score) : '—';
+  const accent = CAT_ACCENT[_getCategory(agent.name)] || CAT_ACCENT.CUSTOM;
   return `
-<div class="cc-ag-card cc-ag-card--v2" data-agent-id="${id}" data-agent-name="${_esc(agent.name || '')}" data-agent-avatar="${_esc(agent.avatar || '')}" data-cat-accent="${accent}" data-tts-voice="${_esc(agent.tts_voice || '')}" style="--cat-accent:${accent}">
-  <div class="jx2-bracket-tl"></div>
-  <div class="jx2-bracket-br"></div>
-  <div class="cc-ag-card-header">
-    ${_sigil(agent)}
-    <span class="cc-ag-name">${_esc(agent.name || agent.id)}</span>
-    <span class="cc-ag-status ${cls}">${label}</span>
-    <button class="cc-ag-expand-btn" data-target="cc-ag-details-${id}" title="Details">›</button>
-  </div>
-  <div class="cc-ag-card-meta">
-    <span class="cc-ag-role">${_esc(agent.role || agent.agent_type || '—')}</span>
-    <span class="cc-ag-type-badge">${_esc(agent.agent_type || '—')}</span>
-    ${score}
-  </div>
-  ${agent.model_alias ? `<div class="cc-ag-model-chip">${_esc(agent.model_alias)}</div>` : ''}
-  <div class="cc-ag-details" id="cc-ag-details-${id}" style="display:none">
-    <div class="cc-ag-details-prompt">${_esc(snip)}${hasMore ? '…' : ''}</div>
-    <div class="cc-ag-details-stats">
-      <span title="input tokens">↑ ${inTok.toLocaleString()}</span>
-      <span title="output tokens">↓ ${outTok.toLocaleString()}</span>
-      ${lastAt ? `<span class="cc-ag-last-active">${_esc(lastAt)}</span>` : ''}
+<div class="cc-agent-row" data-id="${id}" data-status="${_esc(status)}" data-agent-name="${_esc(agent.name || '')}" data-agent-avatar="${_esc(agent.avatar || '')}" data-cat-accent="${_esc(accent)}" data-tts-voice="${_esc(agent.tts_voice || '')}">
+  <span class="cc-status-pip ${_esc(status)}"></span>
+  <span class="cc-row-sigil" style="background:${_esc(bg)}">${glyph}</span>
+  <span class="cc-row-name">${_esc(agent.name || agent.id)}</span>
+  <span class="cc-row-role">${_esc(agent.role || agent.agent_type || '—')}</span>
+  <span class="cc-row-model">${_esc(agent.model_alias || '—')}</span>
+  <span class="cc-row-score">${score}</span>
+  <span class="cc-row-actions">
+    <button class="cc-row-btn cc-row-btn-chat">Chat</button>
+    <button class="cc-row-btn cc-row-btn-invoke">Run</button>
+    <div class="cc-overflow-wrap">
+      <button class="cc-row-btn cc-row-btn-overflow">···</button>
+      <div class="cc-overflow-menu" id="cc-ov-${id}">
+        <button class="cc-overflow-item cc-ov-call">📞 Call</button>
+        <button class="cc-overflow-item cc-ov-memory">◎ Memory</button>
+        <button class="cc-overflow-item cc-ov-edit">✎ Edit</button>
+        <button class="cc-overflow-item cc-ov-delete danger">✕ Delete</button>
+      </div>
     </div>
-  </div>
-  <div class="cc-ag-card-actions">
-    <button class="cc-ag-chat-btn"   data-agent-id="${id}">Chat</button>
-    <button class="cc-ag-call-btn"   data-agent-id="${id}" title="Voice call">Call</button>
-    <button class="cc-ag-invoke-btn" data-agent-id="${id}">Invoke</button>
-    <button class="cc-ag-memory-btn" data-agent-id="${id}" title="View agent memories">Mem</button>
-    <button class="cc-ag-edit-btn"   data-agent-id="${id}">Edit</button>
-    <button class="cc-ag-delete-btn" data-agent-id="${id}">Del</button>
+  </span>
+</div>`.trim();
+}
+
+function _agentDetail(agent) {
+  const id     = _esc(agent.id);
+  const status = agent.status || 'idle';
+  const label  = _statusLabel(status);
+  const inTok  = agent.total_input_tokens  || 0;
+  const outTok = agent.total_output_tokens || 0;
+  const lastAt = agent.last_active_at
+    ? new Date(agent.last_active_at + 'Z').toLocaleString() : null;
+  const snip   = (agent.system_prompt || '').slice(0, 180);
+  const more   = (agent.system_prompt || '').length > 180;
+  return `
+<div class="cc-agent-detail" id="cc-detail-${id}">
+  <div class="cc-detail-grid">
+    <div class="cc-detail-section">
+      <div class="cc-detail-header-row">
+        <span class="cc-detail-status ${_esc(status)}">● ${label}</span>
+        <span class="cc-detail-tokens">↑ ${inTok.toLocaleString()} ↓ ${outTok.toLocaleString()}</span>
+        ${lastAt ? `<span class="cc-detail-last-active">${_esc(lastAt)}</span>` : ''}
+      </div>
+      <div class="cc-detail-label">System Prompt</div>
+      <div class="cc-detail-prompt">${_esc(snip)}${more ? '…' : ''}</div>
+    </div>
+    <div class="cc-detail-section">
+      <div class="cc-detail-label">Quick Actions</div>
+      <div class="cc-detail-actions">
+        <button class="cc-detail-btn cc-detail-btn-primary cc-detail-chat-btn">Chat ›</button>
+        <button class="cc-detail-btn cc-detail-btn-primary cc-detail-invoke-btn">Invoke ›</button>
+        <button class="cc-detail-btn cc-detail-btn-secondary cc-detail-call-btn">📞 Call</button>
+        <button class="cc-detail-btn cc-detail-btn-secondary cc-detail-memory-btn">◎ Memory</button>
+        <button class="cc-detail-btn cc-detail-btn-secondary cc-detail-edit-btn">✎ Edit</button>
+        <button class="cc-detail-btn cc-detail-btn-secondary cc-detail-btn-danger cc-detail-delete-btn">✕ Del</button>
+      </div>
+      <div class="cc-ag-invoke-form" id="cc-ag-invoke-${id}" style="display:none">
+        <textarea class="cc-ag-invoke-input" placeholder="Enter prompt…" rows="3"></textarea>
+        <div class="cc-ag-invoke-actions">
+          <button class="cc-ag-submit-btn" data-agent-id="${id}">Send</button>
+          <button class="cc-ag-cancel-btn" data-agent-id="${id}">Cancel</button>
+        </div>
+        <div class="cc-ag-result" id="cc-ag-result-${id}"></div>
+      </div>
+    </div>
   </div>
   <div class="cc-ag-memory-panel" id="cc-ag-memory-${id}" style="display:none">
     <div class="cc-ag-memory-header">
@@ -126,14 +152,6 @@ function _agentCard(agent) {
       <button class="cc-ag-memory-close-btn" data-agent-id="${id}">✕</button>
     </div>
     <div class="cc-ag-memory-list" id="cc-ag-memory-list-${id}"></div>
-  </div>
-  <div class="cc-ag-invoke-form" id="cc-ag-invoke-${id}" style="display:none">
-    <textarea class="cc-ag-invoke-input" placeholder="Enter prompt…" rows="3"></textarea>
-    <div class="cc-ag-invoke-actions">
-      <button class="cc-ag-submit-btn" data-agent-id="${id}">Send</button>
-      <button class="cc-ag-cancel-btn" data-agent-id="${id}">Cancel</button>
-    </div>
-    <div class="cc-ag-result" id="cc-ag-result-${id}"></div>
   </div>
   <div class="cc-ag-edit-form" id="cc-ag-edit-${id}" style="display:none">
     <label>Avatar (emoji)</label>
@@ -158,6 +176,10 @@ function _agentCard(agent) {
   </div>
 </div>`.trim();
 }
+
+// ---------------------------------------------------------------------------
+// Create form
+// ---------------------------------------------------------------------------
 
 function _createForm() {
   return `
@@ -184,93 +206,176 @@ function _createForm() {
 }
 
 // ---------------------------------------------------------------------------
-// Wire a single card's interaction buttons
+// Helpers
 // ---------------------------------------------------------------------------
 
-function _wireCard(container, agentId) {
-  const card = container.querySelector(`.cc-ag-card[data-agent-id="${agentId}"]`);
-  if (!card) return;
-
-  const invokeBtn  = card.querySelector('.cc-ag-invoke-btn');
-  const invokeForm = card.querySelector(`#cc-ag-invoke-${agentId}`);
-  const submitBtn  = card.querySelector('.cc-ag-submit-btn');
-  const cancelBtn  = card.querySelector('.cc-ag-cancel-btn');
-  const textarea   = card.querySelector('.cc-ag-invoke-input');
-  const result     = card.querySelector(`#cc-ag-result-${agentId}`);
-  const editBtn    = card.querySelector('.cc-ag-edit-btn');
-  const editForm   = card.querySelector(`#cc-ag-edit-${agentId}`);
-  const saveBtn    = card.querySelector('.cc-ag-save-btn');
-  const discardBtn = card.querySelector('.cc-ag-discard-btn');
-  const deleteBtn  = card.querySelector('.cc-ag-delete-btn');
-  const chatBtn    = card.querySelector('.cc-ag-chat-btn');
-  const callBtn    = card.querySelector('.cc-ag-call-btn');
-  const memoryBtn  = card.querySelector('.cc-ag-memory-btn');
-  const memPanel   = card.querySelector(`#cc-ag-memory-${agentId}`);
-  const memList    = card.querySelector(`#cc-ag-memory-list-${agentId}`);
-  const memClose   = card.querySelector('.cc-ag-memory-close-btn');
-  const expandBtn  = card.querySelector('.cc-ag-expand-btn');
-  const details    = expandBtn ? card.querySelector(`#${expandBtn.dataset.target}`) : null;
-
-  expandBtn?.addEventListener('click', () => {
-    if (!details) return;
-    const open = details.style.display !== 'none';
-    details.style.display = open ? 'none' : 'block';
-    expandBtn.textContent = open ? '›' : '⌄';
-    expandBtn.classList.toggle('cc-ag-expand-btn--open', !open);
-  });
-
-  memoryBtn?.addEventListener('click', async () => {
-    if (!memPanel) return;
-    const isOpen = memPanel.style.display !== 'none';
-    if (isOpen) { memPanel.style.display = 'none'; return; }
-    memPanel.style.display = 'block';
-    if (memList) await _loadAgentMemories(agentId, memList);
-  });
-  memClose?.addEventListener('click', () => { if (memPanel) memPanel.style.display = 'none'; });
-
-  chatBtn?.addEventListener('click', () => {
-    const name   = card.dataset.agentName   || agentId;
-    const avatar = card.dataset.agentAvatar || '';
-    const accent = card.dataset.catAccent   || 'rgba(197,201,208,0.5)';
-    const voice  = card.dataset.ttsVoice    || '';
-    openAgentChat(container, agentId, name, avatar, accent, voice);
-  });
-
-  callBtn?.addEventListener('click', async () => {
-    const name   = card.dataset.agentName   || agentId;
-    const avatar = card.dataset.agentAvatar || '';
-    const accent = card.dataset.catAccent   || 'rgba(197,201,208,0.5)';
-    const voice  = card.dataset.ttsVoice    || '';
-    const { openVoiceCall } = await import('./voice.js');
-    openVoiceCall(container, agentId, name, avatar, accent, voice);
-  });
-
-  invokeBtn?.addEventListener('click', () => {
-    invokeForm.style.display = invokeForm.style.display === 'none' ? 'block' : 'none';
-    editForm.style.display = 'none';
-  });
-  cancelBtn?.addEventListener('click', () => { invokeForm.style.display = 'none'; result.textContent = ''; });
-  submitBtn?.addEventListener('click', () => _invokeAgent(agentId, textarea, result, submitBtn));
-
-  editBtn?.addEventListener('click', () => {
-    editForm.style.display = editForm.style.display === 'none' ? 'block' : 'none';
-    invokeForm.style.display = 'none';
-  });
-  discardBtn?.addEventListener('click', () => { editForm.style.display = 'none'; });
-  saveBtn?.addEventListener('click', () => _saveAgent(agentId, card, editForm));
-  deleteBtn?.addEventListener('click', () => _deleteAgent(agentId, card));
+function _toggleDetail(row, detail) {
+  const open = detail.classList.toggle('open');
+  row.classList.toggle('expanded', open);
+  row.classList.toggle('is-active', open);
 }
 
-async function _saveAgent(agentId, card, editForm) {
+function _openChat(container, row, agentId) {
+  const name   = row.dataset.agentName   || agentId;
+  const avatar = row.dataset.agentAvatar || '';
+  const accent = row.dataset.catAccent   || 'rgba(197,201,208,0.5)';
+  const voice  = row.dataset.ttsVoice    || '';
+  openAgentChat(container, agentId, name, avatar, accent, voice);
+}
+
+async function _openCall(container, row, agentId) {
+  const name   = row.dataset.agentName   || agentId;
+  const avatar = row.dataset.agentAvatar || '';
+  const accent = row.dataset.catAccent   || 'rgba(197,201,208,0.5)';
+  const voice  = row.dataset.ttsVoice    || '';
+  const { openVoiceCall } = await import('./voice.js');
+  openVoiceCall(container, agentId, name, avatar, accent, voice);
+}
+
+// ---------------------------------------------------------------------------
+// Wire a single row + detail pair
+// ---------------------------------------------------------------------------
+
+function _wireRow(container, agentId) {
+  const row    = container.querySelector(`.cc-agent-row[data-id="${agentId}"]`);
+  const detail = container.querySelector(`#cc-detail-${agentId}`);
+  if (!row || !detail) return;
+
+  // Row body click → expand/collapse detail
+  row.addEventListener('click', e => {
+    if (e.target.closest('.cc-row-actions')) return;
+    _toggleDetail(row, detail);
+  });
+
+  // Row: Chat
+  row.querySelector('.cc-row-btn-chat')?.addEventListener('click', () => {
+    _openChat(container, row, agentId);
+  });
+
+  // Row: Run → open detail + toggle invoke form
+  row.querySelector('.cc-row-btn-invoke')?.addEventListener('click', () => {
+    if (!detail.classList.contains('open')) _toggleDetail(row, detail);
+    const invForm = detail.querySelector(`#cc-ag-invoke-${agentId}`);
+    if (invForm) invForm.style.display = invForm.style.display === 'none' ? 'block' : 'none';
+  });
+
+  // Row: Overflow menu
+  const overflowBtn  = row.querySelector('.cc-row-btn-overflow');
+  const overflowMenu = row.querySelector(`#cc-ov-${agentId}`);
+  if (overflowBtn && overflowMenu) {
+    overflowBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const isOpen = overflowMenu.classList.toggle('open');
+      if (isOpen) {
+        const close = () => { overflowMenu.classList.remove('open'); document.removeEventListener('click', close); };
+        document.addEventListener('click', close);
+      }
+    });
+    overflowMenu.querySelector('.cc-ov-call')?.addEventListener('click', () => {
+      overflowMenu.classList.remove('open');
+      _openCall(container, row, agentId);
+    });
+    overflowMenu.querySelector('.cc-ov-memory')?.addEventListener('click', async () => {
+      overflowMenu.classList.remove('open');
+      if (!detail.classList.contains('open')) _toggleDetail(row, detail);
+      const memPanel = detail.querySelector(`#cc-ag-memory-${agentId}`);
+      const memList  = detail.querySelector(`#cc-ag-memory-list-${agentId}`);
+      if (!memPanel) return;
+      const wasOpen = memPanel.style.display !== 'none';
+      memPanel.style.display = wasOpen ? 'none' : 'block';
+      if (!wasOpen && memList) await _loadAgentMemories(agentId, memList);
+    });
+    overflowMenu.querySelector('.cc-ov-edit')?.addEventListener('click', () => {
+      overflowMenu.classList.remove('open');
+      if (!detail.classList.contains('open')) _toggleDetail(row, detail);
+      const editForm = detail.querySelector(`#cc-ag-edit-${agentId}`);
+      if (editForm) editForm.style.display = editForm.style.display === 'none' ? 'block' : 'none';
+    });
+    overflowMenu.querySelector('.cc-ov-delete')?.addEventListener('click', () => {
+      overflowMenu.classList.remove('open');
+      _deleteAgent(agentId, row);
+    });
+  }
+
+  // Detail: Chat
+  detail.querySelector('.cc-detail-chat-btn')?.addEventListener('click', () => {
+    _openChat(container, row, agentId);
+  });
+
+  // Detail: Invoke toggle
+  detail.querySelector('.cc-detail-invoke-btn')?.addEventListener('click', () => {
+    const invForm = detail.querySelector(`#cc-ag-invoke-${agentId}`);
+    if (invForm) invForm.style.display = invForm.style.display === 'none' ? 'block' : 'none';
+  });
+
+  // Detail: Call
+  detail.querySelector('.cc-detail-call-btn')?.addEventListener('click', () => {
+    _openCall(container, row, agentId);
+  });
+
+  // Detail: Memory toggle
+  detail.querySelector('.cc-detail-memory-btn')?.addEventListener('click', async () => {
+    const memPanel = detail.querySelector(`#cc-ag-memory-${agentId}`);
+    const memList  = detail.querySelector(`#cc-ag-memory-list-${agentId}`);
+    if (!memPanel) return;
+    const wasOpen = memPanel.style.display !== 'none';
+    memPanel.style.display = wasOpen ? 'none' : 'block';
+    if (!wasOpen && memList) await _loadAgentMemories(agentId, memList);
+  });
+
+  // Detail: Edit toggle
+  detail.querySelector('.cc-detail-edit-btn')?.addEventListener('click', () => {
+    const editForm = detail.querySelector(`#cc-ag-edit-${agentId}`);
+    const invForm  = detail.querySelector(`#cc-ag-invoke-${agentId}`);
+    if (editForm) editForm.style.display = editForm.style.display === 'none' ? 'block' : 'none';
+    if (invForm)  invForm.style.display  = 'none';
+  });
+
+  // Detail: Delete
+  detail.querySelector('.cc-detail-delete-btn')?.addEventListener('click', () => {
+    _deleteAgent(agentId, row);
+  });
+
+  // Invoke form
+  const invokeForm = detail.querySelector(`#cc-ag-invoke-${agentId}`);
+  const textarea   = invokeForm?.querySelector('.cc-ag-invoke-input');
+  const result     = detail.querySelector(`#cc-ag-result-${agentId}`);
+  const submitBtn  = invokeForm?.querySelector('.cc-ag-submit-btn');
+  const cancelBtn  = invokeForm?.querySelector('.cc-ag-cancel-btn');
+  submitBtn?.addEventListener('click', () => _invokeAgent(agentId, textarea, result, submitBtn));
+  cancelBtn?.addEventListener('click', () => {
+    if (invokeForm) invokeForm.style.display = 'none';
+    if (result)     result.textContent = '';
+  });
+
+  // Edit form
+  const editForm   = detail.querySelector(`#cc-ag-edit-${agentId}`);
+  const saveBtn    = editForm?.querySelector('.cc-ag-save-btn');
+  const discardBtn = editForm?.querySelector('.cc-ag-discard-btn');
+  saveBtn?.addEventListener('click', () => _saveAgent(agentId, row, detail, editForm));
+  discardBtn?.addEventListener('click', () => { if (editForm) editForm.style.display = 'none'; });
+
+  // Memory panel close
+  detail.querySelector('.cc-ag-memory-close-btn')?.addEventListener('click', () => {
+    const memPanel = detail.querySelector(`#cc-ag-memory-${agentId}`);
+    if (memPanel) memPanel.style.display = 'none';
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Save / Delete / Invoke
+// ---------------------------------------------------------------------------
+
+async function _saveAgent(agentId, row, detail, editForm) {
   const msgEl = editForm.querySelector(`#cc-ag-edit-msg-${agentId}`);
   const body = {
-    name:         editForm.querySelector('.cc-ag-edit-name')?.value?.trim(),
-    role:         editForm.querySelector('.cc-ag-edit-role')?.value?.trim(),
-    agent_type:   editForm.querySelector('.cc-ag-edit-agent-type')?.value?.trim(),
-    model_alias:  editForm.querySelector('.cc-ag-edit-model')?.value?.trim() || 'default',
+    name:          editForm.querySelector('.cc-ag-edit-name')?.value?.trim(),
+    role:          editForm.querySelector('.cc-ag-edit-role')?.value?.trim(),
+    agent_type:    editForm.querySelector('.cc-ag-edit-agent-type')?.value?.trim(),
+    model_alias:   editForm.querySelector('.cc-ag-edit-model')?.value?.trim() || 'default',
     system_prompt: editForm.querySelector('.cc-ag-edit-prompt')?.value ?? '',
-    avatar:       editForm.querySelector('.cc-ag-edit-avatar')?.value?.trim() || '',
-    tts_voice:    editForm.querySelector('.cc-ag-edit-tts-voice')?.value?.trim() || '',
+    avatar:        editForm.querySelector('.cc-ag-edit-avatar')?.value?.trim() || '',
+    tts_voice:     editForm.querySelector('.cc-ag-edit-tts-voice')?.value?.trim() || '',
   };
   if (!body.name) { if (msgEl) msgEl.textContent = 'Name is required'; return; }
   try {
@@ -281,16 +386,22 @@ async function _saveAgent(agentId, card, editForm) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
-    const nameEl  = card.querySelector('.cc-ag-name');
-    const roleEl  = card.querySelector('.cc-ag-role');
-    const typeEl  = card.querySelector('.cc-ag-type-badge');
-    const modelEl = card.querySelector('.cc-ag-model-chip');
-    const sigilEl = card.querySelector('.cc-ag-sigil');
+    const nameEl  = row.querySelector('.cc-row-name');
+    const roleEl  = row.querySelector('.cc-row-role');
+    const modelEl = row.querySelector('.cc-row-model');
+    const sigilEl = row.querySelector('.cc-row-sigil');
     if (nameEl)  nameEl.textContent  = data.name  || '';
     if (roleEl)  roleEl.textContent  = data.role  || data.agent_type || '—';
-    if (typeEl)  typeEl.textContent  = data.agent_type || '—';
     if (modelEl) modelEl.textContent = data.model_alias || 'default';
     if (sigilEl) sigilEl.textContent = data.avatar || (data.name || '?')[0];
+    const promptEl = detail.querySelector('.cc-detail-prompt');
+    if (promptEl && data.system_prompt != null) {
+      const snip = (data.system_prompt || '').slice(0, 180);
+      promptEl.textContent = snip + ((data.system_prompt || '').length > 180 ? '…' : '');
+    }
+    if (data.name)           row.dataset.agentName   = data.name;
+    if (data.avatar)         row.dataset.agentAvatar = data.avatar;
+    if (data.tts_voice != null) row.dataset.ttsVoice = data.tts_voice;
     editForm.style.display = 'none';
     if (msgEl) msgEl.textContent = '';
   } catch (e) {
@@ -298,8 +409,8 @@ async function _saveAgent(agentId, card, editForm) {
   }
 }
 
-async function _deleteAgent(agentId, card) {
-  const name = card.querySelector('.cc-ag-name')?.textContent || 'this agent';
+async function _deleteAgent(agentId, row) {
+  const name = row.querySelector('.cc-row-name')?.textContent || 'this agent';
   if (!confirm(`Delete ${name}? Seeded defaults won't come back on refresh.`)) return;
   try {
     const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}`, { method: 'DELETE' });
@@ -307,14 +418,16 @@ async function _deleteAgent(agentId, card) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.detail || `HTTP ${res.status}`);
     }
-    card.remove();
-    const grid = document.getElementById('cc-ag-grid');
-    if (grid) {
-      grid.querySelectorAll('.cc-ag-category-section').forEach(sec => {
-        if (!sec.querySelector('.cc-ag-card')) sec.remove();
+    const detail     = document.querySelector(`#cc-detail-${agentId}`);
+    const rosterBody = row.closest('#cc-ag-grid');
+    row.remove();
+    detail?.remove();
+    if (rosterBody) {
+      rosterBody.querySelectorAll('.cc-cat-section').forEach(sec => {
+        if (!sec.querySelector('.cc-agent-row')) sec.remove();
       });
-      const count = document.getElementById('cc-ag-count');
-      if (count) count.textContent = grid.querySelectorAll('.cc-ag-card').length;
+      const countEl = document.getElementById('cc-ag-count');
+      if (countEl) countEl.textContent = rosterBody.querySelectorAll('.cc-agent-row').length;
     }
   } catch (e) {
     alert(`Could not delete agent: ${e.message}`);
@@ -368,9 +481,9 @@ async function _streamSSE(body, resultEl) {
       if (eventType === 'error') {
         try {
           const obj = JSON.parse(raw);
-          resultEl.innerHTML += `<span style="color:var(--cc-danger,#f66)">[Error] ${_esc(obj.error || raw)}</span>`;
+          resultEl.innerHTML += `<span style="color:var(--cc-crit,#f66)">[Error] ${_esc(obj.error || raw)}</span>`;
         } catch (_) {
-          resultEl.innerHTML += `<span style="color:var(--cc-danger,#f66)">[Error] ${_esc(raw)}</span>`;
+          resultEl.innerHTML += `<span style="color:var(--cc-crit,#f66)">[Error] ${_esc(raw)}</span>`;
         }
         eventType = 'message';
         continue;
@@ -422,7 +535,7 @@ async function _loadAgentMemories(agentId, listEl) {
           if (!listEl.querySelector('.cc-ag-mem-row')) {
             listEl.innerHTML = '<div class="cc-empty">No memories yet. Start chatting to build agent memory.</div>';
           }
-        } catch (e) {
+        } catch (_) {
           row.querySelector('.cc-ag-mem-del-btn').textContent = '!';
         }
       });
@@ -434,7 +547,7 @@ async function _loadAgentMemories(agentId, listEl) {
 }
 
 // ---------------------------------------------------------------------------
-// Create form wiring (onCreated callback = full grid refresh)
+// Create form wiring
 // ---------------------------------------------------------------------------
 
 function _wireCreateForm(container, onCreated) {
@@ -485,38 +598,62 @@ function _wireCreateForm(container, onCreated) {
 }
 
 // ---------------------------------------------------------------------------
-// Grid refresh (renders category sections)
+// Filter
+// ---------------------------------------------------------------------------
+
+function _applyFilter(container, filter) {
+  container.querySelectorAll('.cc-agent-row').forEach(row => {
+    const visible = filter === 'all' || (row.dataset.status || 'idle') === filter;
+    row.classList.toggle('cc-row-hidden', !visible);
+    const id     = row.dataset.id;
+    const detail = id ? container.querySelector(`#cc-detail-${id}`) : null;
+    if (detail) detail.classList.toggle('cc-row-hidden', !visible);
+  });
+  container.querySelectorAll('.cc-cat-section').forEach(sec => {
+    const hasVisible = [...sec.querySelectorAll('.cc-agent-row')]
+      .some(r => !r.classList.contains('cc-row-hidden'));
+    sec.classList.toggle('cc-row-hidden', !hasVisible);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Grid refresh
 // ---------------------------------------------------------------------------
 
 async function _refreshGrid(container) {
-  const grid    = container.querySelector('#cc-ag-grid');
-  const countEl = container.querySelector('#cc-ag-count');
-  if (!grid) return;
+  const rosterBody = container.querySelector('#cc-ag-grid');
+  const countEl    = container.querySelector('#cc-ag-count');
+  if (!rosterBody) return;
   try {
     const res = await fetch('/api/agents');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const { agents = [] } = await res.json();
     if (!agents.length) {
-      grid.innerHTML = '<div class="cc-empty">No agents registered.</div>';
+      rosterBody.innerHTML = '<div class="cc-empty">No agents registered.</div>';
       return;
     }
     if (countEl) countEl.textContent = agents.length;
     const grouped = _groupAgents(agents);
-    grid.innerHTML = CAT_ORDER
+    rosterBody.innerHTML = CAT_ORDER
       .filter(cat => grouped[cat]?.length)
       .map(cat => {
-        const accent = CAT_ACCENT[cat] || CAT_ACCENT.CUSTOM;
-        return `<div class="cc-ag-category-section">
-  <div class="cc-ag-category-header" style="--cat-accent:${accent}">
-    <span class="cc-ag-cat-label">${cat}</span>
-    <span class="cc-ag-cat-count">${grouped[cat].length}</span>
-  </div>
-  <div class="cc-ag-category-grid">${grouped[cat].map(_agentCard).join('')}</div>
+        const rows = grouped[cat].map(a => _agentRow(a) + '\n' + _agentDetail(a)).join('\n');
+        return `<div class="cc-cat-section" data-cat="${cat.toLowerCase()}">
+<div class="cc-cat-head">
+  <span class="cc-cat-head-prefix">//</span>
+  <span class="cc-cat-head-label">${cat}</span>
+  <span class="cc-cat-head-count">${grouped[cat].length}</span>
+  <span class="cc-cat-head-chevron">›</span>
+</div>
+<div class="cc-cat-rows">${rows}</div>
 </div>`;
       }).join('');
-    agents.forEach(a => _wireCard(container, a.id));
+    container.querySelectorAll('.cc-cat-head').forEach(head => {
+      head.addEventListener('click', () => head.closest('.cc-cat-section')?.classList.toggle('collapsed'));
+    });
+    agents.forEach(a => _wireRow(container, a.id));
   } catch (e) {
-    grid.innerHTML = `<div class="cc-empty">Could not load agents — ${_esc(e.message)}</div>`;
+    rosterBody.innerHTML = `<div class="cc-empty">Could not load agents — ${_esc(e.message)}</div>`;
   }
 }
 
@@ -530,10 +667,22 @@ export function buildAgentsTab() {
   <div class="cc-agents-tab-header">
     <span class="cc-agents-tab-title">AGENT ROSTER</span>
     <span class="cc-agents-tab-count" id="cc-ag-count">—</span>
+    <div class="cc-filter-pills">
+      <button class="cc-filter-pill active" data-filter="all">ALL</button>
+      <button class="cc-filter-pill" data-filter="active">ACTIVE</button>
+      <button class="cc-filter-pill" data-filter="idle">IDLE</button>
+      <button class="cc-filter-pill" data-filter="standby">STANDBY</button>
+      <button class="cc-filter-pill" data-filter="ready">READY</button>
+    </div>
     <button class="cc-ag-new-btn" id="cc-ag-new-btn">+ New Agent</button>
   </div>
   ${_createForm()}
-  <div class="cc-ag-grid" id="cc-ag-grid">
+  <div class="cc-roster-col-header">
+    <span></span><span></span>
+    <span>Agent</span><span>Role</span><span>Model</span><span>Score</span>
+    <span style="text-align:right">Actions</span>
+  </div>
+  <div class="cc-roster-body" id="cc-ag-grid">
     <div class="cc-empty">Loading agents…</div>
   </div>
 </div>`.trim();
@@ -545,6 +694,13 @@ export async function loadAgents(container) {
   newBtn?.addEventListener('click', () => {
     if (!createForm) return;
     createForm.style.display = createForm.style.display === 'none' ? 'block' : 'none';
+  });
+  container.querySelectorAll('.cc-filter-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      container.querySelectorAll('.cc-filter-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      _applyFilter(container, pill.dataset.filter || 'all');
+    });
   });
   _wireCreateForm(container, () => _refreshGrid(container));
   await _refreshGrid(container);
