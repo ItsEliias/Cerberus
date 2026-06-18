@@ -8,11 +8,11 @@
  * Vanilla CSS custom properties only. No Tailwind build required.
  * ==================================================================== */
 
-/* ── Fonts (self-hostable; Google Fonts fallback) ──────────────────── */
+/* ── Fonts ──────────────────────────────────────────────────────────── */
 /* Orbitron + JetBrains Mono confirmed by both frontend-design AND
    ui-ux-pro-max ("cyberpunk, neon, glitch, hud, sci-fi, tactical").
-   IBM Plex Sans for body — legible, avoids banned Inter/Roboto list. */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+   IBM Plex Sans for body — legible, avoids banned Inter/Roboto list.
+   Self-hosted via static/fonts/ (@font-face in style.css). No CDN. */
 
 :root {
   /* ── CRIMSON SPINE (7 shades) ─────────────────────────────────────
