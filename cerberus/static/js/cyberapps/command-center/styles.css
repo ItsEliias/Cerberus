@@ -1499,7 +1499,20 @@
   display: inline; color: var(--cc-crimson);
 }
 @keyframes cc-blink { 50% { opacity: 0; } }
-.cc-chat-error { color: var(--cc-crimson) !important; }
+.cc-chat-error { color: var(--cc-crimson) !important; font-style: italic; }
+
+/* Context-trimmed divider */
+.cc-ctx-divider {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; margin: 4px 0;
+}
+.cc-ctx-divider-line {
+  flex: 1; height: 1px; background: rgba(255,255,255,0.08);
+}
+.cc-ctx-divider-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 8px;
+  color: rgba(255,255,255,0.28); white-space: nowrap; letter-spacing: 0.06em;
+}
 
 /* Input row */
 .cc-chat-input-row {

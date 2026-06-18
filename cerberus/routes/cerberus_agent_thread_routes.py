@@ -178,7 +178,13 @@ def setup_agent_thread_routes() -> APIRouter:
                 }
                 for m in thread.messages
             ]
-            return {"thread_id": thread.id, "messages": messages}
+            # Compute effective context window so the frontend can render a trimmed-context divider.
+            # Per-agent override (when present) wins over the global setting.
+            from src.settings import get_setting
+            global_window = int(get_setting("agent_context_window", 20))
+            agent_window = getattr(agent, "context_window", None)
+            ctx_window = max(1, min(int(agent_window), 200)) if agent_window else global_window
+            return {"thread_id": thread.id, "messages": messages, "context_window": ctx_window}
         finally:
             db.close()
 
@@ -247,9 +253,11 @@ def setup_agent_thread_routes() -> APIRouter:
                 return
 
             parts: list[str] = []
+            errored = False
             try:
                 async for chunk in stream_llm(url, model, messages, headers=headers):
                     if chunk.startswith("event: error"):
+                        errored = True
                         yield chunk
                         continue
                     for line in chunk.split("\n"):
@@ -264,9 +272,10 @@ def setup_agent_thread_routes() -> APIRouter:
                                 pass
                     yield chunk
             except Exception as exc:
+                errored = True
                 yield f'event: error\ndata: {json.dumps({"error": str(exc), "status": 500})}\n\n'
             finally:
-                if parts:
+                if parts and not errored:
                     full_reply = "".join(parts)
                     _save_assistant_message(thread_id, full_reply)
                     # Background memory extraction tagged with this agent

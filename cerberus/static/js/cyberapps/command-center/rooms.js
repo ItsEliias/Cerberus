@@ -225,7 +225,10 @@ async function _streamRoom(body, messagesEl, roomId, onCapReached) {
 
       if (eventType === 'error') {
         if (currentContent) {
-          currentContent.textContent = `[Error] ${raw}`;
+          try {
+            const obj = JSON.parse(raw);
+            currentContent.textContent = `Error: ${obj.error || raw}`;
+          } catch (_) { currentContent.textContent = `Error: ${raw}`; }
           currentContent.classList.remove('cc-chat-streaming');
           currentContent.classList.add('cc-chat-error');
         }
