@@ -69,8 +69,7 @@
 .cc-wordmark-sub {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--cc-brand-red); opacity: 0.7;
-  text-shadow: 0 0 12px var(--cc-brand-red-glow);
+  color: var(--cc-fg); opacity: 0.5;
   margin-left: 4px; white-space: nowrap;
 }
 
@@ -241,8 +240,7 @@
 .cc-hero-globe-state {
   font-family: 'Orbitron', monospace;
   font-size: 13px; letter-spacing: 0.22em;
-  color: var(--cc-crimson); text-transform: uppercase;
-  text-shadow: 0 0 12px var(--cc-crimson-glow);
+  color: var(--cc-fg); opacity: 0.6; text-transform: uppercase;
 }
 @media (max-width: 900px) {
   .cc-hero-globe-stage { width: 260px; height: 260px; }
@@ -264,8 +262,7 @@
 .cc-section-title {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 8.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
-  color: var(--cc-brand-red);
-  text-shadow: 0 0 12px var(--cc-brand-red-glow);
+  color: color-mix(in srgb, var(--fg, #c5c9d0) 55%, transparent);
   margin-bottom: 8px;
 }
 .cc-card-title::before,
@@ -471,9 +468,8 @@
 .cc-swarm-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; text-align: center; }
 .cc-swarm-num {
   font-family: 'Orbitron', monospace;
-  font-size: 22px; font-weight: 700; color: var(--cc-crimson);
+  font-size: 22px; font-weight: 700; color: var(--cc-fg);
   font-variant-numeric: tabular-nums; line-height: 1.1;
-  text-shadow: 0 0 10px var(--cc-crimson-glow);
   transition: color 0.25s ease;
 }
 .cc-swarm-lbl {
@@ -528,7 +524,7 @@
 
 /* -- Sparklines (now lives inside .cc-card within .cc-mid-row) -- */
 .cc-telemetry { padding: 0; flex-shrink: 0; }
-.cc-telemetry-header { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 8.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cc-brand-red); text-shadow: 0 0 12px var(--cc-brand-red-glow); margin-bottom: 6px; }
+.cc-telemetry-header { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 8.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--fg, #c5c9d0) 55%, transparent); margin-bottom: 6px; }
 .cc-telemetry-header::before { content: '// '; color: var(--cc-brand-red); font-weight: 400; font-size: 0.9em; }
 .cc-sparklines { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .cc-spark-wrap { position: relative; overflow: visible; }
@@ -671,15 +667,15 @@
 .cc-council-title {
   font-family: 'Orbitron', monospace;
   font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
-  color: var(--cc-crimson);
+  color: var(--cc-fg);
 }
 .cc-council-sub { opacity: 0.4; font-weight: 400; }
 
 .cc-council-count-chip {
   font-family: 'Orbitron', monospace;
   font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
-  background: color-mix(in srgb, var(--red) 12%, transparent); border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
-  color: var(--cc-crimson); padding: 2px 8px; border-radius: 3px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+  color: var(--cc-fg); opacity: 0.65; padding: 2px 8px; border-radius: 3px;
 }
 
 /* Filter tabs */
@@ -692,7 +688,7 @@
 .cc-filter-btn:hover { opacity: 0.85; border-color: var(--cc-border); }
 .cc-filter-btn:focus-visible { outline: 2px solid var(--cc-crimson); outline-offset: 2px; opacity: 1; }
 .cc-filter-btn.active {
-  background: var(--cc-crimson); border-color: var(--cc-crimson); color: #fff; opacity: 1;
+  background: var(--cc-brand-red); border-color: var(--cc-brand-red); color: #fff; opacity: 1;
 }
 
 /* Agent cards */
@@ -760,8 +756,8 @@
 .cc-council-score-chip {
   font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 600;
   padding: 1px 7px; border-radius: 3px;
-  border: 1px solid color-mix(in srgb, var(--red) 30%, transparent);
-  background: color-mix(in srgb, var(--red) 8%, transparent); color: var(--cc-crimson);
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04); color: var(--cc-fg); opacity: 0.7;
 }
 
 /* Sparkline */
@@ -818,7 +814,7 @@
   padding: 16px; border-radius: 3px;
 }
 .cc-overlay-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.cc-overlay-title { font-family: 'Orbitron', 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.1em; color: var(--cc-crimson); }
+.cc-overlay-title { font-family: 'Orbitron', 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.1em; color: var(--cc-fg); }
 .cc-overlay-close { font-size: 9px; background: transparent; border: 1px solid var(--cc-border); color: var(--cc-fg); cursor: pointer; padding: 2px 8px; font-family: inherit; opacity: 0.6; }
 .cc-overlay-close:hover { opacity: 1; border-color: var(--cc-crimson); color: var(--cc-crimson); }
 .cc-overlay-close:focus-visible { outline: 2px solid var(--cc-crimson); outline-offset: 2px; opacity: 1; }
@@ -1256,7 +1252,7 @@
 .cc-agents-tab { display: flex; flex-direction: column; padding: 12px 16px; gap: 10px; overflow-y: auto; }
 .cc-agents-tab-header { display: flex; align-items: center; gap: 10px; }
 .cc-agents-tab-title { font-size: 10px; letter-spacing: 0.15em; opacity: 0.45; }
-.cc-agents-tab-count { font-size: 10px; color: var(--cc-crimson); }
+.cc-agents-tab-count { font-size: 10px; color: var(--cc-fg); opacity: 0.55; }
 .cc-ag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
 .cc-ag-card {
   border: 1px solid var(--cc-border, rgba(255,255,255,0.08));
@@ -1406,7 +1402,7 @@
 }
 .cc-ag-create-title {
   font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--cc-crimson); margin-bottom: 4px;
+  text-transform: uppercase; color: var(--cc-fg); opacity: 0.75; margin-bottom: 4px;
 }
 .cc-req { color: var(--cc-crimson); }
 
@@ -1611,7 +1607,7 @@
 }
 .cc-room-form-title {
   font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--cc-crimson); margin-bottom: 4px;
+  text-transform: uppercase; color: var(--cc-fg); opacity: 0.75; margin-bottom: 4px;
 }
 .cc-room-new-form label { font-size: 8px; letter-spacing: 0.1em; opacity: 0.38; display: block; }
 .cc-room-new-form input {

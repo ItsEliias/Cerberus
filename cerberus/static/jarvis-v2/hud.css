@@ -235,10 +235,9 @@ body.reduce-hud .sidebar-inner::before {
   font-family: var(--jx2-font-mono);
   font-size: 8.5px;
   font-weight: 600;
-  color: var(--jx2-crimson-500);
+  color: color-mix(in srgb, var(--fg, #c5c9d0) 55%, transparent);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  text-shadow: var(--jx2-hud-prefix-glow);
 }
 .sidebar .section-title::before {
   content: var(--jx2-hud-prefix);
