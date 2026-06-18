@@ -1,0 +1,233 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/os-home-hud.css
+ * Nexus Core chrome for the OS Home / Atlas globe view.
+ *
+ * Scope: body.jx2-active.cerberus-os (double-class ensures specificity
+ *   wins over cerberus-os-home.css rules at the same cascade position).
+ *
+ * Covers: globe node labels, hover HUD popup, hex node glow, brain
+ *   tabs, offices sidebar/content, tools grid, and the shell/project
+ *   modal container glass when viewed on the OS hub.
+ * ==================================================================== */
+
+/* ── Globe node labels ────────────────────────────────────────────── */
+
+body.jx2-active.cerberus-os .cerberus-os-node-label {
+  color: var(--jx2-fg-primary) !important;
+  background: var(--jx2-hud-surface) !important;
+  border-color: var(--jx2-border-hairline) !important;
+  font-family: var(--jx2-font-mono) !important;
+}
+
+/* ── Hex node glow — swap blue shimmer for crimson ──────────────── */
+
+body.jx2-active.cerberus-os .cerberus-os-node {
+  box-shadow:
+    0 0 12px rgba(192, 57, 43, 0.22),
+    inset 0 0 10px rgba(192, 57, 43, 0.08) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-os-node-wrap--front .cerberus-os-node,
+body.jx2-active.cerberus-os .cerberus-os-node-wrap:hover .cerberus-os-node {
+  box-shadow:
+    0 0 18px rgba(192, 57, 43, 0.35),
+    inset 0 0 14px rgba(192, 57, 43, 0.12) !important;
+}
+
+/* ── Node hover HUD popup ────────────────────────────────────────── */
+
+body.jx2-active.cerberus-os .cerberus-node-hud {
+  background: var(--jx2-hud-surface) !important;
+  border-color: var(--jx2-border-hairline) !important;
+  border-top-color: var(--jx2-border-glow) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-node-hud-title {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.14em !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-node-hud-title::before {
+  content: "// ";
+  color: var(--jx2-hud-prefix-color);
+}
+
+body.jx2-active.cerberus-os .cerberus-node-hud-desc {
+  color: var(--jx2-fg-secondary) !important;
+  font-family: var(--jx2-font-body) !important;
+}
+
+/* ── Shell modal glass (OS hub context) ─────────────────────────── */
+
+body.jx2-active.cerberus-os .cerberus-shell-modal,
+body.jx2-active.cerberus-os .cerberus-modal-placed {
+  background: var(--jx2-surface-base) !important;
+  border-color: var(--jx2-hud-border) !important;
+  border-top-color: var(--jx2-border-glow) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-project-hq-shell {
+  background: var(--jx2-surface-base) !important;
+}
+
+/* Settings modal when invoked from the OS hub */
+body.jx2-active.cerberus-os #settings-modal .settings-modal-content {
+  background: var(--jx2-surface-base) !important;
+  border-color: var(--jx2-hud-border) !important;
+  border-top-color: var(--jx2-border-glow) !important;
+}
+
+/* ── Brain / memory tabs ────────────────────────────────────────── */
+
+body.jx2-active.cerberus-os .cerberus-brain-tabs {
+  border-bottom-color: var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-brain-tab {
+  color: var(--jx2-fg-muted) !important;
+  border-color: var(--jx2-border-hairline) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.08em !important;
+}
+
+/* Replace purple active state with crimson */
+body.jx2-active.cerberus-os .cerberus-brain-tab.active {
+  border-color: var(--jx2-crimson-600) !important;
+  background: rgba(192, 57, 43, 0.12) !important;
+  color: var(--jx2-crimson-200) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-brain-tab:hover:not(.active) {
+  border-color: var(--jx2-hud-hover-border) !important;
+  background: var(--jx2-hud-hover-bg) !important;
+  color: var(--jx2-fg-secondary) !important;
+}
+
+/* ── Tools grid ──────────────────────────────────────────────────── */
+
+body.jx2-active.cerberus-os .cerberus-tools-tile {
+  background: var(--jx2-surface-raised) !important;
+  border-color: var(--jx2-border-hairline) !important;
+  color: var(--jx2-fg-secondary) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-tools-tile:hover {
+  border-color: var(--jx2-crimson-600) !important;
+  background: var(--jx2-hud-hover-bg) !important;
+}
+
+/* Override hardcoded blue SVG icon color */
+body.jx2-active.cerberus-os .cerberus-tools-tile svg {
+  color: var(--jx2-crimson-300) !important;
+}
+
+/* ── Offices modal sidebar ───────────────────────────────────────── */
+
+body.jx2-active.cerberus-os .cerberus-offices-sidebar {
+  border-right-color: var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-offices-item {
+  color: var(--jx2-fg-secondary) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 10px !important;
+}
+
+/* Replace purple hover/active with crimson left-bar */
+body.jx2-active.cerberus-os .cerberus-offices-item:hover,
+body.jx2-active.cerberus-os .cerberus-offices-item.active {
+  border-color: var(--jx2-crimson-600) !important;
+  background: rgba(192, 57, 43, 0.10) !important;
+  color: var(--jx2-crimson-200) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-offices-add-btn {
+  border-color: var(--jx2-crimson-600) !important;
+  color: var(--jx2-crimson-300) !important;
+}
+
+/* ── Offices main content ────────────────────────────────────────── */
+
+body.jx2-active.cerberus-os .cerberus-offices-dept {
+  background: var(--jx2-surface-raised) !important;
+  border-color: var(--jx2-border-hairline) !important;
+}
+
+/* Replace purple dept title with crimson */
+body.jx2-active.cerberus-os .cerberus-offices-dept-title {
+  color: var(--jx2-crimson-300) !important;
+  font-family: var(--jx2-font-mono) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-offices-agent-card {
+  background: var(--jx2-surface-base) !important;
+  border-color: var(--jx2-border-hairline) !important;
+}
+
+/* Replace purple gradient avatar with crimson */
+body.jx2-active.cerberus-os .cerberus-offices-agent-avatar {
+  background: linear-gradient(
+    135deg,
+    rgba(192, 57, 43, 0.4),
+    rgba(192, 57, 43, 0.15)
+  ) !important;
+}
+
+/* ── Offices new-office prompt card ──────────────────────────────── */
+
+body.jx2-active.cerberus-os .cerberus-offices-prompt-card {
+  background: var(--jx2-surface-raised) !important;
+  border-color: var(--jx2-hud-border) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-offices-prompt-title {
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-offices-prompt-label {
+  color: var(--jx2-fg-secondary) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.08em !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-offices-prompt-input,
+body.jx2-active.cerberus-os .cerberus-offices-prompt-textarea {
+  background: var(--jx2-surface-void) !important;
+  border-color: var(--jx2-border-hairline) !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-offices-prompt-input:focus,
+body.jx2-active.cerberus-os .cerberus-offices-prompt-textarea:focus {
+  border-color: var(--jx2-crimson-500) !important;
+  outline: none !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-offices-prompt-btn {
+  background: var(--jx2-surface-raised) !important;
+  border-color: var(--jx2-border-hairline) !important;
+  color: var(--jx2-fg-secondary) !important;
+}
+
+/* Replace blue primary btn with crimson */
+body.jx2-active.cerberus-os .cerberus-offices-prompt-btn--primary {
+  border-color: var(--jx2-crimson-600) !important;
+  background: rgba(192, 57, 43, 0.20) !important;
+  color: var(--jx2-crimson-200) !important;
+}
+
+body.jx2-active.cerberus-os .cerberus-offices-prompt-btn--primary:hover {
+  background: rgba(192, 57, 43, 0.30) !important;
+}
+
+/* ── Reduced-motion ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  body.jx2-active.cerberus-os .cerberus-os-node {
+    transition: none !important;
+  }
+}
