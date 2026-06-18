@@ -71,13 +71,6 @@ const GLYPH_MAP = {
   PROMPTSMITH:   '🔧',
 };
 
-function _sigilBg(agent) {
-  let h = 0;
-  const n = agent.name || '?';
-  for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) >>> 0;
-  const PALETTE = ['#2980b9','#e67e22','#27ae60','#8e44ad','#16a085','#c0392b','#d35400','#2c3e50'];
-  return PALETTE[h % PALETTE.length];
-}
 
 function _groupAgents(agents) {
   const groups = {};
@@ -95,14 +88,13 @@ function _groupAgents(agents) {
 function _agentRow(agent) {
   const id     = _esc(agent.id);
   const status = agent.status || 'idle';
-  const bg     = _sigilBg(agent);
   const glyph  = _esc(agent.avatar || GLYPH_MAP[(agent.name || '').toUpperCase()] || (agent.name || '?')[0]);
   const score  = agent.score > 0 ? _esc(agent.score) : '—';
   const accent = CAT_ACCENT[_getCategory(agent.name)] || CAT_ACCENT.CUSTOM;
   return `
 <div class="cc-agent-row" data-id="${id}" data-status="${_esc(status)}" data-agent-name="${_esc(agent.name || '')}" data-agent-avatar="${_esc(agent.avatar || '')}" data-cat-accent="${_esc(accent)}" data-tts-voice="${_esc(agent.tts_voice || '')}">
   <span class="cc-status-pip ${_esc(status)}"></span>
-  <span class="cc-row-sigil" style="background:${_esc(bg)}">${glyph}</span>
+  <span class="cc-row-sigil">${glyph}</span>
   <span class="cc-row-name">${_esc(agent.name || agent.id)}</span>
   <span class="cc-row-role">${_esc(agent.role || agent.agent_type || '—')}</span>
   <span class="cc-row-model">${_esc(agent.model_alias || '—')}</span>
