@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUD Stage 2 — Command Center Mockup</title>
+<style>
+/* ── Self-hosted fonts (same files as production) ─────────────────── */
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('../../static/fonts/Orbitron-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../../static/fonts/JetBrainsMono-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../../static/fonts/IBMPlexSans-latin.woff2') format('woff2');
+}
+
+/* ── jarvis-v2 tokens (exact live values from hud.css) ────────────── */
+:root {
+  --jx2-crimson-900: #1a0505;
+  --jx2-crimson-800: #2d0a0a;
+  --jx2-crimson-700: #4a0f0f;
+  --jx2-crimson-600: #7a1a1a;
+  --jx2-crimson-500: #c0392b;
+  --jx2-crimson-400: #e04535;
+  --jx2-crimson-300: #f06b5a;
+  --jx2-crimson-200: #ff9080;
+
+  --jx2-surface-void:   #09090a;
+  --jx2-surface-base:   #0d0d0f;
+  --jx2-surface-raised: #111115;
+  --jx2-surface-modal:  #16161c;
+
+  --jx2-fg-primary:   #e8e8ec;
+  --jx2-fg-secondary: #9a9aaa;
+  --jx2-fg-muted:     #5a5a6a;
+
+  --jx2-border-default:  rgba(192,57,43,0.28);
+  --jx2-border-glow:     rgba(192,57,43,0.55);
+
+  --jx2-status-active:      #22c55e;
+  --jx2-status-processing:  #3b82f6;
+  --jx2-status-idle:        #f59e0b;
+
+  --jx2-font-display: 'Orbitron', monospace;
+  --jx2-font-mono:    'JetBrains Mono', monospace;
+  --jx2-font-body:    'IBM Plex Sans', sans-serif;
+
+  --jx2-radius-sm: 2px;
+  --jx2-radius-md: 4px;
+
+  /* hud.css live token values */
+  --jx2-hud-surface:           var(--jx2-surface-void);
+  --jx2-hud-border:            var(--jx2-border-default);
+  --jx2-hud-scanline-gap:      4px;
+  --jx2-hud-scanline-color:    rgba(0,0,0,0.07);
+  --jx2-hud-scanline-opacity:  0.5;
+  --jx2-hud-active-bg:         rgba(192,57,43,0.12);
+  --jx2-hud-active-glow:       inset 0 0 16px rgba(192,57,43,0.10), 0 0 0 1px rgba(192,57,43,0.12);
+  --jx2-hud-active-border:     var(--jx2-crimson-400);
+  --jx2-hud-hover-bg:          rgba(192,57,43,0.08);
+  --jx2-hud-hover-border:      var(--jx2-crimson-600);
+  --jx2-hud-prefix:            "// ";
+  --jx2-hud-prefix-color:      var(--jx2-crimson-500);
+  --jx2-hud-prefix-glow:       0 0 12px rgba(192,57,43,0.4);
+  --jx2-hud-chip-border:       rgba(255,255,255,0.07);
+  --jx2-hud-chip-bg:           rgba(255,255,255,0.025);
+  --jx2-hud-chip-text:         var(--jx2-fg-muted);
+  --jx2-hud-wordmark-size:     17px;
+  --jx2-hud-wordmark-tracking: 0.15em;
+  --jx2-hud-wordmark-glow:     0 0 20px rgba(192,57,43,0.4);
+  --jx2-hud-wordmark-lead-color:    var(--jx2-crimson-300);
+  --jx2-hud-wordmark-bracket-color: var(--jx2-crimson-700);
+}
+
+@keyframes jx2-pulse-crimson {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1.0; }
+}
+@keyframes cc-globe-idle {
+  0%, 100% { transform: scale(1);    filter: brightness(1); }
+  50%       { transform: scale(1.02); filter: brightness(1.12); }
+}
+@keyframes cc-core-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50%       { transform: scale(1.08); opacity: 0.9; }
+}
+@keyframes cc-dot-pulse {
+  0%, 100% { box-shadow: 0 0 3px #c0392b; }
+  50%       { box-shadow: 0 0 8px #e04535; }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #04040a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 32px;
+  font-family: var(--jx2-font-body);
+  color: var(--jx2-fg-primary);
+  gap: 20px;
+}
+
+.page-label {
+  font-family: var(--jx2-font-mono);
+  font-size: 10px;
+  color: var(--jx2-fg-muted);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* ── Command Center shell ─────────────────────────────────────────── */
+.cc-shell {
+  width: 100%;
+  max-width: 1140px;
+  height: 780px;
+  background: var(--jx2-surface-base);
+  border: 1px solid var(--jx2-border-glow);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 0 0 1px rgba(192,57,43,0.06),
+    0 4px 48px rgba(0,0,0,0.7),
+    0 0 80px rgba(192,57,43,0.04);
+}
+
+/* Scanline overlay */
+.cc-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent calc(var(--jx2-hud-scanline-gap) - 1px),
+    var(--jx2-hud-scanline-color) calc(var(--jx2-hud-scanline-gap) - 1px),
+    var(--jx2-hud-scanline-color) var(--jx2-hud-scanline-gap)
+  );
+  pointer-events: none;
+  z-index: 99;
+  opacity: var(--jx2-hud-scanline-opacity);
+}
+
+/* ── Brand bar ───────────────────────────────────────────────────── */
+.cc-brand-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px 8px;
+  background: var(--jx2-hud-surface);
+  border-bottom: 1px solid var(--jx2-hud-border);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.cc-wordmark {
+  font-family: var(--jx2-font-display);
+  font-size: var(--jx2-hud-wordmark-size);
+  font-weight: 700;
+  letter-spacing: var(--jx2-hud-wordmark-tracking);
+  color: var(--jx2-fg-primary);
+  text-shadow: var(--jx2-hud-wordmark-glow);
+  text-transform: uppercase;
+  white-space: nowrap;
+  user-select: none;
+}
+.cc-wordmark .hud-bracket { color: var(--jx2-hud-wordmark-bracket-color); font-size: 1.1em; }
+.cc-wordmark .hud-lead    { color: var(--jx2-hud-wordmark-lead-color); }
+
+.cc-wordmark-sub {
+  font-family: var(--jx2-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--jx2-crimson-500);
+  text-shadow: var(--jx2-hud-prefix-glow);
+  text-transform: uppercase;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+.cc-brand-chips {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+}
+.hud-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--jx2-font-mono);
+  font-size: 8px;
+  color: var(--jx2-hud-chip-text);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border: 1px solid var(--jx2-hud-chip-border);
+  border-radius: var(--jx2-radius-sm);
+  background: var(--jx2-hud-chip-bg);
+  white-space: nowrap;
+  user-select: none;
+}
+.hud-chip-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.hud-chip-dot--online  { background: var(--jx2-status-active); }
+.hud-chip-dot--agents  { background: var(--jx2-status-processing); }
+.hud-chip-dot--auth    { background: var(--jx2-crimson-400); animation: jx2-pulse-crimson 2.4s ease-in-out infinite; }
+
+.cc-brand-spacer { flex: 1; }
+
+.cc-clock {
+  font-family: var(--jx2-font-display);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--jx2-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+.cc-refresh-btn {
+  font-family: var(--jx2-font-mono);
+  font-size: 9px;
+  padding: 3px 9px;
+  border: 1px solid var(--jx2-hud-border);
+  background: transparent;
+  color: var(--jx2-fg-muted);
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  border-radius: var(--jx2-radius-sm);
+  transition: all 150ms;
+}
+.cc-refresh-btn:hover {
+  border-color: var(--jx2-crimson-500);
+  color: var(--jx2-crimson-300);
+}
+
+/* ── Tab nav ─────────────────────────────────────────────────────── */
+.cc-tab-nav {
+  display: flex;
+  gap: 2px;
+  padding: 5px 12px;
+  background: var(--jx2-hud-surface);
+  border-bottom: 1px solid var(--jx2-hud-border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: relative;
+  z-index: 2;
+}
+.cc-tab-btn {
+  font-family: var(--jx2-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--jx2-radius-sm);
+  background: transparent;
+  color: var(--jx2-fg-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  opacity: 0.6;
+  transition: all 150ms;
+  user-select: none;
+}
+.cc-tab-btn:hover {
+  opacity: 0.9;
+  border-color: var(--jx2-hud-border);
+  color: var(--jx2-fg-secondary);
+}
+.cc-tab-btn.active {
+  background: var(--jx2-hud-active-bg);
+  border-color: var(--jx2-hud-active-border);
+  color: var(--jx2-crimson-200);
+  opacity: 1;
+  box-shadow: var(--jx2-hud-active-glow);
+}
+/* // prefix on active tab */
+.cc-tab-btn.active::before {
+  content: var(--jx2-hud-prefix);
+  color: var(--jx2-hud-prefix-color);
+  font-size: 0.9em;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+
+/* ── Tab content ─────────────────────────────────────────────────── */
+.cc-tab-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  z-index: 1;
+  scrollbar-width: thin;
+  scrollbar-color: var(--jx2-hud-border) transparent;
+}
+
+/* ── Shared card ─────────────────────────────────────────────────── */
+.cc-card {
+  background: rgba(0,0,0,0.22);
+  border: 1px solid var(--jx2-hud-border);
+  border-radius: var(--jx2-radius-md);
+  padding: 10px 12px;
+}
+
+/* section title with // prefix */
+.cc-section-title {
+  font-family: var(--jx2-font-mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--jx2-crimson-500);
+  text-shadow: var(--jx2-hud-prefix-glow);
+  margin-bottom: 8px;
+}
+.cc-section-title::before {
+  content: var(--jx2-hud-prefix);
+  color: var(--jx2-hud-prefix-color);
+  font-weight: 400;
+  font-size: 0.9em;
+  letter-spacing: 0.04em;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+
+/* ── COMMAND tab layout ──────────────────────────────────────────── */
+.cc-command-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: 8px;
+}
+
+/* Top row — Core | Swarm Health | System Vitals */
+.cc-top-row {
+  display: grid;
+  grid-template-columns: 180px 1fr 1fr;
+  gap: 10px;
+  padding: 10px 14px;
+  flex-shrink: 0;
+}
+
+/* Cerberus Core — crimson glow border */
+.cc-card-core {
+  border-color: rgba(192,57,43,0.5);
+  box-shadow:
+    0 0 10px rgba(192,57,43,0.15),
+    inset 0 0 14px rgba(192,57,43,0.04);
+}
+
+.cc-core-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 4px;
+}
+
+.cc-core-ring {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  border: 2px solid var(--jx2-crimson-500);
+  box-shadow:
+    0 0 14px rgba(192,57,43,0.35),
+    inset 0 0 12px rgba(192,57,43,0.22);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cc-core-ring::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid rgba(192,57,43,0.3);
+  animation: cc-core-pulse 2.6s ease-in-out infinite;
+}
+.cc-core-sphere {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 35% 30%,
+    rgba(192,57,43,0.8) 0%,
+    rgba(192,57,43,0.25) 40%,
+    rgba(6,7,8,1) 80%
+  );
+  box-shadow:
+    inset -4px -4px 10px rgba(0,0,0,0.8),
+    inset 3px 3px 8px rgba(192,57,43,0.25);
+}
+
+.cc-core-state {
+  font-family: var(--jx2-font-display);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--jx2-crimson-400);
+  text-shadow: 0 0 8px rgba(192,57,43,0.5);
+}
+.cc-core-status-lbl {
+  font-family: var(--jx2-font-mono);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--jx2-fg-muted);
+  opacity: 0.6;
+}
+
+/* Swarm health numbers */
+.cc-swarm-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  text-align: center;
+  padding-top: 6px;
+}
+.cc-swarm-num {
+  font-family: var(--jx2-font-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--jx2-crimson-400);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(192,57,43,0.4);
+}
+.cc-swarm-lbl {
+  font-family: var(--jx2-font-mono);
+  font-size: 7.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--jx2-fg-muted);
+  margin-top: 3px;
+}
+
+/* Vitals dials */
+.cc-vitals-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  align-items: start;
+  padding-top: 4px;
+}
+.cc-dial-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.cc-dial-arc {
+  position: relative;
+  width: 54px; height: 34px;
+}
+.cc-dial-arc svg { width: 54px; height: 34px; overflow: visible; }
+.cc-dial-num {
+  font-family: var(--jx2-font-display);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.cc-dial-num.cpu     { color: #f1c40f; }
+.cc-dial-num.ram     { color: #3b82f6; }
+.cc-dial-num.disk    { color: #22c55e; }
+.cc-dial-num.lat     { color: #9b59b6; }
+.cc-dial-lbl {
+  font-family: var(--jx2-font-mono);
+  font-size: 7px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--jx2-fg-muted);
+  opacity: 0.45;
+}
+
+/* Mid section: Gateway + Telemetry */
+.cc-mid-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 10px;
+  padding: 0 14px;
+  flex-shrink: 0;
+}
+
+.cc-gw-list { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+.cc-gw-row  { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.cc-gw-dot  {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cc-gw-dot.online  { background: var(--jx2-status-active); box-shadow: 0 0 4px var(--jx2-status-active); }
+.cc-gw-dot.offline { background: var(--jx2-fg-muted); opacity: 0.35; }
+.cc-gw-name   { flex: 1; color: var(--jx2-fg-secondary); }
+.cc-gw-status {
+  font-family: var(--jx2-font-mono);
+  font-size: 9px;
+  opacity: 0.5;
+  letter-spacing: 0.06em;
+}
+
+/* Telemetry sparklines placeholder */
+.cc-telemetry-inner {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding-top: 4px;
+}
+.cc-spark-wrap { position: relative; }
+.cc-spark-label {
+  font-family: var(--jx2-font-display);
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--jx2-fg-muted);
+  opacity: 0.5;
+  margin-bottom: 3px;
+}
+.cc-spark-svg { width: 100%; height: 40px; display: block; }
+
+/* Ops row */
+.cc-ops-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  padding: 10px 14px;
+  flex-shrink: 0;
+}
+
+/* Agent rows */
+.cc-agent-row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--jx2-fg-secondary);
+}
+.cc-agent-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cc-agent-dot.running {
+  background: var(--jx2-crimson-400);
+  box-shadow: 0 0 5px var(--jx2-crimson-400);
+  animation: cc-dot-pulse 1.2s ease-in-out infinite;
+}
+.cc-agent-dot.idle { background: var(--jx2-fg-muted); opacity: 0.25; }
+.cc-agent-name { font-family: var(--jx2-font-mono); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-agent-action { font-size: 10px; opacity: 0.4; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+.cc-agent-score {
+  font-family: var(--jx2-font-display);
+  font-size: 10px;
+  opacity: 0.45;
+  text-align: right;
+}
+
+/* Task rows */
+.cc-task-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--jx2-fg-secondary);
+}
+.cc-task-status {
+  font-family: var(--jx2-font-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  padding: 1px 5px;
+  border-radius: var(--jx2-radius-sm);
+  flex-shrink: 0;
+}
+.cc-task-status.running  { background: rgba(192,57,43,0.15); color: var(--jx2-crimson-300); border: 1px solid rgba(192,57,43,0.3); }
+.cc-task-status.queued   { background: rgba(245,158,11,0.1);  color: #f59e0b;               border: 1px solid rgba(245,158,11,0.25); }
+.cc-task-status.complete { background: rgba(34,197,94,0.1);   color: var(--jx2-status-active); border: 1px solid rgba(34,197,94,0.25); }
+.cc-task-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-task-elapsed { font-family: var(--jx2-font-mono); font-size: 9px; opacity: 0.4; flex-shrink: 0; }
+
+/* Model status */
+.cc-model-row { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.cc-model-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 1px solid var(--jx2-hud-border);
+  border-radius: var(--jx2-radius-sm);
+  background: rgba(0,0,0,0.15);
+}
+.cc-model-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cc-model-name { font-family: var(--jx2-font-mono); font-size: 10px; flex: 1; color: var(--jx2-fg-secondary); }
+.cc-model-badge {
+  font-family: var(--jx2-font-mono);
+  font-size: 8px;
+  padding: 1px 5px;
+  border-radius: var(--jx2-radius-sm);
+  letter-spacing: 0.06em;
+}
+.cc-model-badge.active { background: rgba(192,57,43,0.12); color: var(--jx2-crimson-300); border: 1px solid rgba(192,57,43,0.3); }
+.cc-model-badge.idle   { background: rgba(255,255,255,0.04); color: var(--jx2-fg-muted); border: 1px solid rgba(255,255,255,0.07); }
+
+/* Hero globe area */
+.cc-hero-globe {
+  margin: 0 14px 10px;
+  border: 1px solid var(--jx2-hud-border);
+  border-radius: var(--jx2-radius-md);
+  padding: 24px 16px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+  background: rgba(0,0,0,0.3);
+}
+.cc-hero-globe::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(192,57,43,0.05), transparent 65%);
+  pointer-events: none;
+}
+.cc-globe-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cc-globe-sphere {
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 33% 30%,
+    rgba(192,57,43,0.7) 0%,
+    rgba(192,57,43,0.2) 35%,
+    rgba(6,7,8,0.98) 72%
+  );
+  box-shadow:
+    inset -14px -14px 32px rgba(0,0,0,0.9),
+    inset 6px 6px 20px rgba(192,57,43,0.2),
+    0 0 40px rgba(192,57,43,0.12),
+    0 0 80px rgba(192,57,43,0.05);
+  position: relative;
+  overflow: hidden;
+  animation: cc-globe-idle 4s ease-in-out infinite;
+}
+.cc-globe-wire {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  opacity: 0.22;
+  display: flex; align-items: center; justify-content: center;
+}
+.cc-globe-wire svg { width: 100%; height: 100%; color: var(--jx2-crimson-500); }
+.cc-globe-halo {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px solid rgba(192,57,43,0.2);
+  box-shadow: 0 0 20px rgba(192,57,43,0.1);
+  pointer-events: none;
+}
+.cc-hero-state {
+  font-family: var(--jx2-font-display);
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--jx2-crimson-400);
+  text-shadow: 0 0 12px rgba(192,57,43,0.4);
+}
+
+/* ── Annotation strip ────────────────────────────────────────────── */
+.annotation {
+  width: 100%;
+  max-width: 1140px;
+  background: rgba(192,57,43,0.04);
+  border: 1px solid rgba(192,57,43,0.15);
+  border-radius: 4px;
+  padding: 12px 16px;
+}
+.annotation h3 {
+  font-family: var(--jx2-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--jx2-crimson-500);
+  margin-bottom: 8px;
+}
+.annotation ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.annotation li {
+  font-family: var(--jx2-font-mono);
+  font-size: 11px;
+  color: var(--jx2-fg-secondary);
+}
+.annotation li::before {
+  content: "→  ";
+  color: var(--jx2-crimson-500);
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-core-ring::before,
+  .cc-globe-sphere,
+  .cc-agent-dot.running,
+  .hud-chip-dot--auth { animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<p class="page-label">HUD Stage 2 · Batch 1 · Command Center Mockup · feat/hud-stage2-batch1-mockups</p>
+
+<div class="cc-shell">
+
+  <!-- Brand bar -->
+  <div class="cc-brand-bar">
+    <span class="cc-wordmark">
+      <span class="hud-bracket">[</span><span class="hud-lead">C</span>ERBERUS<span class="hud-bracket">]</span>
+    </span>
+    <span class="cc-wordmark-sub">COMMAND</span>
+    <div class="cc-brand-chips">
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--online"></span>ONLINE</span>
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--agents"></span>4 AGENTS</span>
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--auth"></span>AUTH</span>
+    </div>
+    <div class="cc-brand-spacer"></div>
+    <span class="cc-clock">14:32:07</span>
+    <button class="cc-refresh-btn">↺ REFRESH</button>
+  </div>
+
+  <!-- Tab nav -->
+  <nav class="cc-tab-nav" role="tablist">
+    <button class="cc-tab-btn active" role="tab" aria-selected="true">COMMAND</button>
+    <button class="cc-tab-btn" role="tab">COUNCIL</button>
+    <button class="cc-tab-btn" role="tab">WORKSPACE</button>
+    <button class="cc-tab-btn" role="tab">FINANCE</button>
+    <button class="cc-tab-btn" role="tab">ASSISTANT</button>
+    <button class="cc-tab-btn" role="tab">GATEWAY</button>
+    <button class="cc-tab-btn" role="tab">AGENTS</button>
+    <button class="cc-tab-btn" role="tab">ROOMS</button>
+    <button class="cc-tab-btn" role="tab">OBSERVE</button>
+  </nav>
+
+  <!-- COMMAND tab -->
+  <div class="cc-tab-content">
+    <div class="cc-command-tab">
+
+      <!-- Top row: Core | Swarm Health | System Vitals -->
+      <div class="cc-top-row">
+
+        <!-- Cerberus Core -->
+        <div class="cc-card cc-card-core">
+          <div class="cc-section-title">Cerberus Core</div>
+          <div class="cc-core-inner">
+            <div class="cc-core-ring">
+              <div class="cc-core-sphere"></div>
+            </div>
+            <div class="cc-core-state">ONLINE</div>
+            <div class="cc-core-status-lbl">GUARDIAN ACTIVE</div>
+          </div>
+        </div>
+
+        <!-- Swarm Health -->
+        <div class="cc-card">
+          <div class="cc-section-title">Swarm Health</div>
+          <div class="cc-swarm-grid">
+            <div>
+              <div class="cc-swarm-num">4</div>
+              <div class="cc-swarm-lbl">Active</div>
+            </div>
+            <div>
+              <div class="cc-swarm-num">7</div>
+              <div class="cc-swarm-lbl">Total</div>
+            </div>
+            <div>
+              <div class="cc-swarm-num">2</div>
+              <div class="cc-swarm-lbl">Running</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- System Vitals -->
+        <div class="cc-card">
+          <div class="cc-section-title">System Vitals</div>
+          <div class="cc-vitals-row">
+            <!-- CPU dial -->
+            <div class="cc-dial-wrap">
+              <div class="cc-dial-arc">
+                <svg viewBox="0 0 54 34" fill="none">
+                  <path d="M6 30 A24 24 0 0 1 48 30" stroke="rgba(255,255,255,0.07)" stroke-width="3" fill="none" stroke-linecap="round"/>
+                  <path d="M6 30 A24 24 0 0 1 48 30" stroke="#f1c40f" stroke-width="3" fill="none" stroke-linecap="round"
+                    stroke-dasharray="62" stroke-dashoffset="18"/>
+                </svg>
+              </div>
+              <div class="cc-dial-num cpu">34%</div>
+              <div class="cc-dial-lbl">CPU</div>
+            </div>
+            <!-- RAM dial -->
+            <div class="cc-dial-wrap">
+              <div class="cc-dial-arc">
+                <svg viewBox="0 0 54 34" fill="none">
+                  <path d="M6 30 A24 24 0 0 1 48 30" stroke="rgba(255,255,255,0.07)" stroke-width="3" fill="none" stroke-linecap="round"/>
+                  <path d="M6 30 A24 24 0 0 1 48 30" stroke="#3b82f6" stroke-width="3" fill="none" stroke-linecap="round"
+                    stroke-dasharray="62" stroke-dashoffset="25"/>
+                </svg>
+              </div>
+              <div class="cc-dial-num ram">58%</div>
+              <div class="cc-dial-lbl">RAM</div>
+            </div>
+            <!-- DISK dial -->
+            <div class="cc-dial-wrap">
+              <div class="cc-dial-arc">
+                <svg viewBox="0 0 54 34" fill="none">
+                  <path d="M6 30 A24 24 0 0 1 48 30" stroke="rgba(255,255,255,0.07)" stroke-width="3" fill="none" stroke-linecap="round"/>
+                  <path d="M6 30 A24 24 0 0 1 48 30" stroke="#22c55e" stroke-width="3" fill="none" stroke-linecap="round"
+                    stroke-dasharray="62" stroke-dashoffset="42"/>
+                </svg>
+              </div>
+              <div class="cc-dial-num disk">31%</div>
+              <div class="cc-dial-lbl">DISK</div>
+            </div>
+            <!-- PING dial -->
+            <div class="cc-dial-wrap">
+              <div class="cc-dial-arc">
+                <svg viewBox="0 0 54 34" fill="none">
+                  <path d="M6 30 A24 24 0 0 1 48 30" stroke="rgba(255,255,255,0.07)" stroke-width="3" fill="none" stroke-linecap="round"/>
+                  <path d="M6 30 A24 24 0 0 1 48 30" stroke="#9b59b6" stroke-width="3" fill="none" stroke-linecap="round"
+                    stroke-dasharray="62" stroke-dashoffset="54"/>
+                </svg>
+              </div>
+              <div class="cc-dial-num lat">12ms</div>
+              <div class="cc-dial-lbl">PING</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mid: Gateway + Telemetry -->
+      <div class="cc-mid-row">
+        <!-- Gateway -->
+        <div class="cc-card">
+          <div class="cc-section-title">Gateway</div>
+          <div class="cc-gw-list">
+            <div class="cc-gw-row">
+              <span class="cc-gw-dot online"></span>
+              <span class="cc-gw-name">Telegram</span>
+              <span class="cc-gw-status">CONNECTED</span>
+            </div>
+            <div class="cc-gw-row">
+              <span class="cc-gw-dot offline"></span>
+              <span class="cc-gw-name">Discord</span>
+              <span class="cc-gw-status">OFFLINE</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Telemetry sparklines -->
+        <div class="cc-card">
+          <div class="cc-section-title">Telemetry Feed</div>
+          <div class="cc-telemetry-inner">
+            <div class="cc-spark-wrap">
+              <div class="cc-spark-label">CPU</div>
+              <svg class="cc-spark-svg" viewBox="0 0 200 40" preserveAspectRatio="none">
+                <defs><linearGradient id="sp-cpu" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f1c40f" stop-opacity="0.3"/><stop offset="100%" stop-color="#f1c40f" stop-opacity="0"/></linearGradient></defs>
+                <polyline points="0,32 18,28 35,24 52,30 70,18 88,22 105,14 122,20 140,12 157,18 175,10 200,16"
+                  fill="none" stroke="#f1c40f" stroke-width="1.5" stroke-linejoin="round"/>
+                <polygon points="0,32 18,28 35,24 52,30 70,18 88,22 105,14 122,20 140,12 157,18 175,10 200,16 200,40 0,40"
+                  fill="url(#sp-cpu)"/>
+              </svg>
+            </div>
+            <div class="cc-spark-wrap">
+              <div class="cc-spark-label">RAM</div>
+              <svg class="cc-spark-svg" viewBox="0 0 200 40" preserveAspectRatio="none">
+                <defs><linearGradient id="sp-ram" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3"/><stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/></linearGradient></defs>
+                <polyline points="0,20 18,22 35,19 52,24 70,21 88,26 105,22 122,25 140,22 157,24 175,20 200,23"
+                  fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linejoin="round"/>
+                <polygon points="0,20 18,22 35,19 52,24 70,21 88,26 105,22 122,25 140,22 157,24 175,20 200,23 200,40 0,40"
+                  fill="url(#sp-ram)"/>
+              </svg>
+            </div>
+            <div class="cc-spark-wrap">
+              <div class="cc-spark-label">LATENCY</div>
+              <svg class="cc-spark-svg" viewBox="0 0 200 40" preserveAspectRatio="none">
+                <defs><linearGradient id="sp-lat" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#9b59b6" stop-opacity="0.3"/><stop offset="100%" stop-color="#9b59b6" stop-opacity="0"/></linearGradient></defs>
+                <polyline points="0,30 18,28 35,32 52,26 70,34 88,22 105,30 122,28 140,26 157,30 175,28 200,26"
+                  fill="none" stroke="#9b59b6" stroke-width="1.5" stroke-linejoin="round"/>
+                <polygon points="0,30 18,28 35,32 52,26 70,34 88,22 105,30 122,28 140,26 157,30 175,28 200,26 200,40 0,40"
+                  fill="url(#sp-lat)"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ops row: Agents | Tasks | Model -->
+      <div class="cc-ops-row">
+
+        <!-- Active Agents -->
+        <div class="cc-card">
+          <div class="cc-section-title">Active Agents</div>
+          <div style="display:flex;flex-direction:column;">
+            <div class="cc-agent-row">
+              <span class="cc-agent-dot running"></span>
+              <span class="cc-agent-name">summarizer</span>
+              <span class="cc-agent-action">Condensing ctx…</span>
+              <span class="cc-agent-score">98</span>
+            </div>
+            <div class="cc-agent-row">
+              <span class="cc-agent-dot running"></span>
+              <span class="cc-agent-name">indexer</span>
+              <span class="cc-agent-action">Scanning files</span>
+              <span class="cc-agent-score">91</span>
+            </div>
+            <div class="cc-agent-row">
+              <span class="cc-agent-dot idle"></span>
+              <span class="cc-agent-name">memory</span>
+              <span class="cc-agent-action">—</span>
+              <span class="cc-agent-score">87</span>
+            </div>
+            <div class="cc-agent-row">
+              <span class="cc-agent-dot idle"></span>
+              <span class="cc-agent-name">planner</span>
+              <span class="cc-agent-action">—</span>
+              <span class="cc-agent-score">84</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Running Tasks -->
+        <div class="cc-card">
+          <div class="cc-section-title">Running Tasks</div>
+          <div style="display:flex;flex-direction:column;">
+            <div class="cc-task-row">
+              <span class="cc-task-status running">RUN</span>
+              <span class="cc-task-label">Context summarisation</span>
+              <span class="cc-task-elapsed">2m 14s</span>
+            </div>
+            <div class="cc-task-row">
+              <span class="cc-task-status queued">WAIT</span>
+              <span class="cc-task-label">Memory consolidation</span>
+              <span class="cc-task-elapsed">—</span>
+            </div>
+            <div class="cc-task-row">
+              <span class="cc-task-status running">RUN</span>
+              <span class="cc-task-label">File index refresh</span>
+              <span class="cc-task-elapsed">48s</span>
+            </div>
+            <div class="cc-task-row">
+              <span class="cc-task-status complete">DONE</span>
+              <span class="cc-task-label">Daily digest</span>
+              <span class="cc-task-elapsed">1m 02s</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Model Status -->
+        <div class="cc-card">
+          <div class="cc-section-title">Model Status</div>
+          <div class="cc-model-row">
+            <div class="cc-model-item">
+              <div class="cc-model-dot" style="background:var(--jx2-crimson-400);box-shadow:0 0 4px var(--jx2-crimson-400)"></div>
+              <span class="cc-model-name">claude-sonnet-4</span>
+              <span class="cc-model-badge active">ACTIVE</span>
+            </div>
+            <div class="cc-model-item">
+              <div class="cc-model-dot" style="background:var(--jx2-fg-muted);opacity:0.3"></div>
+              <span class="cc-model-name">claude-haiku-4</span>
+              <span class="cc-model-badge idle">IDLE</span>
+            </div>
+            <div class="cc-model-item">
+              <div class="cc-model-dot" style="background:var(--jx2-fg-muted);opacity:0.3"></div>
+              <span class="cc-model-name">local-embed-v1</span>
+              <span class="cc-model-badge idle">IDLE</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hero globe -->
+      <div class="cc-hero-globe">
+        <div class="cc-globe-stage">
+          <div class="cc-globe-sphere">
+            <div class="cc-globe-wire">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                <ellipse cx="50" cy="50" rx="49" ry="10" fill="none" stroke="currentColor" stroke-width="0.6"/>
+                <ellipse cx="50" cy="36" rx="42" ry="7"  fill="none" stroke="currentColor" stroke-width="0.45"/>
+                <ellipse cx="50" cy="64" rx="42" ry="7"  fill="none" stroke="currentColor" stroke-width="0.45"/>
+                <ellipse cx="50" cy="22" rx="28" ry="5"  fill="none" stroke="currentColor" stroke-width="0.35"/>
+                <ellipse cx="50" cy="78" rx="28" ry="5"  fill="none" stroke="currentColor" stroke-width="0.35"/>
+                <ellipse cx="50" cy="50" rx="9"  ry="49" fill="none" stroke="currentColor" stroke-width="0.5"/>
+                <ellipse cx="50" cy="50" rx="49" ry="49" fill="none" stroke="currentColor" stroke-width="0.5"/>
+                <ellipse cx="50" cy="50" rx="30" ry="49" fill="none" stroke="currentColor" stroke-width="0.4"/>
+              </svg>
+            </div>
+            <div class="cc-globe-halo"></div>
+          </div>
+        </div>
+        <div class="cc-hero-state">CERBERUS CORE — ONLINE</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Annotation -->
+<div class="annotation">
+  <h3>// HUD Stage 2 Treatment — Command Center</h3>
+  <ul>
+    <li>Brand bar: <code>[CERBERUS] COMMAND</code> wordmark in 17px Orbitron with bracket treatment + live HUD chips (reuses sidebar chip components)</li>
+    <li>Tab nav: JetBrains Mono, active tab gets <code>//</code> prefix + crimson border-left glow matching sidebar active-item style</li>
+    <li>Section headers: <code>// SECTION NAME</code> crimson prefix replacing the existing Orbitron uppercase labels</li>
+    <li>Surface: void (#09090a) brand bar + tab nav; base (#0d0d0f) content area; scanline overlay (same parameters as sidebar)</li>
+    <li>Existing panels (dials, sparklines, globe, swarm numbers) kept intact — HUD chrome applied at the container layer, not inside charts</li>
+    <li>Status dots, task badges, model chips: existing palette/shape preserved; border styling tightened to use <code>--jx2-hud-border</code></li>
+  </ul>
+</div>
+
+</body>
+</html>
