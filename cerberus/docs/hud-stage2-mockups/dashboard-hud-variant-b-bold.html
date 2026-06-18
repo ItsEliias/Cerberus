@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUD Stage 2 — Dashboard Variant B · Bold</title>
+<style>
+@font-face { font-family:'Orbitron'; font-style:normal; font-weight:400 900; font-display:swap; src:url('../../static/fonts/Orbitron-latin.woff2') format('woff2'); }
+@font-face { font-family:'JetBrains Mono'; font-style:normal; font-weight:400 600; font-display:swap; src:url('../../static/fonts/JetBrainsMono-latin.woff2') format('woff2'); }
+@font-face { font-family:'IBM Plex Sans'; font-style:normal; font-weight:400 600; font-display:swap; src:url('../../static/fonts/IBMPlexSans-latin.woff2') format('woff2'); }
+
+:root {
+  --cr-700:#4a0f0f; --cr-600:#7a1a1a; --cr-500:#c0392b; --cr-400:#e04535; --cr-300:#f06b5a; --cr-200:#ff9080;
+  --s-void:#09090a; --s-base:#0d0d0f; --s-raised:#111115;
+  --fg-p:#e8e8ec; --fg-s:#9a9aaa; --fg-m:#5a5a6a;
+  --c-green:#22c55e; --c-blue:#3b82f6; --c-yellow:#f59e0b; --c-purple:#a855f7;
+  --b-def:rgba(192,57,43,0.28); --b-glow:rgba(192,57,43,0.55);
+  --fd:'Orbitron',monospace; --fm:'JetBrains Mono',monospace; --fb:'IBM Plex Sans',sans-serif;
+  --r-sm:2px; --r-md:4px;
+  --hud-sl-gap:4px; --hud-sl-color:rgba(0,0,0,0.07); --hud-sl-op:0.5;
+  --hud-prefix:"// "; --hud-pfx-color:var(--cr-500); --hud-pfx-glow:0 0 12px rgba(192,57,43,0.4);
+  --hud-chip-border:rgba(255,255,255,0.07); --hud-chip-bg:rgba(255,255,255,0.025); --hud-chip-text:var(--fg-m);
+  --wm-size:17px; --wm-track:0.15em; --wm-glow:0 0 20px rgba(192,57,43,0.4);
+  --wm-lead:var(--cr-300); --wm-bracket:var(--cr-700);
+}
+@keyframes pulse-cr { 0%,100%{opacity:.5} 50%{opacity:1} }
+@keyframes hero-in  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+@keyframes line-in  { from{opacity:0;transform:translateX(-4px)} to{opacity:1;transform:none} }
+@keyframes bar-in   { from{width:0} }
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+body { background:#03030a; display:flex; flex-direction:column; align-items:center; min-height:100vh; padding:28px; font-family:var(--fb); color:var(--fg-p); gap:12px; }
+.page-label { font-family:var(--fm); font-size:10px; color:var(--fg-m); letter-spacing:.18em; text-transform:uppercase; }
+.variant-tag { font-family:var(--fm); font-size:9px; color:var(--cr-500); letter-spacing:.12em; text-transform:uppercase; padding:2px 8px; border:1px solid var(--b-def); border-radius:var(--r-sm); background:rgba(192,57,43,0.06); }
+
+/* ── Shell ── */
+.dash { width:100%; max-width:1140px; background:var(--s-base); border:1px solid var(--b-glow); border-radius:var(--r-md); display:flex; flex-direction:column; overflow:hidden; position:relative;
+  box-shadow:0 0 0 1px rgba(192,57,43,0.06),0 4px 48px rgba(0,0,0,.7),0 0 80px rgba(192,57,43,.04); }
+.dash::before { content:''; position:absolute; inset:0; pointer-events:none; z-index:99; opacity:var(--hud-sl-op);
+  background:repeating-linear-gradient(0deg,transparent,transparent calc(var(--hud-sl-gap) - 1px),var(--hud-sl-color) calc(var(--hud-sl-gap) - 1px),var(--hud-sl-color) var(--hud-sl-gap)); }
+
+/* ── Brand bar ── */
+.brand { display:flex; align-items:center; gap:10px; padding:10px 16px 8px; background:var(--s-void); border-bottom:1px solid var(--b-def); flex-shrink:0; position:relative; z-index:2; }
+.wm { font-family:var(--fd); font-size:var(--wm-size); font-weight:700; letter-spacing:var(--wm-track); color:var(--fg-p); text-shadow:var(--wm-glow); text-transform:uppercase; white-space:nowrap; user-select:none; }
+.wm .b { color:var(--wm-bracket); font-size:1.1em; }
+.wm .l { color:var(--wm-lead); }
+.wm-sub { font-family:var(--fm); font-size:9px; letter-spacing:.18em; color:var(--cr-500); text-shadow:var(--hud-pfx-glow); text-transform:uppercase; opacity:.7; }
+.chip-row { display:flex; align-items:center; gap:5px; margin-left:4px; }
+.chip { display:inline-flex; align-items:center; gap:4px; font-family:var(--fm); font-size:8px; color:var(--hud-chip-text); letter-spacing:.1em; text-transform:uppercase; padding:2px 6px; border:1px solid var(--hud-chip-border); border-radius:var(--r-sm); background:var(--hud-chip-bg); white-space:nowrap; user-select:none; }
+.dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.dot-on { background:var(--c-green); }
+.dot-ag { background:var(--c-blue); }
+.dot-au { background:var(--cr-400); animation:pulse-cr 2.4s ease-in-out infinite; }
+.spacer  { flex:1; }
+
+/* ── Body ── */
+.body { flex:1; overflow:auto; display:flex; flex-direction:column; position:relative; z-index:1; scrollbar-width:thin; scrollbar-color:var(--b-def) transparent; }
+
+/* ── Hero counters ── */
+.hero { display:grid; grid-template-columns:1fr 1px 1fr; background:var(--s-void); border-bottom:1px solid var(--b-def); }
+.hero-divider { background:var(--b-def); }
+.hero-stat { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:36px 24px 28px; gap:10px; opacity:0; animation:hero-in 500ms ease-out forwards; }
+.hero-stat:first-child { animation-delay:100ms; }
+.hero-stat:last-child  { animation-delay:200ms; }
+.hero-num { font-family:var(--fd); font-size:52px; font-weight:700; letter-spacing:.02em; line-height:1; font-variant-numeric:tabular-nums; }
+.hero-num--cr { color:var(--fg-p); text-shadow:0 0 40px rgba(192,57,43,.5), 0 0 80px rgba(192,57,43,.2); }
+.hero-num--bl { color:var(--fg-p); text-shadow:0 0 40px rgba(59,130,246,.4), 0 0 80px rgba(59,130,246,.15); }
+.hero-label { font-family:var(--fm); font-size:8.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--fg-m); }
+.hero-trend { display:flex; align-items:center; gap:6px; }
+.hero-trend-val { font-family:var(--fm); font-size:11px; font-variant-numeric:tabular-nums; }
+.hero-trend-lbl { font-family:var(--fm); font-size:8px; letter-spacing:.1em; color:var(--fg-m); text-transform:uppercase; }
+/* accent bar under each hero stat */
+.hero-stat::after { content:''; position:absolute; bottom:0; left:10%; right:10%; height:1px; background:linear-gradient(90deg,transparent,var(--ha,rgba(192,57,43,.5)),transparent); }
+.hero-stat { position:relative; }
+
+/* ── Graph band ── */
+.graph-section { padding:16px 16px 10px; border-bottom:1px solid rgba(255,255,255,.04); }
+.ptitle { font-family:var(--fm); font-size:8px; letter-spacing:.16em; text-transform:uppercase; color:var(--cr-500); text-shadow:var(--hud-pfx-glow); margin-bottom:10px; }
+.ptitle::before { content:var(--hud-prefix); }
+.graph-meta-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+.graph-meta-val { font-family:var(--fd); font-size:11px; letter-spacing:.08em; font-variant-numeric:tabular-nums; }
+.graph-meta-lbl { font-family:var(--fm); font-size:7.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--fg-m); }
+.graph-wrap { position:relative; background:rgba(0,0,0,.2); border:1px solid rgba(255,255,255,.04); border-radius:var(--r-sm); overflow:hidden; }
+canvas.graph { display:block; width:100%; height:130px; }
+.graph-axis { display:flex; justify-content:space-between; padding:4px 2px 0; }
+.graph-axis span { font-family:var(--fm); font-size:7px; letter-spacing:.06em; color:var(--fg-m); }
+
+/* ── Bottom ── */
+.bot { display:grid; grid-template-columns:1fr 220px; gap:0; }
+.bot-activity { padding:14px 16px; border-right:1px solid rgba(255,255,255,.04); }
+.bot-vitals   { padding:14px 14px; }
+
+.alist { display:flex; flex-direction:column; margin-top:8px; gap:0; }
+.aitem { display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.035); opacity:0; animation:line-in 320ms ease-out forwards; }
+.aitem:last-child { border-bottom:none; }
+.atype-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+.atext { font-family:var(--fm); font-size:10.5px; line-height:1.5; color:var(--fg-s); flex:1; }
+.atext strong { font-weight:600; }
+.atime { font-family:var(--fm); font-size:7.5px; color:var(--fg-m); flex-shrink:0; margin-top:3px; white-space:nowrap; }
+
+/* Vitals compact */
+.vrow { margin-bottom:10px; }
+.vrow:last-child { margin-bottom:0; }
+.vhdr { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px; }
+.vname { font-family:var(--fm); font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:var(--fg-s); }
+.vval  { font-family:var(--fm); font-size:8.5px; color:var(--vc,var(--fg-p)); font-variant-numeric:tabular-nums; }
+.vtrack { height:3px; background:rgba(255,255,255,.05); border-radius:1px; overflow:hidden; }
+.vbar { height:100%; border-radius:1px; background:var(--vc,var(--cr-500)); box-shadow:0 0 6px var(--vs,rgba(192,57,43,.4)); width:0; transition:width 1.1s cubic-bezier(.23,1,.32,1); }
+
+@media (prefers-reduced-motion:reduce) {
+  .hero-stat, .aitem { opacity:1; animation:none; }
+  .dot-au, .dot-cr  { animation:none; }
+  .vbar { transition:none; }
+}
+</style>
+</head>
+<body>
+
+<span class="page-label">Nexus HUD — Stage 2 · Batch 1 Revision · Mockup</span>
+<span class="variant-tag">Variant B — Bold</span>
+
+<div class="dash">
+
+  <div class="brand">
+    <div class="wm"><span class="b">[</span><span class="l">C</span>ERBERUS<span class="b">]</span></div>
+    <span class="wm-sub">DASHBOARD</span>
+    <div class="chip-row">
+      <div class="chip"><span class="dot dot-on"></span>ONLINE</div>
+      <div class="chip"><span class="dot dot-ag"></span>3 AGENTS</div>
+      <div class="chip"><span class="dot dot-au"></span>AUTH</div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <div class="body">
+
+    <!-- Hero counters -->
+    <div class="hero">
+      <div class="hero-stat" style="--ha:rgba(192,57,43,.5)">
+        <div class="hero-num hero-num--cr" id="h-sessions">0</div>
+        <div class="hero-label">Total Sessions</div>
+        <div class="hero-trend">
+          <span class="hero-trend-val" style="color:var(--c-green)">↑ 12</span>
+          <span class="hero-trend-lbl">today</span>
+        </div>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat" style="--ha:rgba(59,130,246,.5)">
+        <div class="hero-num hero-num--bl" id="h-tokens">0</div>
+        <div class="hero-label">Total Tokens Processed</div>
+        <div class="hero-trend">
+          <span class="hero-trend-val" style="color:var(--c-blue)">↑ 38K</span>
+          <span class="hero-trend-lbl">this hour</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Token flow graph -->
+    <div class="graph-section">
+      <div class="graph-meta-row">
+        <div>
+          <div class="ptitle" style="margin-bottom:0">TOKEN FLOW · LAST 24H</div>
+        </div>
+        <div style="display:flex;gap:20px;align-items:baseline">
+          <div>
+            <div class="graph-meta-val" style="color:var(--cr-300)" id="g-peak">—</div>
+            <div class="graph-meta-lbl">peak / hr</div>
+          </div>
+          <div>
+            <div class="graph-meta-val" style="color:var(--fg-s)" id="g-avg">—</div>
+            <div class="graph-meta-lbl">avg / hr</div>
+          </div>
+          <div>
+            <div class="graph-meta-val" style="color:var(--c-green)" id="g-now">—</div>
+            <div class="graph-meta-lbl">now</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="graph-wrap">
+          <canvas class="graph" id="graph-tok" width="1108" height="130"></canvas>
+        </div>
+        <div class="graph-axis">
+          <span>00:00</span><span>03:00</span><span>06:00</span><span>09:00</span>
+          <span>12:00</span><span>15:00</span><span>18:00</span><span>21:00</span><span>now</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom -->
+    <div class="bot">
+      <div class="bot-activity">
+        <div class="ptitle">RECENT ACTIVITY</div>
+        <div class="alist" id="alist"></div>
+      </div>
+      <div class="bot-vitals">
+        <div class="ptitle">SYSTEM VITALS</div>
+        <div class="vrow" style="--vc:#f59e0b;--vs:rgba(245,158,11,.4)">
+          <div class="vhdr"><span class="vname">CPU</span><span class="vval">67%</span></div>
+          <div class="vtrack"><div class="vbar" data-w="67"></div></div>
+        </div>
+        <div class="vrow" style="--vc:#3b82f6;--vs:rgba(59,130,246,.4)">
+          <div class="vhdr"><span class="vname">MEM</span><span class="vval">54%</span></div>
+          <div class="vtrack"><div class="vbar" data-w="54"></div></div>
+        </div>
+        <div class="vrow" style="--vc:#22c55e;--vs:rgba(34,197,94,.4)">
+          <div class="vhdr"><span class="vname">DISK</span><span class="vval">38%</span></div>
+          <div class="vtrack"><div class="vbar" data-w="38"></div></div>
+        </div>
+        <div class="vrow" style="--vc:#a855f7;--vs:rgba(168,85,247,.4)">
+          <div class="vhdr"><span class="vname">LAT</span><span class="vval">82ms</span></div>
+          <div class="vtrack"><div class="vbar" data-w="55"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /body -->
+</div><!-- /dash -->
+
+<script>
+(function() {
+'use strict';
+
+const rm = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+let paused = false;
+document.addEventListener('visibilitychange', () => { paused = document.hidden; });
+
+// ─── Count-up (hero) ─────────────────────────────────────────────
+function countUp(el, target, ms, fmt) {
+  if (rm) { el.textContent = fmt(target); return; }
+  const t0 = performance.now();
+  function step(now) {
+    if (paused) { requestAnimationFrame(step); return; }
+    const p  = Math.min((now - t0) / ms, 1);
+    // aggressive ease-out: slow tail for big numbers to feel dramatic
+    const e  = 1 - Math.pow(1 - p, 4);
+    el.textContent = fmt(Math.round(target * e));
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+const fmtComma = n => n.toLocaleString();
+const fmtSI    = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(0)+'K' : String(n);
+
+// Hero counters tick dramatically from 0
+countUp(document.getElementById('h-sessions'),  1247392, 2200, fmtComma);
+countUp(document.getElementById('h-tokens'),   24182054, 2600, fmtComma);
+
+// ─── Token flow graph (canvas) ───────────────────────────────────
+const tokData = [45,32,28,19,24,67,142,218,312,389,445,421,398,412,445,467,489,502,478,434,389,312,245,178];
+
+// meta
+const peak = Math.max(...tokData), avg = Math.round(tokData.reduce((a,b)=>a+b)/tokData.length);
+document.getElementById('g-peak').textContent = peak+'K';
+document.getElementById('g-avg').textContent  = avg+'K';
+document.getElementById('g-now').textContent  = tokData[tokData.length-1]+'K';
+
+function drawGraph(canvas, data) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const pad = { t:12, b:8, l:2, r:2 };
+  const iW = W - pad.l - pad.r, iH = H - pad.t - pad.b;
+  const min = 0, max = Math.max(...data) * 1.15, rng = max - min;
+
+  const pts = data.map((v, i) => ({
+    x: pad.l + (i / (data.length-1)) * iW,
+    y: pad.t + (1 - (v - min) / rng) * iH
+  }));
+
+  function drawGridLines() {
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth   = 1;
+    for (let i = 1; i < 4; i++) {
+      const y = pad.t + (iH / 4) * i;
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    }
+    // vertical time markers
+    for (let i = 1; i < data.length - 1; i += 3) {
+      const x = pad.l + (i / (data.length-1)) * iW;
+      ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, H - pad.b); ctx.stroke();
+    }
+  }
+
+  function render(progress) {
+    ctx.clearRect(0, 0, W, H);
+    drawGridLines();
+
+    const tX = pts[0].x + (pts[pts.length-1].x - pts[0].x) * progress;
+    const vis = [];
+    for (let i = 0; i < pts.length; i++) {
+      if (pts[i].x <= tX) { vis.push(pts[i]); }
+      else {
+        if (i > 0) {
+          const pr = pts[i-1], t = (tX - pr.x) / (pts[i].x - pr.x);
+          vis.push({ x: tX, y: pr.y + (pts[i].y - pr.y) * t });
+        }
+        break;
+      }
+    }
+    if (vis.length < 2) return;
+    const last = vis[vis.length - 1];
+
+    // bold area fill with crimson glow
+    ctx.beginPath();
+    ctx.moveTo(vis[0].x, H - pad.b);
+    vis.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(last.x, H - pad.b);
+    ctx.closePath();
+    const ga = ctx.createLinearGradient(0, pad.t, 0, H);
+    ga.addColorStop(0,   'rgba(192,57,43,0.22)');
+    ga.addColorStop(0.6, 'rgba(192,57,43,0.06)');
+    ga.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = ga; ctx.fill();
+
+    // line with glow (two passes)
+    function drawLine(lw, alpha) {
+      ctx.beginPath();
+      ctx.moveTo(vis[0].x, vis[0].y);
+      for (let i = 1; i < vis.length; i++) ctx.lineTo(vis[i].x, vis[i].y);
+      ctx.strokeStyle = `rgba(224,69,53,${alpha})`;
+      ctx.lineWidth   = lw;
+      ctx.lineJoin    = 'round';
+      ctx.stroke();
+    }
+    drawLine(6, 0.08);  // outer glow
+    drawLine(2, 0.5);   // mid
+    drawLine(1.5, 1.0); // crisp line on top
+
+    // head dot
+    if (progress > 0.02) {
+      ctx.beginPath(); ctx.arc(last.x, last.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#e04535';
+      ctx.shadowColor = '#c0392b'; ctx.shadowBlur = 12;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  if (rm) { render(1); return; }
+  const dur = 1800, t0 = performance.now();
+  function frame(now) {
+    if (paused) { requestAnimationFrame(frame); return; }
+    const p = Math.min((now - t0) / dur, 1);
+    render(1 - Math.pow(1 - p, 2.5));
+    if (p < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+drawGraph(document.getElementById('graph-tok'), tokData);
+
+// ─── Vitals bars ─────────────────────────────────────────────────
+setTimeout(() => {
+  document.querySelectorAll('.vbar').forEach(b => { b.style.width = b.dataset.w + '%'; });
+}, 300);
+
+// ─── Activity feed ───────────────────────────────────────────────
+const EVENTS = [
+  { color:'#c0392b', type:'AGENT',   msg:'agent:alpha — task completed successfully',    time:'2m ago' },
+  { color:'#3b82f6', type:'SESSION', msg:'session #1247 — created by user:itseliias',     time:'5m ago' },
+  { color:'#f59e0b', type:'ALERT',   msg:'token 75% daily threshold reached',             time:'8m ago' },
+  { color:'#22c55e', type:'MODEL',   msg:'model response — gpt-4o 3.8s p95',              time:'11m ago' },
+  { color:'#c0392b', type:'AGENT',   msg:'agent:beta — task assigned, priority HIGH',      time:'14m ago' },
+  { color:'#a855f7', type:'SYSTEM',  msg:'memory snapshot — 128 MB committed',             time:'20m ago' },
+  { color:'#3b82f6', type:'SESSION', msg:'session #1246 — closed after 42m',               time:'31m ago' },
+];
+
+const list = document.getElementById('alist');
+EVENTS.forEach((ev, i) => {
+  const el = document.createElement('div');
+  el.className = 'aitem';
+  el.style.animationDelay = (rm ? 0 : 400 + i * 80) + 'ms';
+  el.innerHTML = `
+    <div class="atype-dot" style="background:${ev.color};box-shadow:0 0 5px ${ev.color}55"></div>
+    <div class="atext"><strong style="color:${ev.color}">${ev.type}</strong> — ${ev.msg}</div>
+    <div class="atime">${ev.time}</div>
+  `;
+  list.appendChild(el);
+});
+
+})();
+</script>
+</body>
+</html>
