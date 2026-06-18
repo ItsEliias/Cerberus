@@ -225,6 +225,7 @@
   <link rel="stylesheet" href="/static/jarvis-v2/surfaces.css">
   <link rel="stylesheet" href="/static/jarvis-v2/surfaces-phase-b.css">
   <link rel="stylesheet" href="/static/jarvis-v2/surfaces-phase-b2.css">
+  <link rel="stylesheet" href="/static/jarvis-v2/hud.css">
   <link rel="stylesheet" href="/static/dashboard.css">
   <link rel="stylesheet" href="/static/css/cerberus-os-home.css">
   <script src="/static/jarvis-v2/effects.js"></script>
@@ -707,7 +708,12 @@
     <div class="sidebar-header">
       <button class="sidebar-hamburger" id="sidebar-toggle-btn" title="Toggle sidebar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
       <div class="sidebar-brand" id="sidebar-brand-btn" style="cursor:pointer;" title="New chat">
-        <span class="sidebar-brand-title">Cerberus</span>
+        <span class="sidebar-brand-title"><span class="jx2-bracket">[</span><span class="jx2-lead">C</span>ERBERUS<span class="jx2-bracket">]</span></span>
+      </div>
+      <div class="jx2-hud-chip-row" id="sidebar-hud-chips" aria-live="polite">
+        <span class="jx2-hud-chip" id="hud-chip-online"><span class="jx2-hud-chip-dot jx2-hud-chip-dot--unknown"></span><span class="jx2-hud-chip-label">—</span></span>
+        <span class="jx2-hud-chip" id="hud-chip-agents"><span class="jx2-hud-chip-dot jx2-hud-chip-dot--unknown"></span><span class="jx2-hud-chip-label">— AGENTS</span></span>
+        <span class="jx2-hud-chip" id="hud-chip-auth"><span class="jx2-hud-chip-dot jx2-hud-chip-dot--unknown"></span><span class="jx2-hud-chip-label">AUTH</span></span>
       </div>
     </div>
     <div class="sidebar-inner">
@@ -963,7 +969,10 @@
     <div class="sidebar-user-bar" id="sidebar-user-bar">
       <div class="user-bar-left" id="user-bar-profile">
         <div class="user-bar-avatar" id="user-bar-avatar"></div>
-        <span class="user-bar-name" id="user-bar-name">User</span>
+        <div style="display:flex;flex-direction:column;gap:1px;">
+          <span class="user-bar-name" id="user-bar-name">User</span>
+          <span class="sidebar-user-status" id="sidebar-user-status">● SYS ONLINE</span>
+        </div>
       </div>
       <div class="user-bar-actions">
         <button type="button" class="user-bar-btn" id="user-bar-settings" title="Settings">
@@ -1807,6 +1816,16 @@
                 <span class="vis-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
                 <span class="vis-label">Settings Button <span class="vis-hint">Cog next to user — re-open with <code>/settings</code></span></span>
                 <input type="checkbox" checked data-ui-key="sidebar-settings-btn"><span class="vis-switch"></span>
+              </label>
+            </div>
+          </div>
+          <div class="admin-card" style="padding-bottom:6px;">
+            <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;opacity:0.6"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>HUD Effects</h2>
+            <div class="vis-toggles">
+              <label class="vis-row">
+                <span class="vis-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg></span>
+                <span class="vis-label">Reduce HUD effects <span class="vis-hint">Hides scanlines and status chips; keeps wordmark</span></span>
+                <input type="checkbox" id="set-reduceHudToggle"><span class="vis-switch"></span>
               </label>
             </div>
           </div>

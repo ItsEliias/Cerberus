@@ -24,91 +24,22 @@ import * as Poll from './poll.js';
   const link = document.createElement('link');
   link.id   = 'cc-styles-link';
   link.rel  = 'stylesheet';
-  link.href = '/static/js/cyberapps/command-center/styles.css?v=358';
+  link.href = '/static/js/cyberapps/command-center/styles.css?v=359';
   document.head.appendChild(link);
 })();
 
 // ---- Tab config ----
 
 const TABS = [
-  {
-    id: 'command',
-    label: '>_ COMMAND',
-    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
-    </svg>`,
-  },
-  {
-    id: 'council',
-    label: 'COUNCIL',
-    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="9" cy="7" r="3"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
-      <circle cx="19" cy="7" r="2"/><path d="M21 21v-1.5a3 3 0 0 0-3-3h-1"/>
-    </svg>`,
-  },
-  {
-    id: 'workspace',
-    label: 'WORKSPACE',
-    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-    </svg>`,
-  },
-  {
-    id: 'finance',
-    label: 'FINANCE',
-    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-      <polyline points="17 6 23 6 23 12"/>
-    </svg>`,
-  },
-  {
-    id: 'assistant',
-    label: 'ASSISTANT',
-    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-    </svg>`,
-  },
-  {
-    id: 'gateway',
-    label: 'GATEWAY',
-    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 2H3v16h5v4l4-4h9V2z"/>
-      <line x1="7" y1="8" x2="17" y2="8"/>
-      <line x1="7" y1="12" x2="13" y2="12"/>
-    </svg>`,
-  },
-  {
-    id: 'agents',
-    label: 'AGENTS',
-    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 2L3 6V12C3 17.5 7 22 12 24C17 22 21 17.5 21 12V6Z"/>
-    </svg>`,
-  },
-  {
-    id: 'rooms',
-    label: 'ROOMS',
-    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      <line x1="9" y1="10" x2="15" y2="10"/>
-    </svg>`,
-  },
-  {
-    id: 'observability',
-    label: 'OBSERVE',
-    icon: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-      <circle cx="12" cy="12" r="3"/>
-    </svg>`,
-  },
+  { id: 'command',       label: 'COMMAND'   },
+  { id: 'council',       label: 'COUNCIL'   },
+  { id: 'workspace',     label: 'WORKSPACE' },
+  { id: 'finance',       label: 'FINANCE'   },
+  { id: 'assistant',     label: 'ASSISTANT' },
+  { id: 'gateway',       label: 'GATEWAY'   },
+  { id: 'agents',        label: 'AGENTS'    },
+  { id: 'rooms',         label: 'ROOMS'     },
+  { id: 'observability', label: 'OBSERVE'   },
 ];
 
 // ---- Module state ----
@@ -144,15 +75,23 @@ function _render() {
 
   shell.innerHTML = `
     <div class="cc-brand-bar">
-      <span class="cc-brand-title">Cerberus — Command Center</span>
-      <span class="cc-clock" id="cc-clock">--:--:-- --</span>
+      <span class="cc-wordmark">
+        <span class="hud-bracket">[</span><span class="hud-lead">C</span><span class="hud-bracket">]</span>ERBERUS
+      </span>
+      <span class="cc-wordmark-sub">COMMAND CENTER</span>
+      <div class="cc-brand-chips">
+        <div class="hud-chip"><span class="hud-chip-dot hud-chip-dot--online"></span>ONLINE</div>
+        <div class="hud-chip" id="cc-agents-chip"><span class="hud-chip-dot hud-chip-dot--agents"></span><span id="cc-agents-chip-count">— AGENTS</span></div>
+        <div class="hud-chip"><span class="hud-chip-dot hud-chip-dot--auth"></span>AUTH</div>
+      </div>
+      <span class="cc-brand-spacer"></span>
+      <span class="cc-clock" id="cc-clock">--:--:--</span>
       <button class="cc-refresh-btn" id="cc-refresh">REFRESH</button>
     </div>
     <nav class="cc-tab-nav" id="cc-tab-nav">
       ${TABS.map(t => `
         <button class="cc-tab-btn${t.id === _activeTab ? ' active' : ''}"
-          data-tab="${t.id}" title="${t.label}">
-          ${t.icon}<span>${t.label}</span>
+          data-tab="${t.id}">${t.label}
         </button>`).join('')}
     </nav>
     <div class="cc-tab-content" id="cc-tab-content"></div>
@@ -250,6 +189,8 @@ function _pollCallbacks(shell) {
     onSwarm(sw) {
       const c = shell.querySelector('#cc-tab-content');
       if (_activeTab === 'command' && c) applySwarm(c, sw, _orbWrap);
+      const chipCount = shell.querySelector('#cc-agents-chip-count');
+      if (chipCount && sw.active != null) chipCount.textContent = sw.active + ' AGENTS';
     },
     onAgents(agents) {
       const c = shell.querySelector('#cc-tab-content');
@@ -277,8 +218,8 @@ function _startClock(shell) {
   const el = shell.querySelector('#cc-clock');
   if (!el) return;
   const tick = () => {
-    el.textContent = new Date().toLocaleTimeString('en-US', {
-      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+    el.textContent = new Date().toLocaleTimeString('en-GB', {
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
     });
   };
   tick();

@@ -1,0 +1,369 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/hud.css
+ * Nexus HUD identity layer — Stage 1 tokens + sidebar treatment.
+ * Stage 2 will apply these same tokens to other surfaces.
+ *
+ * All values reference jx2- tokens from tokens.css so theme switches
+ * automatically re-color the HUD chrome without edits here.
+ * ==================================================================== */
+
+/* ── HUD custom properties ──────────────────────────────────────────── */
+:root {
+  /* Fixed brand-red — permanent Cerberus signature, never changes with theme */
+  --jx2-hud-brand-red: #c0392b;
+
+  /* Neutral wordmark body color — NOT --fg, which carries the theme accent hue
+     (green on forest/terminal, cyan on ocean/cyberpunk, etc.).
+     theme.js toggles :root.light when bg luminance ≥ 50, so this is the right
+     hook for light-bg JS themes (paper, lavender, cute) too. */
+  --jx2-hud-fg-neutral: #e0e0e4;
+
+  /* Header / footer depths — follows active theme panel color */
+  --jx2-hud-surface:      var(--panel, #111);
+  --jx2-hud-border:       var(--jx2-border-default);
+
+  /* Scanline overlay (repeating-linear-gradient on pseudo-element) */
+  --jx2-hud-scanline-gap:     4px;
+  --jx2-hud-scanline-color:   rgba(0, 0, 0, 0.07);
+  --jx2-hud-scanline-opacity: 0.5;
+
+  /* Active item glow — brand-red, fixed across all themes */
+  --jx2-hud-active-bg:     rgba(192, 57, 43, 0.12);
+  --jx2-hud-active-glow:   inset 0 0 16px rgba(192, 57, 43, 0.10),
+                            0 0 0 1px rgba(192, 57, 43, 0.12);
+  --jx2-hud-active-border: var(--jx2-crimson-400);
+  --jx2-hud-hover-bg:      rgba(192, 57, 43, 0.08);
+  --jx2-hud-hover-border:  var(--jx2-crimson-600);
+
+  /* Section prefix token — brand-red, fixed across all themes */
+  --jx2-hud-prefix:        "// ";
+  --jx2-hud-prefix-color:  var(--jx2-crimson-500);
+  --jx2-hud-prefix-glow:   0 0 12px rgba(192, 57, 43, 0.4);
+
+  /* Chip (status indicator) — theme-reactive: adapts to fg/bg */
+  --jx2-hud-chip-border:    color-mix(in srgb, var(--fg, #c5c9d0) 10%, transparent);
+  --jx2-hud-chip-bg:        color-mix(in srgb, var(--fg, #c5c9d0) 3%, transparent);
+  --jx2-hud-chip-text:      color-mix(in srgb, var(--fg, #c5c9d0) 55%, transparent);
+  --jx2-hud-chip-dot-size:  5px;
+  --jx2-hud-chip-gap:       4px;
+
+  /* Wordmark */
+  --jx2-hud-wordmark-font:       var(--jx2-font-display);
+  --jx2-hud-wordmark-size:       17px;
+  --jx2-hud-wordmark-tracking:   0.15em;
+  --jx2-hud-wordmark-glow:       0 0 20px rgba(192, 57, 43, 0.4);
+  /* "C" and brackets: permanent brand-red signature, never adapts */
+  --jx2-hud-wordmark-lead-color:    var(--jx2-crimson-300);
+  --jx2-hud-wordmark-bracket-color: var(--jx2-crimson-700);
+
+  /* User bar separator — brand-red gradient, fixed */
+  --jx2-hud-userbar-edge: linear-gradient(
+    90deg,
+    transparent,
+    var(--jx2-crimson-700) 25%,
+    var(--jx2-crimson-500) 50%,
+    var(--jx2-crimson-700) 75%,
+    transparent
+  );
+}
+
+/* Light-bg themes: theme.js sets :root.light when background luminance ≥ 50 */
+:root.light {
+  --jx2-hud-fg-neutral: #2b2b2b;
+}
+
+/* ── Reusable HUD chip component ────────────────────────────────────── */
+.jx2-hud-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jx2-hud-chip-gap);
+  font-family: var(--jx2-font-mono);
+  font-size: 8px;
+  color: var(--jx2-hud-chip-text);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border: 1px solid var(--jx2-hud-chip-border);
+  border-radius: var(--jx2-radius-sm);
+  background: var(--jx2-hud-chip-bg);
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.jx2-hud-chip-dot {
+  width: var(--jx2-hud-chip-dot-size);
+  height: var(--jx2-hud-chip-dot-size);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.jx2-hud-chip-dot--online  { background: var(--jx2-status-active); }
+.jx2-hud-chip-dot--agents  { background: var(--jx2-status-processing); }
+.jx2-hud-chip-dot--auth    { background: var(--jx2-crimson-400);
+                              animation: jx2-pulse-crimson 2.4s ease-in-out infinite; }
+.jx2-hud-chip-dot--unknown { background: var(--jx2-fg-muted); animation: none; }
+
+/* Chip row container */
+.jx2-hud-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+/* ── Reusable section-prefix treatment ──────────────────────────────── */
+/* Apply .jx2-hud-section-title on any section header to get the // prefix */
+.jx2-hud-section-title::before {
+  content: var(--jx2-hud-prefix);
+  color: var(--jx2-hud-prefix-color);
+  font-family: var(--jx2-font-mono);
+  font-size: 0.85em;
+  letter-spacing: 0.02em;
+  font-weight: 400;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+
+/* Hide section icons when using the // prefix notation */
+.jx2-hud-section-title .section-icon {
+  display: none;
+}
+
+/* ── Reusable active-item glow ───────────────────────────────────────── */
+.jx2-hud-active-item {
+  border-left: 2px solid var(--jx2-hud-active-border) !important;
+  background: var(--jx2-hud-active-bg) !important;
+  color: var(--jx2-crimson-200) !important;
+  box-shadow: var(--jx2-hud-active-glow) !important;
+}
+
+/* ── "Reduce HUD effects" modifier ─────────────────────────────────── */
+/* body.reduce-hud disables scanlines + chip row; wordmark stays intact */
+body.reduce-hud #sidebar-hud-chips {
+  display: none !important;
+}
+body.reduce-hud .sidebar-inner::before {
+  display: none !important;
+}
+
+/* ── Sidebar — Nexus HUD treatment ─────────────────────────────────── */
+/* Scope all rules to .sidebar so they don't leak to Stage 2 surfaces */
+
+/* 1. Header — darker surface, column layout for wordmark + chips */
+.sidebar .sidebar-header {
+  flex-direction: column;
+  align-items: flex-start;
+  /* 42px left clears the fixed #hamburger-btn (left:9px, ~30px wide) */
+  padding: 14px 12px 10px 42px;
+  background: var(--jx2-hud-surface) !important;
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+  gap: 7px;
+  min-height: 0;
+}
+
+/* Row wrapper that holds the hamburger (hidden) + brand */
+.sidebar .sidebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 0;
+  padding: 0;
+  width: 100%;
+}
+
+/* 2. Wordmark — Orbitron, bracket notation */
+.sidebar .sidebar-brand-title {
+  font-family: var(--jx2-hud-wordmark-font) !important;
+  font-size: var(--jx2-hud-wordmark-size) !important;
+  font-weight: 700 !important;
+  letter-spacing: var(--jx2-hud-wordmark-tracking) !important;
+  color: var(--jx2-hud-fg-neutral) !important;
+  text-shadow: var(--jx2-hud-wordmark-glow) !important;
+  text-transform: uppercase;
+  white-space: nowrap;
+  /* Reset the left-offset from style.css */
+  left: 0 !important;
+  position: static !important;
+  user-select: none;
+}
+
+/* Bracket characters flanking the wordmark */
+.sidebar .jx2-bracket {
+  color: var(--jx2-hud-wordmark-bracket-color);
+  font-size: 1.1em;
+}
+
+/* Crimson first letter "C" */
+.sidebar .jx2-lead {
+  color: var(--jx2-hud-wordmark-lead-color);
+}
+
+/* 3. Chip row layout in the sidebar */
+.sidebar #sidebar-hud-chips {
+  width: 100%;
+  padding: 0;
+}
+
+/* 4. Scanline overlay on the scroll body */
+.sidebar .sidebar-inner {
+  position: relative;
+}
+.sidebar .sidebar-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent calc(var(--jx2-hud-scanline-gap) - 1px),
+    var(--jx2-hud-scanline-color) calc(var(--jx2-hud-scanline-gap) - 1px),
+    var(--jx2-hud-scanline-color) var(--jx2-hud-scanline-gap)
+  );
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--jx2-hud-scanline-opacity);
+}
+/* Ensure list items render above the scanline overlay */
+.sidebar .sidebar-inner > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 5. Section title // prefix */
+.sidebar .section-title {
+  font-family: var(--jx2-font-mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  color: var(--jx2-crimson-500);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+.sidebar .section-title::before {
+  content: var(--jx2-hud-prefix);
+  color: var(--jx2-hud-prefix-color);
+  font-family: var(--jx2-font-mono);
+  font-size: 1em;
+  letter-spacing: 0.02em;
+  font-weight: 400;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+/* Suppress section SVG icons (replaced by // notation) */
+.sidebar .section-title .section-icon {
+  display: none;
+}
+
+/* 6. List items — mono font, left-bar hover/active.
+   !important beats style.css ID-selector rules:
+   #sidebar-new-chat-btn, #sidebar-search-btn { padding: 8px 8px }
+   #tools-section .list-item { padding: 8px 8px }
+   border-radius: 0 2px 2px 0 keeps the left edge flat so the accent bar
+   reads as a vertical stripe, not a pill. style.css base rule uses 4px. */
+.sidebar .list-item {
+  font-family: var(--jx2-font-mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  border-left: 2px solid transparent;
+  padding: 7px 8px 7px 10px !important;
+  border-radius: 0 2px 2px 0 !important;
+  transition: background 150ms, color 150ms, border-left-color 150ms,
+              box-shadow 150ms;
+}
+.sidebar .list-item:hover {
+  background: var(--jx2-hud-hover-bg) !important;
+  border-left-color: var(--jx2-hud-hover-border) !important;
+  box-shadow: inset 0 0 12px rgba(192, 57, 43, 0.06) !important;
+}
+.sidebar .list-item.active {
+  border-left-color: var(--jx2-hud-active-border) !important;
+  background: var(--jx2-hud-active-bg) !important;
+  color: var(--jx2-crimson-200) !important;
+  box-shadow: var(--jx2-hud-active-glow) !important;
+}
+
+/* Icon color — style.css .sidebar-action-icon forces stroke/color to
+   var(--red); reset to currentColor so icons inherit the list-item's
+   text color and the opacity below controls the dim/bright states. */
+.sidebar .sidebar-action-icon {
+  stroke: currentColor !important;
+  color: currentColor !important;
+}
+.sidebar .list-item svg {
+  opacity: 0.4;
+  transition: opacity 150ms;
+}
+.sidebar .list-item:hover svg  { opacity: 0.8; }
+.sidebar .list-item.active svg { opacity: 1; }
+
+/* Section vertical rhythm — matches mockup .section { margin-top: 14px } */
+.sidebar .section { margin-top: 14px !important; }
+
+/* 7. User bar — darker surface + crimson gradient top edge */
+.sidebar .sidebar-user-bar {
+  background: var(--jx2-hud-surface) !important;
+  border-top: none !important;
+  position: relative;
+}
+.sidebar .sidebar-user-bar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--jx2-hud-userbar-edge);
+  pointer-events: none;
+}
+
+/* User bar avatar — square corners, crimson tint */
+.sidebar .user-bar-avatar {
+  border-radius: var(--jx2-radius-sm) !important;
+  background: rgba(192, 57, 43, 0.14) !important;
+  border: 1px solid var(--jx2-border-default) !important;
+  box-shadow: 0 0 8px rgba(192, 57, 43, 0.2) !important;
+  font-family: var(--jx2-font-display) !important;
+  font-size: 9px !important;
+  color: var(--jx2-crimson-200) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+}
+
+/* Username in mono */
+.sidebar .user-bar-name {
+  font-family: var(--jx2-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* Status line under username */
+.sidebar-user-status {
+  font-family: var(--jx2-font-mono);
+  font-size: 8px;
+  color: var(--jx2-status-active);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: block;
+  margin-top: 1px;
+}
+
+/* ── Responsive: mobile sidebar (≤600px) ───────────────────────────── */
+@media (max-width: 600px) {
+  .sidebar .sidebar-header {
+    padding: 12px 10px 8px 42px;
+    gap: 5px;
+  }
+  .sidebar #sidebar-hud-chips {
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+  .jx2-hud-chip {
+    font-size: 7px;
+    padding: 1px 5px;
+  }
+}
+
+/* ── Reduced-motion killswitch ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .jx2-hud-chip-dot--auth { animation: none !important; }
+}

@@ -292,25 +292,27 @@ export function buildCommandTab() {
       </div>
     </div>
   </div>
-  <div class="cc-card">
-    <div class="cc-card-title">Gateway</div>
-    <div class="cc-gw-list" id="cc-gw-list">
-      <div class="cc-gw-row" data-platform="telegram">
-        <span class="cc-dot cc-gw-dot" style="background:rgba(255,255,255,0.15)"></span>
-        <span class="cc-gw-name">Telegram</span>
-        <span class="cc-gw-status">—</span>
-      </div>
-      <div class="cc-gw-row" data-platform="discord">
-        <span class="cc-dot cc-gw-dot" style="background:rgba(255,255,255,0.15)"></span>
-        <span class="cc-gw-name">Discord</span>
-        <span class="cc-gw-status">—</span>
+  <div class="cc-mid-row">
+    <div class="cc-card">
+      <div class="cc-card-title">Gateway</div>
+      <div class="cc-gw-list" id="cc-gw-list">
+        <div class="cc-gw-row" data-platform="telegram">
+          <span class="cc-dot cc-gw-dot" style="background:rgba(255,255,255,0.15)"></span>
+          <span class="cc-gw-name">Telegram</span>
+          <span class="cc-gw-status">—</span>
+        </div>
+        <div class="cc-gw-row" data-platform="discord">
+          <span class="cc-dot cc-gw-dot" style="background:rgba(255,255,255,0.15)"></span>
+          <span class="cc-gw-name">Discord</span>
+          <span class="cc-gw-status">—</span>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="cc-telemetry">
-    <div class="cc-telemetry-header">Telemetry Feed</div>
-    <div class="cc-sparklines" id="cc-sparklines">
-      ${['cpu','ram','latency'].map(k => _sparkSvg(k)).join('')}
+    <div class="cc-card cc-telemetry">
+      <div class="cc-telemetry-header">Telemetry Feed</div>
+      <div class="cc-sparklines" id="cc-sparklines">
+        ${['cpu','ram','latency'].map(k => _sparkSvg(k)).join('')}
+      </div>
     </div>
   </div>
   <div class="cc-ops-row">
