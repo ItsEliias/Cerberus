@@ -166,6 +166,7 @@ async def _agent_stream(
 
     parts: list[str] = []
     in_tok = out_tok = 0
+    errored = False
 
     try:
         async for chunk in stream_llm(url, model, messages, headers=headers):
@@ -185,14 +186,17 @@ async def _agent_stream(
                                 parts.append(delta)
                     except Exception:
                         pass
+            if chunk.startswith("event: error"):
+                errored = True
             if suppress_done and "[DONE]" in chunk:
                 continue
             yield chunk
     except Exception as exc:
+        errored = True
         yield f'event: error\ndata: {json.dumps({"error": str(exc)})}\n\n'
     finally:
         content = "".join(parts)
-        if content.strip():
+        if content.strip() and not errored:
             _persist_turn(db_factory, room_id, agent.id, agent.name, content, in_tok, out_tok)
 
 

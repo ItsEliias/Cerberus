@@ -46,16 +46,29 @@ function _msgBubble(role, content, timestamp) {
 </div>`;
 }
 
+function _contextDivider(trimmed) {
+  return `<div class="cc-ctx-divider">
+  <span class="cc-ctx-divider-line"></span>
+  <span class="cc-ctx-divider-label">// context window — ${trimmed} earlier message${trimmed !== 1 ? 's' : ''} not sent to LLM</span>
+  <span class="cc-ctx-divider-line"></span>
+</div>`;
+}
+
 async function _loadThread(agentId, messagesEl) {
   try {
     const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/thread`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const { messages = [] } = await res.json();
+    const { messages = [], context_window = 20 } = await res.json();
     if (!messages.length) {
       messagesEl.innerHTML = '<div class="cc-empty">No messages yet — start the conversation.</div>';
       return;
     }
-    messagesEl.innerHTML = messages.map(m => _msgBubble(m.role, m.content, m.timestamp)).join('');
+    const trimmed = Math.max(0, messages.length - context_window);
+    const bubbles = messages.map(m => _msgBubble(m.role, m.content, m.timestamp));
+    if (trimmed > 0) {
+      bubbles.splice(trimmed, 0, _contextDivider(trimmed));
+    }
+    messagesEl.innerHTML = bubbles.join('');
     messagesEl.scrollTop = messagesEl.scrollHeight;
   } catch (e) {
     messagesEl.innerHTML = `<div class="cc-empty">Could not load thread — ${_esc(e.message)}</div>`;
@@ -81,8 +94,10 @@ async function _streamSSE(body, contentEl) {
       if (eventType === 'error') {
         try {
           const obj = JSON.parse(raw);
-          contentEl.textContent = `[Error] ${obj.error || raw}`;
-        } catch (_) { contentEl.textContent = `[Error] ${raw}`; }
+          contentEl.textContent = `Error: ${obj.error || raw}`;
+        } catch (_) { contentEl.textContent = `Error: ${raw}`; }
+        contentEl.classList.remove('cc-chat-streaming');
+        contentEl.classList.add('cc-chat-error');
         eventType = 'message'; continue;
       }
       try {
