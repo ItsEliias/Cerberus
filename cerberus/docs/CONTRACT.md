@@ -38,7 +38,7 @@ After Phase B/C land, the diff against this doc is the acceptance test.
 
 | Widget | Tab | Data source | Backend endpoint | Status |
 |--------|-----|-------------|-----------------|--------|
-| Brand bar + clock | Shell | `Date` client-side | — | ✅ live |
+| Brand bar — `[C]ERBERUS` wordmark + COMMAND CENTER sub-label + HUD chips (ONLINE/AGENTS/AUTH) + 24h clock | Shell | `Date` client-side; agent count from `/api/agents` poll | — | ✅ live |
 | Vitals **timeseries** charts | COMMAND | Polled | `/api/cyberapps/operations/vitals` | ✅ live |
 | Swarm / agent orbit | COMMAND | Polled | `/api/agents` | ✅ live |
 | Gateway health | COMMAND | Polled | `/api/cyberapps/gateway` | ✅ live |
