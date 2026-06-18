@@ -700,6 +700,7 @@ class CerberusAgent(TimestampMixin, Base):
     avatar              = Column(String, nullable=True)                    # emoji or short identifier
     is_suppressed       = Column(Boolean, default=False, nullable=False)   # owner-deleted default: skip back-fill
     tts_voice           = Column(String, nullable=True)                    # preferred TTS voice for this agent
+    context_window      = Column(Integer, nullable=True)                   # per-agent thread context size (None → global default)
 
     __table_args__ = (
         Index('ix_cerberus_agents_owner_name', 'owner', 'name', unique=True),
@@ -725,6 +726,7 @@ class CerberusAgent(TimestampMixin, Base):
             "avatar": self.avatar or "",
             "is_suppressed": bool(self.is_suppressed),
             "tts_voice": self.tts_voice or "",
+            "context_window": self.context_window,
         }
 
 
@@ -1918,6 +1920,20 @@ def init_db():
     _migrate_add_agent_phase_a_columns()
     _migrate_add_room_phase3b_columns()
     _migrate_add_agent_tts_voice_column()
+    _migrate_add_agent_context_window_column()
+
+
+def _migrate_add_agent_context_window_column():
+    """Add context_window column to cerberus_agents table (V5)."""
+    try:
+        with engine.connect() as conn:
+            cols = [r[1] for r in conn.execute(text("PRAGMA table_info(cerberus_agents)"))]
+            if "context_window" not in cols:
+                conn.execute(text("ALTER TABLE cerberus_agents ADD COLUMN context_window INTEGER"))
+            conn.commit()
+        logging.getLogger(__name__).info("cerberus_agents context_window migration complete")
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"cerberus_agents context_window migration: {e}")
 
 
 def _migrate_add_agent_tts_voice_column():

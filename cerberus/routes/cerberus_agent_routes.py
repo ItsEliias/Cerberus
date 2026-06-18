@@ -153,6 +153,7 @@ class AgentPatch(BaseModel):
     score: Optional[int] = None
     avatar: Optional[str] = None
     tts_voice: Optional[str] = None
+    context_window: Optional[int] = None  # None = use global default; 0 = reset to default
 
 
 class AgentInvoke(BaseModel):
@@ -278,6 +279,9 @@ def setup_cerberus_agent_routes() -> APIRouter:
                 agent.avatar = body.avatar
             if body.tts_voice is not None:
                 agent.tts_voice = body.tts_voice or None
+            if body.context_window is not None:
+                # 0 = clear override (use global default); else clamp 1-200
+                agent.context_window = None if body.context_window == 0 else max(1, min(int(body.context_window), 200))
             db.commit()
             db.refresh(agent)
             return agent.to_dict()
