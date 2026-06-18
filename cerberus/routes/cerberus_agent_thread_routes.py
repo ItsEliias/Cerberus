@@ -203,6 +203,12 @@ def setup_agent_thread_routes() -> APIRouter:
             system_prompt = agent.system_prompt or ""
             model_alias   = agent.model_alias or "default"
 
+            # Per-agent window wins; fall back to global default (clamped 1-200).
+            from src.settings import get_setting
+            global_window = int(get_setting("agent_context_window", 20))
+            raw_window = agent.context_window if agent.context_window is not None else global_window
+            ctx_window = max(1, min(int(raw_window), 200))
+
             thread = _get_or_create_thread(db, agent_id, owner)
             thread_id = thread.id
 
@@ -215,7 +221,7 @@ def setup_agent_thread_routes() -> APIRouter:
 
             history = [
                 {"role": m.role, "content": m.content}
-                for m in thread.messages[-20:]
+                for m in thread.messages[-ctx_window:]
             ]
             db.commit()
         finally:

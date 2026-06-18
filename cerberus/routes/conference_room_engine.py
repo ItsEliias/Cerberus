@@ -23,7 +23,20 @@ MAX_CAP = 20
 DEFAULT_CAP_LOCAL = 12   # higher default for free/local endpoints
 DEFAULT_CAP_PAID  = 5    # conservative default for paid API endpoints
 DEFAULT_CAP = DEFAULT_CAP_PAID   # backward-compat alias
-CONTEXT_WINDOW = 20
+_CONTEXT_WINDOW_DEFAULT = 20     # fallback if settings unavailable
+
+
+def _get_context_window() -> int:
+    """Read the global agent_context_window setting (clamped 1-200)."""
+    try:
+        from src.settings import get_setting
+        v = int(get_setting("agent_context_window", _CONTEXT_WINDOW_DEFAULT))
+        return max(1, min(v, 200))
+    except Exception:
+        return _CONTEXT_WINDOW_DEFAULT
+
+
+CONTEXT_WINDOW = _CONTEXT_WINDOW_DEFAULT  # module-level alias kept for compatibility
 MAX_MSG_CHARS = 2000
 
 _LOCAL_HINTS = ("localhost", "127.", "0.0.0.0", "::1")
@@ -86,7 +99,7 @@ def build_context_messages(db, room_id: str, system_prompt: str, user_text: str)
         db.query(RoomMessage)
         .filter(RoomMessage.room_id == room_id)
         .order_by(RoomMessage.timestamp.desc())
-        .limit(CONTEXT_WINDOW)
+        .limit(_get_context_window())
         .all()
     )
     rows = list(reversed(rows))

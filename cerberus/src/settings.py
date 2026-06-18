@@ -140,6 +140,9 @@ DEFAULT_SETTINGS = {
     # Max relevant skills injected into the prompt for one request. The skills
     # library can grow beyond this; cleanup/retirement is an explicit review flow.
     "skill_max_injected": 3,
+    # Default context window for agent thread conversations (number of messages
+    # kept in the LLM history). Per-agent overrides this when set. No unlimited.
+    "agent_context_window": 20,
     # Reminders
     "reminder_channel": "browser",   # "browser" | "email" | "ntfy" | "webhook"
     "reminder_llm_synthesis": False,
