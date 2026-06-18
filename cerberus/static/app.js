@@ -1422,12 +1422,12 @@ function initializeEventListeners() {
       })
       .catch(() => setChip(chipAuth, 'jx2-hud-chip-dot--unknown', 'AUTH?'));
 
-    // AGENTS chip — count from /api/agents
+    // AGENTS chip — /api/agents returns { agents: [...] } not a bare array
     fetch(`${API_BASE}/api/agents`, { credentials: 'same-origin' })
       .then(r => r.ok ? r.json() : Promise.reject())
-      .then(agents => {
-        const count = Array.isArray(agents) ? agents.length : 0;
-        setChip(chipAgents, 'jx2-hud-chip-dot--agents', count + ' AGENTS');
+      .then(data => {
+        const list = Array.isArray(data) ? data : (data?.agents || []);
+        setChip(chipAgents, 'jx2-hud-chip-dot--agents', list.length + ' AGENTS');
       })
       .catch(() => setChip(chipAgents, 'jx2-hud-chip-dot--unknown', '— AGENTS'));
 

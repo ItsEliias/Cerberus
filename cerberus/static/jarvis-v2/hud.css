@@ -20,7 +20,7 @@
 
   /* Active item glow */
   --jx2-hud-active-bg:     rgba(192, 57, 43, 0.12);
-  --jx2-hud-active-glow:   inset 0 0 12px rgba(192, 57, 43, 0.10),
+  --jx2-hud-active-glow:   inset 0 0 16px rgba(192, 57, 43, 0.10),
                             0 0 0 1px rgba(192, 57, 43, 0.12);
   --jx2-hud-active-border: var(--jx2-crimson-400);
   --jx2-hud-hover-bg:      rgba(192, 57, 43, 0.08);
@@ -242,27 +242,47 @@ body.reduce-hud .sidebar-inner::before {
 /* 6. List items — mono font, left-bar hover/active.
    !important beats style.css ID-selector rules:
    #sidebar-new-chat-btn, #sidebar-search-btn { padding: 8px 8px }
-   #tools-section .list-item { padding: 8px 8px } */
+   #tools-section .list-item { padding: 8px 8px }
+   border-radius: 0 2px 2px 0 keeps the left edge flat so the accent bar
+   reads as a vertical stripe, not a pill. style.css base rule uses 4px. */
 .sidebar .list-item {
   font-family: var(--jx2-font-mono);
   font-size: 11.5px;
   letter-spacing: 0.04em;
   border-left: 2px solid transparent;
   padding: 7px 8px 7px 10px !important;
+  border-radius: 0 2px 2px 0 !important;
   transition: background 150ms, color 150ms, border-left-color 150ms,
               box-shadow 150ms;
 }
 .sidebar .list-item:hover {
-  background: var(--jx2-hud-hover-bg);
-  border-left-color: var(--jx2-hud-hover-border);
-  box-shadow: inset 0 0 8px rgba(192, 57, 43, 0.05);
+  background: var(--jx2-hud-hover-bg) !important;
+  border-left-color: var(--jx2-hud-hover-border) !important;
+  box-shadow: inset 0 0 12px rgba(192, 57, 43, 0.06) !important;
 }
 .sidebar .list-item.active {
-  border-left-color: var(--jx2-hud-active-border);
-  background: var(--jx2-hud-active-bg);
-  color: var(--jx2-crimson-200);
-  box-shadow: var(--jx2-hud-active-glow);
+  border-left-color: var(--jx2-hud-active-border) !important;
+  background: var(--jx2-hud-active-bg) !important;
+  color: var(--jx2-crimson-200) !important;
+  box-shadow: var(--jx2-hud-active-glow) !important;
 }
+
+/* Icon color — style.css .sidebar-action-icon forces stroke/color to
+   var(--red); reset to currentColor so icons inherit the list-item's
+   text color and the opacity below controls the dim/bright states. */
+.sidebar .sidebar-action-icon {
+  stroke: currentColor !important;
+  color: currentColor !important;
+}
+.sidebar .list-item svg {
+  opacity: 0.4;
+  transition: opacity 150ms;
+}
+.sidebar .list-item:hover svg  { opacity: 0.8; }
+.sidebar .list-item.active svg { opacity: 1; }
+
+/* Section vertical rhythm — matches mockup .section { margin-top: 14px } */
+.sidebar .section { margin-top: 14px !important; }
 
 /* 7. User bar — darker surface + crimson gradient top edge */
 .sidebar .sidebar-user-bar {
