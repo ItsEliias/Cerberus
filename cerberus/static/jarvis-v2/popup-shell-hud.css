@@ -1,0 +1,465 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/popup-shell-hud.css
+ * Nexus Core chrome for every pop-up window, modal, and shell panel.
+ *
+ * Scope: all rules gated on body.jx2-active.
+ * Dependency order: tokens.css → components.css → surfaces.css → this file.
+ *
+ * Surfaces covered:
+ *   1. Shared .modal-header (all tool pop-ups)
+ *   2. cerberus-shell-modal headers (shell panels)
+ *   3. cerberus-hq-modal headers (HQ panels, project/report modals)
+ *   4. cerberus-os-panel-header (OS-mode panels)
+ *   5. Window control buttons (pin/min/close — from cerberusModalWindow)
+ *   6. Admin card section headings (modal content h2 labels)
+ *   7. Shared form controls (inputs, selects, textareas in modal context)
+ *   8. Shared action buttons
+ *   9. Memory/Brain tabs
+ *  10. Toast / notification primitives
+ * ==================================================================== */
+
+/* ────────────────────────────────────────────────────────────────────
+ *  1. SHARED .modal-header
+ *  Applies to every tool pop-up that uses the standard .modal / .modal-content
+ *  / .modal-header scaffold (cookbook, memory, settings, compare, custom-preset,
+ *  rename-session, etc.). The sticky header floats above scrolled content.
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .modal-header {
+  background: var(--jx2-hud-surface) !important;
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+  padding: 10px 14px 8px !important;
+}
+
+/* Title text — JetBrains Mono, uppercase, crimson prefix */
+body.jx2-active .modal-header h4 {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-crimson-500) !important;
+  margin: 0 !important;
+}
+
+body.jx2-active .modal-header h4::before {
+  content: "// ";
+  color: var(--jx2-hud-prefix-color);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+/* Suppress the emoji/SVG icon that some modal h4s prepend — the // prefix replaces it */
+body.jx2-active .modal-header h4 svg {
+  display: none !important;
+}
+
+/* Close button — ghost with hover glow */
+body.jx2-active .close-btn,
+body.jx2-active .modal-close {
+  background: transparent !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--jx2-fg-muted) !important;
+  width: 22px !important;
+  height: 22px !important;
+  font-size: 10px !important;
+  transition: border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+              color var(--jx2-dur-fast) var(--jx2-ease-out),
+              box-shadow var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .close-btn:hover,
+body.jx2-active .modal-close:hover {
+  border-color: var(--jx2-border-glow) !important;
+  color: var(--jx2-crimson-300) !important;
+  box-shadow: 0 0 8px rgba(192, 57, 43, 0.25) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  2. CERBERUS-SHELL-MODAL chrome
+ *  Projects, Finance, Assistant, Offices, Tools, Monitor, Brain,
+ *  Voice cheat-sheet — all use .cerberus-shell-modal + .cerberus-shell-modal-header.
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .cerberus-shell-modal {
+  background: color-mix(in srgb, var(--panel, #111) 88%, transparent) !important;
+  border: 1px solid var(--jx2-hud-border) !important;
+  border-top: 1px solid var(--jx2-border-glow) !important;
+  border-radius: var(--jx2-radius-md) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: var(--jx2-glow-lift), var(--jx2-glow-ambient) !important;
+}
+
+body.jx2-active .cerberus-shell-modal-header {
+  background: var(--jx2-hud-surface) !important;
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+  padding: 10px 16px !important;
+  gap: 8px !important;
+}
+
+/* Kicker: overline label (e.g. "Cerberus") */
+body.jx2-active .cerberus-shell-modal-kicker {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 7px !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-crimson-500) !important;
+  opacity: 1 !important;
+}
+
+body.jx2-active .cerberus-shell-modal-kicker::before {
+  content: "// ";
+  color: var(--jx2-hud-prefix-color);
+}
+
+/* Title */
+body.jx2-active .cerberus-shell-modal-title {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+/* Close button */
+body.jx2-active .cerberus-shell-modal-close {
+  background: transparent !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--jx2-fg-muted) !important;
+  width: 28px !important;
+  height: 28px !important;
+  font-size: 1rem !important;
+  transition: border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+              color var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .cerberus-shell-modal-close:hover {
+  border-color: var(--jx2-border-glow) !important;
+  color: var(--jx2-crimson-300) !important;
+  box-shadow: 0 0 8px rgba(192, 57, 43, 0.2) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  3. CERBERUS-HQ-MODAL chrome
+ *  Project summary, workspace setup, reasoning audit, agent office,
+ *  council, report — use .cerberus-hq-modal + .cerberus-hq-modal-header.
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .cerberus-hq-modal-panel {
+  background: color-mix(in srgb, var(--panel, #111) 90%, transparent) !important;
+  border: 1px solid var(--jx2-hud-border) !important;
+  border-top: 1px solid var(--jx2-border-glow) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: var(--jx2-glow-lift), var(--jx2-glow-ambient) !important;
+}
+
+body.jx2-active .cerberus-hq-modal-header {
+  background: var(--jx2-hud-surface) !important;
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+  padding: 10px 16px !important;
+}
+
+body.jx2-active .cerberus-hq-modal-kicker {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 7px !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-crimson-500) !important;
+  opacity: 1 !important;
+}
+
+body.jx2-active .cerberus-hq-modal-kicker::before {
+  content: "// ";
+}
+
+body.jx2-active .cerberus-hq-modal-title {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
+  color: var(--jx2-fg-primary) !important;
+  margin: 0 !important;
+}
+
+body.jx2-active .cerberus-hq-modal-sub {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  color: var(--jx2-fg-muted) !important;
+  letter-spacing: 0.08em !important;
+}
+
+body.jx2-active .cerberus-hq-modal-close {
+  background: transparent !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--jx2-fg-muted) !important;
+  transition: border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+              color var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .cerberus-hq-modal-close:hover {
+  border-color: var(--jx2-border-glow) !important;
+  color: var(--jx2-crimson-300) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  4. CERBERUS-OS-PANEL-HEADER
+ *  Projects and Finance panels use this header class in OS mode.
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .cerberus-os-panel-header {
+  background: var(--jx2-hud-surface) !important;
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+  padding: 10px 16px !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  5. WINDOW CONTROL BUTTONS (cerberusModalWindow.js injection)
+ *  Pin (dock) and Minimize buttons are injected by cerberusModalWindow.js
+ *  with class .cerberus-modal-pin-btn and .cerberus-modal-min-btn.
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .cerberus-modal-pin-btn {
+  background: transparent !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--jx2-fg-muted) !important;
+  font-size: 9px !important;
+  padding: 2px 5px !important;
+  transition: border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+              color var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .cerberus-modal-pin-btn:hover {
+  border-color: var(--jx2-border-default) !important;
+  color: var(--jx2-fg-secondary) !important;
+}
+
+body.jx2-active .cerberus-modal-pin-btn--active {
+  border-color: var(--jx2-crimson-500) !important;
+  color: var(--jx2-crimson-300) !important;
+  background: rgba(192, 57, 43, 0.10) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  6. ADMIN CARD SECTION HEADINGS
+ *  .admin-card h2 are section-level headings inside settings panels,
+ *  memory modal, document library, etc.
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .admin-card h2 {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-fg-secondary) !important;
+}
+
+body.jx2-active .admin-card h2::before {
+  content: "// ";
+  color: var(--jx2-crimson-500);
+  font-weight: 400;
+}
+
+/* Suppress SVG icons in admin card headings — // prefix replaces them */
+body.jx2-active .admin-card h2 svg {
+  display: none !important;
+}
+
+/* Admin card surface */
+body.jx2-active .admin-card {
+  background: var(--jx2-surface-raised) !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  border-top: 1px solid var(--jx2-border-default) !important;
+  border-radius: var(--jx2-radius-md) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  7. SHARED FORM CONTROLS in modal/admin context
+ *  Inputs, selects, textareas inside .modal-content and .admin-card.
+ *  Touch only on background/border/font — do NOT change sizing/padding
+ *  to avoid breaking JS-measured layouts.
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .modal-content input[type="text"],
+body.jx2-active .modal-content input[type="email"],
+body.jx2-active .modal-content input[type="password"],
+body.jx2-active .modal-content input[type="number"],
+body.jx2-active .modal-content input[type="url"],
+body.jx2-active .modal-content input[type="search"],
+body.jx2-active .modal-content select,
+body.jx2-active .admin-card input[type="text"],
+body.jx2-active .admin-card input[type="email"],
+body.jx2-active .admin-card input[type="password"],
+body.jx2-active .admin-card input[type="number"],
+body.jx2-active .admin-card input[type="url"],
+body.jx2-active .admin-card input[type="search"],
+body.jx2-active .admin-card select,
+body.jx2-active .settings-select {
+  background: var(--jx2-surface-void) !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  border-bottom: 1px solid var(--jx2-border-default) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--jx2-fg-primary) !important;
+  font-family: var(--jx2-font-mono) !important;
+  caret-color: var(--jx2-crimson-400);
+  transition: border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+              box-shadow var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .modal-content input:focus,
+body.jx2-active .modal-content select:focus,
+body.jx2-active .admin-card input:focus,
+body.jx2-active .admin-card select:focus,
+body.jx2-active .settings-select:focus {
+  border-color: var(--jx2-crimson-500) !important;
+  box-shadow: var(--jx2-glow-focus) !important;
+  outline: none !important;
+}
+
+/* Textareas */
+body.jx2-active .modal-content textarea,
+body.jx2-active .admin-card textarea {
+  background: var(--jx2-surface-void) !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  border-bottom: 1px solid var(--jx2-border-default) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--jx2-fg-primary) !important;
+  font-family: var(--jx2-font-body) !important;
+  caret-color: var(--jx2-crimson-400);
+  transition: border-color var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .modal-content textarea:focus,
+body.jx2-active .admin-card textarea:focus {
+  border-color: var(--jx2-crimson-500) !important;
+  box-shadow: var(--jx2-glow-focus) !important;
+  outline: none !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  8. SHARED ACTION BUTTONS in modal/admin context
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Primary action button (save, submit, confirm) */
+body.jx2-active .modal-content .btn-primary,
+body.jx2-active .modal-content button[type="submit"],
+body.jx2-active .admin-card .btn-primary,
+body.jx2-active .admin-btn-primary {
+  background: var(--jx2-crimson-500) !important;
+  border: 1px solid var(--jx2-crimson-500) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: #ffffff !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: var(--jx2-text-caption) !important;
+  letter-spacing: 0.08em !important;
+  transition: background var(--jx2-dur-fast) var(--jx2-ease-out),
+              box-shadow var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .modal-content .btn-primary:hover,
+body.jx2-active .modal-content button[type="submit"]:hover,
+body.jx2-active .admin-card .btn-primary:hover,
+body.jx2-active .admin-btn-primary:hover {
+  background: var(--jx2-crimson-400) !important;
+  box-shadow: 0 0 16px rgba(192, 57, 43, 0.35) !important;
+}
+
+/* Secondary / ghost button */
+body.jx2-active .modal-content .btn-secondary,
+body.jx2-active .admin-card .btn-secondary,
+body.jx2-active .admin-btn {
+  background: transparent !important;
+  border: 1px solid var(--jx2-border-default) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--jx2-fg-secondary) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: var(--jx2-text-caption) !important;
+  transition: background var(--jx2-dur-fast) var(--jx2-ease-out),
+              border-color var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .modal-content .btn-secondary:hover,
+body.jx2-active .admin-card .btn-secondary:hover,
+body.jx2-active .admin-btn:hover {
+  background: rgba(192, 57, 43, 0.08) !important;
+  border-color: var(--jx2-border-glow) !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+/* Admin toggle (checkbox toggle) */
+body.jx2-active .admin-switch input:checked + .admin-slider {
+  background: var(--jx2-crimson-500) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  9. MEMORY / BRAIN TABS
+ *  .memory-tab buttons inside #memory-modal.
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .memory-tabs {
+  background: var(--jx2-surface-raised) !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .memory-tab {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.10em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-fg-muted) !important;
+  border-bottom: 2px solid transparent !important;
+  transition: color var(--jx2-dur-fast) var(--jx2-ease-out),
+              border-color var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .memory-tab svg {
+  display: none !important;
+}
+
+body.jx2-active .memory-tab:hover {
+  color: var(--jx2-fg-secondary) !important;
+}
+
+body.jx2-active .memory-tab.active {
+  border-bottom-color: var(--jx2-crimson-500) !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ *  10. TOAST / NOTIFICATION PRIMITIVES
+ *  .toast, .notification, .cerberus-toast if they appear.
+ * ──────────────────────────────────────────────────────────────────── */
+
+body.jx2-active .toast,
+body.jx2-active .cerberus-toast {
+  background: var(--jx2-surface-modal) !important;
+  border: 1px solid var(--jx2-border-default) !important;
+  border-left: 3px solid var(--jx2-crimson-500) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--jx2-fg-primary) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: var(--jx2-text-caption) !important;
+  box-shadow: var(--jx2-glow-lift) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+body.jx2-active .toast-success { border-left-color: var(--jx2-status-active) !important; }
+body.jx2-active .toast-warning { border-left-color: var(--jx2-status-idle) !important; }
+body.jx2-active .toast-error   { border-left-color: var(--jx2-status-alert) !important; }
+
+/* ── Reduced-motion killswitch ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  body.jx2-active .close-btn,
+  body.jx2-active .modal-close,
+  body.jx2-active .cerberus-shell-modal-close,
+  body.jx2-active .cerberus-hq-modal-close,
+  body.jx2-active .cerberus-modal-pin-btn {
+    transition: none !important;
+  }
+}

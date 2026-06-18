@@ -1,0 +1,192 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/settings-hud.css
+ * Nexus Core chrome for the Settings panel (#settings-modal).
+ *
+ * Scope: body.jx2-active.
+ * Covers: settings sidebar nav, dividers, section labels, panel area,
+ *   admin-switch toggles, shortcut table, and the appearance/theme tab
+ *   within settings (not the standalone theme picker, which is in
+ *   surfaces-phase-b2.css).
+ * ==================================================================== */
+
+/* ── Settings modal container ─────────────────────────────────────── */
+
+body.jx2-active .settings-modal-content {
+  background: var(--jx2-surface-base) !important;
+  border: 1px solid var(--jx2-hud-border) !important;
+  border-top: 1px solid var(--jx2-border-glow) !important;
+}
+
+/* ── Settings sidebar ─────────────────────────────────────────────── */
+
+body.jx2-active .settings-sidebar {
+  background: var(--jx2-surface-raised) !important;
+  border-right: 1px solid var(--jx2-border-hairline) !important;
+}
+
+/* Nav item: JetBrains Mono, left-bar hover/active */
+body.jx2-active .settings-nav-item {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.06em !important;
+  color: var(--jx2-fg-secondary) !important;
+  border-left: 2px solid transparent !important;
+  border-radius: 0 var(--jx2-radius-sm) var(--jx2-radius-sm) 0 !important;
+  transition: background var(--jx2-dur-fast) var(--jx2-ease-out),
+              border-color var(--jx2-dur-fast) var(--jx2-ease-out),
+              color var(--jx2-dur-fast) var(--jx2-ease-out) !important;
+}
+
+body.jx2-active .settings-nav-item:hover {
+  background: var(--jx2-hud-hover-bg) !important;
+  border-left-color: var(--jx2-hud-hover-border) !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .settings-nav-item.active {
+  background: var(--jx2-hud-active-bg) !important;
+  border-left-color: var(--jx2-crimson-500) !important;
+  color: var(--jx2-crimson-200) !important;
+  box-shadow: var(--jx2-hud-active-glow) !important;
+}
+
+/* Suppress SVG icons in settings nav — keep them but dim them */
+body.jx2-active .settings-nav-item svg {
+  opacity: 0.45 !important;
+  flex-shrink: 0;
+}
+
+body.jx2-active .settings-nav-item:hover svg { opacity: 0.75 !important; }
+body.jx2-active .settings-nav-item.active svg { opacity: 1 !important; }
+
+/* Dividers in settings sidebar */
+body.jx2-active .settings-sidebar-divider {
+  background: var(--jx2-border-hairline) !important;
+  margin: 6px 8px !important;
+}
+
+/* Section label (e.g. "Admin") */
+body.jx2-active .settings-sidebar-label {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 7px !important;
+  letter-spacing: 0.20em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-crimson-500) !important;
+  opacity: 1 !important;
+  padding: 4px 10px 2px !important;
+}
+
+body.jx2-active .settings-sidebar-label::before {
+  content: "// ";
+  color: var(--jx2-hud-prefix-color);
+}
+
+/* ── Settings panel area ──────────────────────────────────────────── */
+
+body.jx2-active .settings-panels {
+  background: var(--jx2-surface-base) !important;
+}
+
+/* Section headers within settings panels (.admin-toggle-label class) */
+body.jx2-active .admin-toggle-label {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  color: var(--jx2-fg-primary) !important;
+}
+
+body.jx2-active .admin-toggle-sub {
+  font-family: var(--jx2-font-body) !important;
+  font-size: 11px !important;
+  color: var(--jx2-fg-secondary) !important;
+  line-height: 1.5 !important;
+}
+
+/* Row separators within settings panels */
+body.jx2-active .admin-toggle-row {
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .admin-toggle-row:last-child {
+  border-bottom: none !important;
+}
+
+/* ── Toggle / switch component ────────────────────────────────────── */
+
+/* Track (off state) */
+body.jx2-active .admin-slider {
+  background: var(--jx2-border-default) !important;
+}
+
+/* Thumb */
+body.jx2-active .admin-slider::before {
+  background: var(--jx2-fg-muted) !important;
+}
+
+/* Track (on state) — already covered in popup-shell-hud via .admin-switch input:checked */
+
+/* ── Keyboard shortcuts table ─────────────────────────────────────── */
+
+body.jx2-active .shortcut-category {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 7px !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-crimson-500) !important;
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+  padding-bottom: 4px !important;
+  margin-bottom: 4px !important;
+}
+
+body.jx2-active .shortcut-category::before {
+  content: "// ";
+  color: var(--jx2-hud-prefix-color);
+}
+
+body.jx2-active .shortcut-row {
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 10px !important;
+  color: var(--jx2-fg-secondary) !important;
+}
+
+body.jx2-active .shortcut-key {
+  background: var(--jx2-surface-raised) !important;
+  border: 1px solid var(--jx2-border-default) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--jx2-fg-primary) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+}
+
+/* ── Feature visibility toggles (tools tab) ──────────────────────── */
+
+body.jx2-active .vis-toggle-row {
+  border-bottom: 1px solid var(--jx2-border-hairline) !important;
+}
+
+body.jx2-active .vis-label {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 10px !important;
+  color: var(--jx2-fg-secondary) !important;
+}
+
+/* ── Admin-only visibility badge ─────────────────────────────────── */
+
+body.jx2-active .admin-only-badge {
+  background: rgba(192, 57, 43, 0.12) !important;
+  border: 1px solid var(--jx2-border-hairline) !important;
+  border-radius: var(--jx2-radius-pill) !important;
+  color: var(--jx2-crimson-300) !important;
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 7px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+}
+
+/* ── Reduced-motion ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  body.jx2-active .settings-nav-item { transition: none !important; }
+}
