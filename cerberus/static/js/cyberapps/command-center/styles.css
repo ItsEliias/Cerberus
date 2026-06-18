@@ -15,6 +15,10 @@
   --cc-crit:         #e74c3c;
   --cc-tween:        750ms;
   --cc-ease:         cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* Fixed brand-red — never follows theme accent; mirrors sidebar --jx2-hud-brand-red */
+  --cc-brand-red:     #c0392b;
+  --cc-brand-red-300: #f06b5a;
+  --cc-brand-red-glow: rgba(192, 57, 43, 0.4);
 }
 
 /* =====================================================================
@@ -52,21 +56,21 @@
   font-family: 'Orbitron', monospace;
   font-size: 17px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;
   color: var(--cc-fg);
-  text-shadow: 0 0 20px color-mix(in srgb, var(--red, #c0392b) 40%, transparent);
+  text-shadow: 0 0 20px var(--cc-brand-red-glow);
   white-space: nowrap; user-select: none;
   animation: cc-glitch 32s steps(1) infinite;
 }
 .cc-wordmark .hud-bracket {
-  color: color-mix(in srgb, var(--red, #c0392b) 45%, transparent);
+  color: rgba(192, 57, 43, 0.35);
   font-size: 1.1em;
 }
-.cc-wordmark .hud-lead { color: var(--cc-crimson); }
+.cc-wordmark .hud-lead { color: var(--cc-brand-red-300, #f06b5a); }
 
 .cc-wordmark-sub {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--cc-crimson); opacity: 0.7;
-  text-shadow: 0 0 12px color-mix(in srgb, var(--red, #c0392b) 40%, transparent);
+  color: var(--cc-brand-red); opacity: 0.7;
+  text-shadow: 0 0 12px var(--cc-brand-red-glow);
   margin-left: 4px; white-space: nowrap;
 }
 
@@ -91,7 +95,7 @@
 .hud-chip-dot--online { background: #22c55e; }
 .hud-chip-dot--agents { background: #3b82f6; }
 .hud-chip-dot--auth   {
-  background: var(--cc-crimson);
+  background: var(--cc-brand-red);
   animation: jx2-pulse-crimson 2.4s ease-in-out infinite;
 }
 @keyframes jx2-pulse-crimson {
@@ -149,19 +153,19 @@
   border-color: var(--cc-crimson);
 }
 .cc-tab-btn.active {
-  background: color-mix(in srgb, var(--red, #c0392b) 12%, transparent);
-  border-color: var(--cc-crimson);
-  color: color-mix(in srgb, var(--red, #c0392b) 85%, white);
+  background: rgba(192, 57, 43, 0.12);
+  border-color: var(--cc-brand-red);
+  color: var(--cc-brand-red-300, #f06b5a);
   opacity: 1;
   box-shadow:
-    inset 0 0 16px color-mix(in srgb, var(--red, #c0392b) 10%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--red, #c0392b) 12%, transparent);
+    inset 0 0 16px rgba(192, 57, 43, 0.10),
+    0 0 0 1px rgba(192, 57, 43, 0.12);
 }
 .cc-tab-btn.active::before {
   content: '// ';
-  color: var(--cc-crimson);
+  color: var(--cc-brand-red);
   font-size: 0.9em;
-  text-shadow: 0 0 12px color-mix(in srgb, var(--red, #c0392b) 40%, transparent);
+  text-shadow: 0 0 12px var(--cc-brand-red-glow);
 }
 /* Monospace cadence for all sub-tab buttons */
 .cc-tab-btn { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
@@ -181,13 +185,13 @@
 }
 .cc-core-ring {
   width: 56px; height: 56px; border-radius: 50%;
-  border: 2px solid var(--cc-crimson);
-  box-shadow: 0 0 14px var(--cc-crimson-glow), inset 0 0 12px color-mix(in srgb, var(--red) 25%, transparent);
+  border: 2px solid var(--cc-brand-red);
+  box-shadow: 0 0 14px var(--cc-brand-red-glow), inset 0 0 12px rgba(192, 57, 43, 0.25);
   position: relative;
 }
 .cc-core-ring::before {
   content: ''; position: absolute; inset: -6px; border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+  border: 1px solid rgba(192, 57, 43, 0.35);
   animation: cc-core-pulse 2.6s ease-in-out infinite;
 }
 @keyframes cc-core-pulse {
@@ -197,7 +201,7 @@
 .cc-core-state-text {
   font-family: 'Orbitron', monospace;
   font-size: 11px; letter-spacing: 0.18em;
-  color: var(--cc-crimson); text-transform: uppercase;
+  color: var(--cc-brand-red); text-transform: uppercase;
 }
 @media (prefers-reduced-motion: reduce) {
   .cc-core-ring::before { animation: none; }
@@ -260,17 +264,17 @@
 .cc-section-title {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 8.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
-  color: var(--cc-crimson);
-  text-shadow: 0 0 12px color-mix(in srgb, var(--red, #c0392b) 40%, transparent);
+  color: var(--cc-brand-red);
+  text-shadow: 0 0 12px var(--cc-brand-red-glow);
   margin-bottom: 8px;
 }
 .cc-card-title::before,
 .cc-section-header::before,
 .cc-section-title::before {
   content: '// ';
-  color: var(--cc-crimson);
+  color: var(--cc-brand-red);
   font-weight: 400; font-size: 0.9em;
-  text-shadow: 0 0 12px color-mix(in srgb, var(--red, #c0392b) 40%, transparent);
+  text-shadow: 0 0 12px var(--cc-brand-red-glow);
 }
 .cc-empty { opacity: 0.3; font-size: 11px; padding: 12px 0; text-align: center; }
 
@@ -446,7 +450,7 @@
   font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
 }
 .cc-orb-status.idle     { opacity: 0.45; }
-.cc-orb-status.active   { color: var(--cc-crimson); text-shadow: 0 0 8px var(--cc-crimson-glow); }
+.cc-orb-status.active   { color: var(--cc-brand-red-300, #f06b5a); text-shadow: 0 0 8px var(--cc-brand-red-glow); }
 .cc-orb-status.degraded { color: var(--cc-warn); }
 .cc-orb-status.offline  { opacity: 0.25; }
 
@@ -524,8 +528,8 @@
 
 /* -- Sparklines (now lives inside .cc-card within .cc-mid-row) -- */
 .cc-telemetry { padding: 0; flex-shrink: 0; }
-.cc-telemetry-header { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 8.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cc-crimson); text-shadow: 0 0 12px color-mix(in srgb, var(--red, #c0392b) 40%, transparent); margin-bottom: 6px; }
-.cc-telemetry-header::before { content: '// '; color: var(--cc-crimson); font-weight: 400; font-size: 0.9em; }
+.cc-telemetry-header { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 8.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cc-brand-red); text-shadow: 0 0 12px var(--cc-brand-red-glow); margin-bottom: 6px; }
+.cc-telemetry-header::before { content: '// '; color: var(--cc-brand-red); font-weight: 400; font-size: 0.9em; }
 .cc-sparklines { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .cc-spark-wrap { position: relative; overflow: visible; }
 .cc-spark-label { position: absolute; top: 2px; left: 4px; font-family: 'Orbitron', monospace; font-size: 7px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.45; }
