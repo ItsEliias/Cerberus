@@ -9,8 +9,11 @@
 
 /* ── HUD custom properties ──────────────────────────────────────────── */
 :root {
-  /* Header / footer depths — darker than the scroll body */
-  --jx2-hud-surface:      var(--jx2-surface-void);
+  /* Fixed brand-red — permanent Cerberus signature, never changes with theme */
+  --jx2-hud-brand-red: #c0392b;
+
+  /* Header / footer depths — follows active theme panel color */
+  --jx2-hud-surface:      var(--panel, #111);
   --jx2-hud-border:       var(--jx2-border-default);
 
   /* Scanline overlay (repeating-linear-gradient on pseudo-element) */
@@ -18,7 +21,7 @@
   --jx2-hud-scanline-color:   rgba(0, 0, 0, 0.07);
   --jx2-hud-scanline-opacity: 0.5;
 
-  /* Active item glow */
+  /* Active item glow — brand-red, fixed across all themes */
   --jx2-hud-active-bg:     rgba(192, 57, 43, 0.12);
   --jx2-hud-active-glow:   inset 0 0 16px rgba(192, 57, 43, 0.10),
                             0 0 0 1px rgba(192, 57, 43, 0.12);
@@ -26,15 +29,15 @@
   --jx2-hud-hover-bg:      rgba(192, 57, 43, 0.08);
   --jx2-hud-hover-border:  var(--jx2-crimson-600);
 
-  /* Section prefix token — used by Stage 2 for consistent // spacing */
+  /* Section prefix token — brand-red, fixed across all themes */
   --jx2-hud-prefix:        "// ";
   --jx2-hud-prefix-color:  var(--jx2-crimson-500);
   --jx2-hud-prefix-glow:   0 0 12px rgba(192, 57, 43, 0.4);
 
-  /* Chip (status indicator) */
-  --jx2-hud-chip-border:    rgba(255, 255, 255, 0.07);
-  --jx2-hud-chip-bg:        rgba(255, 255, 255, 0.025);
-  --jx2-hud-chip-text:      var(--jx2-fg-muted);
+  /* Chip (status indicator) — theme-reactive: adapts to fg/bg */
+  --jx2-hud-chip-border:    color-mix(in srgb, var(--fg, #c5c9d0) 10%, transparent);
+  --jx2-hud-chip-bg:        color-mix(in srgb, var(--fg, #c5c9d0) 3%, transparent);
+  --jx2-hud-chip-text:      color-mix(in srgb, var(--fg, #c5c9d0) 55%, transparent);
   --jx2-hud-chip-dot-size:  5px;
   --jx2-hud-chip-gap:       4px;
 
@@ -43,10 +46,11 @@
   --jx2-hud-wordmark-size:       17px;
   --jx2-hud-wordmark-tracking:   0.15em;
   --jx2-hud-wordmark-glow:       0 0 20px rgba(192, 57, 43, 0.4);
-  --jx2-hud-wordmark-lead-color: var(--jx2-crimson-300);
+  /* "C" and brackets: permanent brand-red signature, never adapts */
+  --jx2-hud-wordmark-lead-color:    var(--jx2-crimson-300);
   --jx2-hud-wordmark-bracket-color: var(--jx2-crimson-700);
 
-  /* User bar separator */
+  /* User bar separator — brand-red gradient, fixed */
   --jx2-hud-userbar-edge: linear-gradient(
     90deg,
     transparent,
@@ -163,7 +167,7 @@ body.reduce-hud .sidebar-inner::before {
   font-size: var(--jx2-hud-wordmark-size) !important;
   font-weight: 700 !important;
   letter-spacing: var(--jx2-hud-wordmark-tracking) !important;
-  color: var(--jx2-fg-primary) !important;
+  color: var(--fg, #c5c9d0) !important;
   text-shadow: var(--jx2-hud-wordmark-glow) !important;
   text-transform: uppercase;
   white-space: nowrap;
