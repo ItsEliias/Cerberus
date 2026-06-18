@@ -40,7 +40,7 @@
 
   /* Wordmark */
   --jx2-hud-wordmark-font:       var(--jx2-font-display);
-  --jx2-hud-wordmark-size:       16px;
+  --jx2-hud-wordmark-size:       17px;
   --jx2-hud-wordmark-tracking:   0.15em;
   --jx2-hud-wordmark-glow:       0 0 20px rgba(192, 57, 43, 0.4);
   --jx2-hud-wordmark-lead-color: var(--jx2-crimson-300);
@@ -247,7 +247,7 @@ body.reduce-hud .sidebar-inner::before {
    reads as a vertical stripe, not a pill. style.css base rule uses 4px. */
 .sidebar .list-item {
   font-family: var(--jx2-font-mono);
-  font-size: 11.5px;
+  font-size: 13px;
   letter-spacing: 0.04em;
   border-left: 2px solid transparent;
   padding: 7px 8px 7px 10px !important;
