@@ -519,7 +519,7 @@ function _drawTokenFlowGraph(canvas, byDay) {
 function _drawTokenFlowGraphImmediate(canvas, byDay) {
   if (!canvas || !document.getElementById(PANEL_ID)) return;
   // Graceful fallback when no data: a flat low-activity reference baseline
-  const raw = byDay.length
+  const raw = (byDay.length >= 2)
     ? byDay.slice(-30).map(d => d.tokens || 0)
     : Array.from({length: 24}, (_, i) => Math.round(800 + Math.sin(i * 0.55) * 400 + i * 12));
 
