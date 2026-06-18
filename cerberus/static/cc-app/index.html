@@ -5,6 +5,12 @@
     <link rel="icon" type="image/svg+xml" href="/static/cc-app/shield.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CERBERUS — Command Center</title>
+    <!-- jarvis-v2: tokens define --jx2-* custom properties; tool-tabs-hud adds
+         // section labels and HUD chrome to cc-* inner-tab elements.
+         Both must live here because CSS (variables + rules) does not cross
+         iframe boundaries. body.jx2-active is set statically on <body>. -->
+    <link rel="stylesheet" href="/static/jarvis-v2/tokens.css">
+    <link rel="stylesheet" href="/static/jarvis-v2/tool-tabs-hud.css">
     <style>
       /* Self-hosted fonts — @font-face must be declared inside the iframe
          because CSS font declarations do NOT cross iframe boundaries. */
@@ -72,7 +78,7 @@
       }
     </style>
   </head>
-  <body>
+  <body class="jx2-active">
     <!-- Shield-and-code loader — visible during module boot -->
     <div id="cc-loader" role="status" aria-label="Loading Command Center">
       <canvas id="cc-loader-rain" aria-hidden="true"></canvas>
