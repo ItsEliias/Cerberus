@@ -1303,9 +1303,9 @@
 
 /* Column header — same grid as agent rows */
 .cc-roster-col-header {
-  display: grid; grid-template-columns: 14px 26px 1fr 140px 80px 38px 126px;
-  gap: 10px; padding: 4px 16px 3px;
-  font-size: 7px; letter-spacing: 0.14em; text-transform: uppercase;
+  display: grid; grid-template-columns: 14px 32px 1fr 150px 90px 44px 148px;
+  gap: 10px; padding: 5px 16px 4px;
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
   color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent);
   border-bottom: 1px solid rgba(255,255,255,0.04); flex-shrink: 0;
 }
@@ -1316,22 +1316,22 @@
 /* Category section */
 .cc-cat-section { margin-bottom: 2px; }
 .cc-cat-head {
-  display: flex; align-items: center; gap: 8px; padding: 7px 16px 5px;
+  display: flex; align-items: center; gap: 8px; padding: 9px 16px 7px;
   cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 10;
   background: var(--cc-void-mid, #0d0f12);
   border-bottom: 1px solid rgba(255,255,255,0.04); backdrop-filter: blur(4px);
 }
-.cc-cat-head-prefix { font-size: 8px; color: var(--cc-brand-red, #c0392b); text-shadow: 0 0 8px rgba(192,57,43,0.35); }
-.cc-cat-head-label { font-size: 7.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--fg, #c5c9d0) 55%, transparent); }
-.cc-cat-head-count { font-size: 7px; padding: 0 5px; background: rgba(255,255,255,0.06); border-radius: 2px; color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); }
-.cc-cat-head-chevron { margin-left: auto; color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); font-size: 9px; transition: transform 0.2s; }
+.cc-cat-head-prefix { font-size: 10px; color: var(--cc-brand-red, #c0392b); text-shadow: 0 0 8px rgba(192,57,43,0.35); }
+.cc-cat-head-label { font-size: 9.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: color-mix(in srgb, var(--fg, #c5c9d0) 55%, transparent); }
+.cc-cat-head-count { font-size: 9px; padding: 1px 6px; background: rgba(255,255,255,0.06); border-radius: 2px; color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); }
+.cc-cat-head-chevron { margin-left: auto; color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); font-size: 11px; transition: transform 0.2s; }
 .cc-cat-section.collapsed .cc-cat-head-chevron { transform: rotate(-90deg); }
 .cc-cat-section.collapsed .cc-cat-rows { display: none; }
 
 /* Agent row — scoped to .cc-agents-tab to avoid conflict with command.js mini-list */
 .cc-agents-tab .cc-agent-row {
-  display: grid; grid-template-columns: 14px 26px 1fr 140px 80px 38px 126px;
-  gap: 10px; align-items: center; padding: 5px 16px; cursor: pointer;
+  display: grid; grid-template-columns: 14px 32px 1fr 150px 90px 44px 148px;
+  gap: 10px; align-items: center; padding: 8px 16px; cursor: pointer;
   border-bottom: 1px solid rgba(255,255,255,0.025);
   border-left: 2px solid transparent; transition: background 0.1s, border-left-color 0.15s;
 }
@@ -1348,15 +1348,15 @@
 @keyframes cc-pip-pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
 
 /* Row cells */
-.cc-row-sigil { width: 24px; height: 24px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; justify-self: center; }
-.cc-row-name { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cc-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cc-row-role { font-size: 10px; color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cc-row-model { font-size: 8px; padding: 1px 5px; border-radius: 2px; background: rgba(52,152,219,0.1); color: rgba(52,152,219,0.8); white-space: nowrap; display: inline-block; align-self: center; }
-.cc-row-score { font-size: 10px; text-align: right; color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); font-variant-numeric: tabular-nums; }
+.cc-row-sigil { width: 30px; height: 30px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; justify-self: center; }
+.cc-row-name { font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cc-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cc-row-role { font-size: 12px; color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cc-row-model { font-size: 10px; padding: 2px 6px; border-radius: 2px; background: rgba(52,152,219,0.1); color: rgba(52,152,219,0.8); white-space: nowrap; display: inline-block; align-self: center; }
+.cc-row-score { font-size: 12px; text-align: right; color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); font-variant-numeric: tabular-nums; }
 
 /* Row action cluster */
 .cc-row-actions { display: flex; gap: 4px; align-items: center; justify-content: flex-end; }
-.cc-row-btn { font-size: 8px; letter-spacing: 0.07em; padding: 2px 7px; border-radius: 2px; text-transform: uppercase; font-family: inherit; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.cc-row-btn { font-size: 10px; letter-spacing: 0.07em; padding: 3px 9px; border-radius: 2px; text-transform: uppercase; font-family: inherit; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 .cc-row-btn-chat { background: rgba(192,57,43,0.1); border: 1px solid rgba(192,57,43,0.32); color: var(--cc-brand-red-300, #f06b5a); }
 .cc-row-btn-chat:hover { background: rgba(192,57,43,0.18); }
 .cc-row-btn-invoke { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); }

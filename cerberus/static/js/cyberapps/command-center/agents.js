@@ -52,6 +52,25 @@ function _getCategory(name) {
   return CATEGORY_MAP[(name || '').toUpperCase()] || 'CUSTOM';
 }
 
+const GLYPH_MAP = {
+  ARCHITECT:     '🏗',
+  CODER:         '⚡',
+  TESTER:        '🧪',
+  RESEARCHER:    '🔍',
+  REVIEWER:      '✅',
+  SECURITY:      '🛡',
+  ORCHESTRATOR:  '🎯',
+  DEVOPS:        '⚙',
+  DEBUGGER:      '🐛',
+  PLANNER:       '📋',
+  'DATA-ANALYST':'📊',
+  LIBRARIAN:     '📚',
+  OPTIMIZER:     '⚡',
+  SCRIBE:        '✍',
+  DESIGNER:      '🎨',
+  PROMPTSMITH:   '🔧',
+};
+
 function _sigilBg(agent) {
   let h = 0;
   const n = agent.name || '?';
@@ -77,7 +96,7 @@ function _agentRow(agent) {
   const id     = _esc(agent.id);
   const status = agent.status || 'idle';
   const bg     = _sigilBg(agent);
-  const glyph  = _esc(agent.avatar || (agent.name || '?')[0]);
+  const glyph  = _esc(agent.avatar || GLYPH_MAP[(agent.name || '').toUpperCase()] || (agent.name || '?')[0]);
   const score  = agent.score > 0 ? _esc(agent.score) : '—';
   const accent = CAT_ACCENT[_getCategory(agent.name)] || CAT_ACCENT.CUSTOM;
   return `
