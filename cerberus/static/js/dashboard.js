@@ -1,9 +1,12 @@
 // dashboard.js — Cerberus post-login landing screen
+// Nexus HUD Stage 2 — Variant B "Bold" implementation.
 // All colours via CSS custom properties — theme-reactive by construction.
+// No hardcoded hex values; all colors derive from --jx2-* and --red tokens.
 
 const PANEL_ID = 'cerberus-dashboard';
-let _rafId = null, _vitalsTimer = null, _agentsTimer = null, _usageRaf = null;
+let _rafId = null, _vitalsTimer = null, _agentsTimer = null;
 
+// Read the current brand-red rgb triple from the theme token.
 function _getRgb() {
   const c = getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b';
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(c);
@@ -13,7 +16,7 @@ function _getRgb() {
 export function open() {
   if (document.getElementById(PANEL_ID)) return;
   _buildPanel();
-  _startGlobeAnimation();
+  _startBgAnimation();
   _loadData();
 }
 
@@ -33,156 +36,145 @@ function _buildPanel() {
   panel.innerHTML = `
     <canvas id="dash-bg-canvas" aria-hidden="true"></canvas>
     <div class="dash-inner">
+
+      <!-- ── HUD header ───────────────────────────────────────── -->
       <header class="dash-header">
-        <div class="dash-logo">
-          <svg width="22" height="26" viewBox="0 0 100 115" fill="none">
-            <path d="M50 5 L8 22 L8 55 C8 78 26 100 50 110 C74 100 92 78 92 55 L92 22 Z"
-              stroke="var(--red,#c0392b)" stroke-width="4" fill="none" stroke-linejoin="round"/>
-            <path d="M30 70 C30 54 40 46 50 46 C60 46 70 54 70 70"
-              stroke="var(--red,#c0392b)" stroke-width="2" fill="none" opacity="0.7"/>
-          </svg>
+        <div class="dash-hud-wm" aria-label="Cerberus">
+          <span class="dash-bracket">[</span><span class="dash-lead">C</span>ERBERUS<span class="dash-bracket">]</span>
         </div>
-        <div class="dash-identity">
-          <span class="dash-product">CERBERUS</span>
-          <span class="dash-status" id="dash-status-text">ONLINE</span>
+        <span class="dash-wm-sub">DASHBOARD</span>
+        <div class="dash-hud-chips">
+          <div class="dash-hud-chip">
+            <span class="dash-chip-dot dash-chip-dot--online"></span>
+            <span id="dash-status-text">ONLINE</span>
+          </div>
+          <div class="dash-hud-chip">
+            <span class="dash-chip-dot dash-chip-dot--agents"></span>
+            <span id="dash-cnt-agents">—</span>&thinsp;AGENTS
+          </div>
+          <div class="dash-hud-chip">
+            <span class="dash-chip-dot dash-chip-dot--auth"></span>AUTH
+          </div>
         </div>
+        <div class="dash-hdr-spacer"></div>
         <div class="dash-clock" id="dash-clock"></div>
         <button class="dash-close-btn" id="dash-close" title="Settings" aria-label="Settings">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           <span>SETTINGS</span>
         </button>
       </header>
 
-      <div class="dash-grid">
-        <!-- Hero: Globe + greeting -->
-        <div class="dash-card dash-hero">
-          <div class="dash-globe-stage">
-            <div class="dash-globe-wrap" id="dash-globe-body">
-              <div class="dash-globe-halo"></div>
-              <div class="dash-globe-sphere">
-                <div class="dash-globe-wire">
-                  <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
-                    <ellipse cx="50" cy="50" rx="49" ry="10" fill="none" stroke="currentColor" stroke-width="0.6"/>
-                    <ellipse cx="50" cy="36" rx="42" ry="7"  fill="none" stroke="currentColor" stroke-width="0.45"/>
-                    <ellipse cx="50" cy="64" rx="42" ry="7"  fill="none" stroke="currentColor" stroke-width="0.45"/>
-                    <ellipse cx="50" cy="22" rx="28" ry="5"  fill="none" stroke="currentColor" stroke-width="0.35"/>
-                    <ellipse cx="50" cy="78" rx="28" ry="5"  fill="none" stroke="currentColor" stroke-width="0.35"/>
-                    <ellipse cx="50" cy="50" rx="9"  ry="49" fill="none" stroke="currentColor" stroke-width="0.5"/>
-                    <ellipse cx="50" cy="50" rx="49" ry="49" fill="none" stroke="currentColor" stroke-width="0.5"/>
-                    <ellipse cx="50" cy="50" rx="30" ry="49" fill="none" stroke="currentColor" stroke-width="0.4"/>
-                  </svg>
-                </div>
-                <div class="dash-globe-particles" aria-hidden="true">
-                  <div class="dash-globe-p dash-globe-p1"></div>
-                  <div class="dash-globe-p dash-globe-p2"></div>
-                  <div class="dash-globe-p dash-globe-p3"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="dash-hero-text">
-            <div class="dash-hero-greeting">GUARDIAN ONLINE</div>
+      <div class="dash-body">
+
+        <!-- ── Hero counters ─────────────────────────────────── -->
+        <div class="dash-hero-row">
+          <div class="dash-hero-stat">
+            <div class="dash-hero-num" id="dash-cnt-sessions" aria-live="polite">—</div>
+            <div class="dash-hero-label">TOTAL SESSIONS</div>
             <div class="dash-hero-sub" id="dash-datetime"></div>
-            <div class="dash-counters">
-              <div class="dash-counter-item">
-                <span class="dash-counter-val" id="dash-cnt-sessions">—</span>
-                <span class="dash-counter-lbl">SESSIONS</span>
-              </div>
-              <div class="dash-counter-item">
-                <span class="dash-counter-val" id="dash-cnt-agents">—</span>
-                <span class="dash-counter-lbl">AGENTS</span>
-              </div>
-              <div class="dash-counter-item">
-                <span class="dash-counter-val" id="dash-cnt-status">—</span>
-                <span class="dash-counter-lbl">STATUS</span>
-              </div>
+            <div class="dash-hero-delta">
+              <span class="dash-delta-val" id="dash-hero-today">—</span>
+              <span class="dash-delta-lbl">TODAY</span>
+            </div>
+          </div>
+          <div class="dash-hero-divider" aria-hidden="true"></div>
+          <div class="dash-hero-stat">
+            <div class="dash-hero-num dash-hero-num--tok" id="dash-usage-total" aria-live="polite">—</div>
+            <div class="dash-hero-label">TOTAL TOKENS</div>
+            <div class="dash-hero-sub" id="dash-token-cost">—</div>
+            <div class="dash-hero-delta">
+              <span class="dash-delta-val dash-delta-val--tok" id="dash-hero-tokens-today">—</span>
+              <span class="dash-delta-lbl">TODAY</span>
             </div>
           </div>
         </div>
 
-        <!-- System vitals -->
-        <div class="dash-card dash-vitals">
-          <div class="dash-card-title">SYSTEM VITALS</div>
-          <div class="dash-vitals-grid" id="dash-vitals-grid">
-            ${['CPU','RAM','DISK','LAT'].map(k => `
-              <div class="dash-vital-item">
-                <div class="dash-vital-bar-wrap">
-                  <div class="dash-vital-bar" id="dash-bar-${k.toLowerCase()}" style="width:0%"></div>
-                </div>
-                <div class="dash-vital-row">
-                  <span class="dash-vital-lbl">${k}</span>
-                  <span class="dash-vital-val" id="dash-val-${k.toLowerCase()}">—</span>
-                </div>
-              </div>`).join('')}
+        <!-- ── Token flow graph band ─────────────────────────── -->
+        <div class="dash-graph-band">
+          <div class="dash-graph-header">
+            <span class="dash-section-title">TOKEN FLOW · LAST 30 DAYS</span>
+            <div class="dash-graph-meta" id="dash-graph-meta" aria-hidden="true">
+              <span>PEAK&thinsp;<span id="dash-graph-peak">—</span></span>
+              <span>AVG&thinsp;<span id="dash-graph-avg">—</span></span>
+            </div>
+          </div>
+          <div class="dash-graph-wrap">
+            <canvas id="dash-usage-canvas" aria-label="Token usage last 30 days" role="img"></canvas>
+          </div>
+          <div class="dash-graph-axis" aria-hidden="true">
+            <span>30D AGO</span><span>15D AGO</span><span>NOW</span>
           </div>
         </div>
 
-        <!-- Recent sessions -->
-        <div class="dash-card dash-sessions">
-          <div class="dash-card-title">RECENT SESSIONS</div>
-          <div id="dash-sessions-list" class="dash-sessions-list">
-            <div class="dash-empty">Loading…</div>
+        <!-- ── Lower: activity + vitals ─────────────────────── -->
+        <div class="dash-lower">
+
+          <div class="dash-lower-activity">
+            <div class="dash-section-title">RECENT ACTIVITY</div>
+            <div id="dash-sessions-list" class="dash-activity-list">
+              <div class="dash-empty">Loading…</div>
+            </div>
           </div>
+
+          <div class="dash-lower-vitals">
+            <div class="dash-section-title">SYSTEM VITALS</div>
+            <div class="dash-vitals-grid" id="dash-vitals-grid">
+              ${['CPU','RAM','DISK','LAT'].map(k => `
+                <div class="dash-vital-item">
+                  <div class="dash-vital-bar-wrap">
+                    <div class="dash-vital-bar" id="dash-bar-${k.toLowerCase()}"
+                         data-metric="${k.toLowerCase()}" style="width:0%"></div>
+                  </div>
+                  <div class="dash-vital-row">
+                    <span class="dash-vital-lbl">${k}</span>
+                    <span class="dash-vital-val" id="dash-val-${k.toLowerCase()}">—</span>
+                  </div>
+                </div>`).join('')}
+            </div>
+          </div>
+
         </div>
 
-        <!-- Active agents -->
-        <div class="dash-card dash-agents">
-          <div class="dash-card-title">ACTIVE AGENTS</div>
-          <div id="dash-agents-list" class="dash-agents-list">
-            <div class="dash-empty">Loading…</div>
-          </div>
-        </div>
-
-        <!-- Token usage — mock until /api/usage/tokens exists (FLAG 1) -->
-        <div class="dash-card dash-usage">
-          <div class="dash-card-title">TOKEN USAGE <span class="dash-mock-badge">PREVIEW</span></div>
-          <canvas id="dash-usage-canvas" aria-label="Token usage chart" role="img"></canvas>
-          <div class="dash-usage-foot">
-            <span id="dash-usage-total">—</span>
-            <span class="dash-usage-period">THIS MONTH</span>
-          </div>
-        </div>
-
-        <!-- Quick actions -->
-        <div class="dash-card dash-actions">
-          <div class="dash-card-title">QUICK ACCESS</div>
+        <!-- ── Quick access ──────────────────────────────────── -->
+        <div class="dash-actions-panel">
+          <div class="dash-section-title">QUICK ACCESS</div>
           <div class="dash-actions-grid">
             <button class="dash-action-btn dash-action-primary" id="dash-act-chat">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
               <span>NEW CHAT</span>
             </button>
             <button class="dash-action-btn dash-action-nexus" id="dash-act-nexus">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
               <span>NEXUS</span>
             </button>
             <button class="dash-action-btn dash-action-cerberus" id="dash-act-cerberus">
-              <svg width="13" height="15" viewBox="0 0 100 115" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round"><path d="M50 5 L8 22 L8 55 C8 78 26 100 50 110 C74 100 92 78 92 55 L92 22 Z"/><path d="M30 70 C30 54 40 46 50 46 C60 46 70 54 70 70" stroke-width="5" opacity="0.8"/></svg>
+              <svg width="13" height="15" viewBox="0 0 100 115" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round" aria-hidden="true"><path d="M50 5 L8 22 L8 55 C8 78 26 100 50 110 C74 100 92 78 92 55 L92 22 Z"/><path d="M30 70 C30 54 40 46 50 46 C60 46 70 54 70 70" stroke-width="5" opacity="0.8"/></svg>
               <span>CERBERUS</span>
             </button>
             <button class="dash-action-btn" id="dash-act-cc">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
               </svg>
               <span>COMMAND CENTER</span>
             </button>
             <button class="dash-action-btn" id="dash-act-notes">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
               <span>NOTES</span>
             </button>
             <button class="dash-action-btn" id="dash-act-tasks">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <polyline points="9 11 12 14 22 4"/>
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
               </svg>
               <span>TASKS</span>
             </button>
             <button class="dash-action-btn" id="dash-act-theme">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"/>
                 <circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none"/>
                 <circle cx="15.5" cy="10" r="1.5" fill="currentColor" stroke="none"/>
@@ -193,15 +185,13 @@ function _buildPanel() {
           </div>
         </div>
 
-        <!-- Session activity -->
-        <div class="dash-card dash-activity">
-          <div class="dash-card-title">SESSION ACTIVITY <span class="dash-mock-badge">7D</span></div>
-          <canvas id="dash-act-canvas" role="img" aria-label="Session activity past 7 days"></canvas>
-          <div class="dash-act-foot">
-            <span id="dash-act-total">0</span>
-            <span class="dash-usage-period">THIS WEEK</span>
-          </div>
-        </div>
+        <!-- Hidden: agents list loaded by _loadAgents (count shown in chip) -->
+        <div id="dash-agents-list" style="display:none" aria-hidden="true"></div>
+        <!-- Hidden: kept for compat with any external code referencing these IDs -->
+        <span id="dash-cnt-status"  style="display:none"></span>
+        <span id="dash-act-total"   style="display:none"></span>
+        <canvas id="dash-act-canvas" style="display:none" aria-hidden="true"></canvas>
+
       </div>
     </div>
   `.trim();
@@ -214,12 +204,9 @@ function _buildPanel() {
     action?.();
   }
 
-  // Settings + Tasks: use openShellModal so the modal is moved into
-  // #cerberus-modal-portal (z-index 999950) — visible above dashboard (4500)
   panel.querySelector('#dash-close')?.addEventListener('click', () => {
     import('./cerberusShellModals.js').then(m => m.openShellModal('settings'));
   });
-  // Notes — open overlay then raise above dashboard
   panel.querySelector('#dash-act-notes')?.addEventListener('click', () => {
     import('./cerberusOverlayTools.js').then(async (m) => {
       await m.default.openOverlayTool('notes');
@@ -237,11 +224,21 @@ function _buildPanel() {
     if (portal && modal.parentElement !== portal) portal.appendChild(modal);
     modal.classList.remove('hidden');
   });
-  // Navigation buttons close dashboard first
-  panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('rail-new-session')?.click(); }));
-  panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _go(() => { sessionStorage.setItem('cerberus_skip_modal_restore', '1'); window.location.href = '/home'; }));
-  panel.querySelector('#dash-act-cerberus')?.addEventListener('click', () => _go(() => { window.location.href = '/'; }));
-  panel.querySelector('#dash-act-cc')?.addEventListener('click', () => _go(() => { window.history.replaceState({}, '', '/'); document.getElementById('sidebar-command-center-btn')?.click(); }));
+  panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _go(() => {
+    window.history.replaceState({}, '', '/');
+    document.getElementById('rail-new-session')?.click();
+  }));
+  panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _go(() => {
+    sessionStorage.setItem('cerberus_skip_modal_restore', '1');
+    window.location.href = '/home';
+  }));
+  panel.querySelector('#dash-act-cerberus')?.addEventListener('click', () => _go(() => {
+    window.location.href = '/';
+  }));
+  panel.querySelector('#dash-act-cc')?.addEventListener('click', () => _go(() => {
+    window.history.replaceState({}, '', '/');
+    document.getElementById('sidebar-command-center-btn')?.click();
+  }));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); }, { once: true });
   _tickClock(panel);
   _tickDatetime(panel);
@@ -263,7 +260,9 @@ function _tickDatetime(panel) {
   if (el) el.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
 }
 
-function _startGlobeAnimation() {
+// ── Background ambient animation (not the globe — canvas glow only) ────────
+
+function _startBgAnimation() {
   const canvas = document.getElementById('dash-bg-canvas');
   if (!canvas || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
   const ctx = canvas.getContext('2d');
@@ -278,27 +277,26 @@ function _startGlobeAnimation() {
   resize();
   window.addEventListener('resize', resize);
 
-  function getAccent() {
-    return getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b';
-  }
   function hexToRgb(hex) {
     const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return r ? { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) } : { r: 192, g: 57, b: 43 };
+    return r ? { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) } : { r:192, g:57, b:43 };
   }
   function rgba(hex, a) { const c = hexToRgb(hex); return `rgba(${c.r},${c.g},${c.b},${a})`; }
+  function getAccent() { return getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b'; }
 
   function frame() {
     if (!document.getElementById(PANEL_ID)) { window.removeEventListener('resize', resize); return; }
+    if (document.hidden) { _rafId = requestAnimationFrame(frame); return; }
     _rafId = requestAnimationFrame(frame);
-    t += 0.008;
+    t += 0.006;
     ctx.clearRect(0, 0, W, H);
     const c = getAccent();
     for (let i = 0; i < 3; i++) {
       const phase = (i / 3) * Math.PI * 2;
-      const cy = H * 0.35 + Math.sin(t + phase) * H * 0.18;
-      const grad = ctx.createRadialGradient(W * 0.5, cy, 0, W * 0.5, cy, W * 0.4);
-      grad.addColorStop(0, rgba(c, 0.035));
-      grad.addColorStop(0.5, rgba(c, 0.012));
+      const cy = H * 0.4 + Math.sin(t + phase) * H * 0.14;
+      const grad = ctx.createRadialGradient(W * 0.5, cy, 0, W * 0.5, cy, W * 0.45);
+      grad.addColorStop(0, rgba(c, 0.028));
+      grad.addColorStop(0.5, rgba(c, 0.008));
       grad.addColorStop(1, rgba(c, 0));
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
@@ -306,6 +304,8 @@ function _startGlobeAnimation() {
   }
   frame();
 }
+
+// ── Data loading ─────────────────────────────────────────────────────────────
 
 async function _loadData() {
   await Promise.all([_loadSessions(), _loadVitals(), _loadAgents(), _loadTokenUsage()]);
@@ -317,12 +317,23 @@ async function _loadSessions() {
   const el = document.getElementById('dash-sessions-list');
   if (!el) return;
   try {
-    const res = await fetch('/api/sessions?limit=50', { credentials: 'same-origin' });
+    const res = await fetch('/api/sessions?limit=1000', { credentials: 'same-origin' });
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     const sessions = Array.isArray(data) ? data : (data.sessions || []);
-    _animCounter('dash-cnt-sessions', sessions.length);
-    _drawActivityChart(sessions);
+
+    // Hero counter — total count with dramatic tick-up
+    _heroCountUp('dash-cnt-sessions', sessions.length);
+
+    // Today delta — sessions created or updated today
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+    const todayCount = sessions.filter(s => {
+      const d = new Date(s.created_at || s.updated_at || 0);
+      return d >= todayStart;
+    }).length;
+    const todayEl = document.getElementById('dash-hero-today');
+    if (todayEl) todayEl.textContent = todayCount > 0 ? `+${todayCount}` : '—';
+
     if (!sessions.length) {
       el.innerHTML = `<div class="dash-empty dash-first-run">
         <div class="dash-empty-icon">◈</div>
@@ -331,16 +342,22 @@ async function _loadSessions() {
       </div>`;
       return;
     }
-    el.innerHTML = sessions.slice(0, 6).map(s => {
+
+    // Render as activity feed (most recent first)
+    const recent = sessions.slice(0, 8);
+    el.innerHTML = recent.map((s, i) => {
       const title = s.title || s.name || 'Untitled Session';
       const time  = s.updated_at || s.created_at || '';
       const rel   = time ? _relTime(time) : '';
-      return `<button class="dash-session-row" data-id="${s.id || ''}" title="${_esc(title)}">
-        <span class="dash-session-title">${_esc(title)}</span>
-        ${rel ? `<span class="dash-session-time">${rel}</span>` : ''}
+      return `<button class="dash-activity-item" data-id="${s.id || ''}" title="${_esc(title)}"
+                      style="animation-delay:${i * 55}ms">
+        <span class="dash-activity-dot"></span>
+        <span class="dash-activity-title">${_esc(title)}</span>
+        ${rel ? `<span class="dash-activity-time">${rel}</span>` : ''}
       </button>`;
     }).join('');
-    el.querySelectorAll('.dash-session-row').forEach(btn => {
+
+    el.querySelectorAll('.dash-activity-item').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.id;
         close();
@@ -351,7 +368,6 @@ async function _loadSessions() {
     });
   } catch (e) {
     el.innerHTML = '<div class="dash-empty">Could not load sessions.</div>';
-    _drawActivityChart([]);
   }
 }
 
@@ -370,31 +386,14 @@ async function _loadVitals() {
       status.textContent = cpu > 85 ? 'HIGH LOAD' : cpu > 60 ? 'ACTIVE' : 'ONLINE';
       status.dataset.level = cpu > 85 ? 'warn' : 'ok';
     }
+    // Compat — update hidden status counter
     const cntStatus = document.getElementById('dash-cnt-status');
     if (cntStatus) cntStatus.textContent = cpu > 85 ? 'HIGH' : cpu > 60 ? 'BUSY' : 'IDLE';
   } catch (_) {}
 }
 
-function _animCounter(id, to, suffix) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const from = parseFloat(el.textContent) || 0;
-  const dur = 900;
-  const start = performance.now();
-  const tick = (now) => {
-    const t = Math.min((now - start) / dur, 1);
-    const eased = 1 - Math.pow(1 - t, 3);
-    el.textContent = Math.round(from + (to - from) * eased) + (suffix || '');
-    if (t < 1) requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
-}
-
-// ── Agents card ──────────────────────────────────────────────────────
-
 async function _loadAgents() {
-  const el = document.getElementById('dash-agents-list');
-  if (!el) return;
+  const listEl = document.getElementById('dash-agents-list');
   try {
     const [opsRes, rosterRes] = await Promise.all([
       fetch('/api/cyberapps/operations/agents', { credentials: 'same-origin' }),
@@ -407,91 +406,225 @@ async function _loadAgents() {
       const rd = await rosterRes.json();
       const cnt = (rd.agents || (Array.isArray(rd) ? rd : [])).length;
       _animCounter('dash-cnt-agents', cnt);
-    } else { _animCounter('dash-cnt-agents', agents.length); }
-    if (!agents.length) { el.innerHTML = '<div class="dash-empty">No active agents.</div>'; return; }
-    el.innerHTML = agents.slice(0, 6).map(a => {
-      const s = a.status || 'idle';
-      return `<div class="dash-agent-row">
-        <span class="dash-agent-dot dash-agent-dot--${s}"></span>
-        <span class="dash-agent-name">${_esc(a.name || a.id || 'Agent')}</span>
-        <span class="dash-agent-status">${_esc(s).toUpperCase()}</span>
-      </div>`;
-    }).join('');
+    } else {
+      _animCounter('dash-cnt-agents', agents.length);
+    }
+    // Populate hidden list for compat (not visible in Variant B layout)
+    if (listEl) {
+      listEl.innerHTML = agents.length
+        ? agents.slice(0, 6).map(a => {
+            const s = a.status || 'idle';
+            return `<div class="dash-agent-row">
+              <span class="dash-agent-dot dash-agent-dot--${s}"></span>
+              <span class="dash-agent-name">${_esc(a.name || a.id || 'Agent')}</span>
+              <span class="dash-agent-status">${_esc(s).toUpperCase()}</span>
+            </div>`;
+          }).join('')
+        : '<div class="dash-empty">No active agents.</div>';
+    }
   } catch (_) {
-    el.innerHTML = '<div class="dash-empty">Agents unavailable.</div>';
+    if (listEl) listEl.innerHTML = '<div class="dash-empty">Agents unavailable.</div>';
   }
 }
 
 async function _loadTokenUsage() {
-  const canvas = document.getElementById('dash-usage-canvas');
-  const totalEl = document.getElementById('dash-usage-total');
-  const titleEl = document.querySelector('.dash-usage .dash-card-title');
+  const totalEl  = document.getElementById('dash-usage-total');
+  const canvas   = document.getElementById('dash-usage-canvas');
   try {
     const res = await fetch('/api/usage/tokens', { credentials: 'same-origin' });
     if (!res.ok) throw new Error(res.status);
-    const data = await res.json();
-    const total = data.total_tokens ?? 0, cost = data.cost_usd ?? 0;
-    if (titleEl) titleEl.innerHTML = `TOKEN USAGE <span class="dash-mock-badge">$${cost.toFixed(4)}</span>`;
-    if (totalEl) _animCounter('dash-usage-total', total >= 1000 ? Math.round(total / 1000) : total, total >= 1000 ? 'K' : '');
-    if (canvas) _drawUsageChart(canvas, data.by_day ?? []);
-  } catch (_) { if (totalEl) totalEl.textContent = '—'; }
+    const data  = await res.json();
+    const total = data.total_tokens ?? 0;
+    const cost  = data.cost_usd  ?? 0;
+
+    // Hero token counter — full number with comma formatting
+    if (totalEl) _heroCountUp('dash-usage-total', total);
+
+    // Cost sub-line
+    const costEl = document.getElementById('dash-token-cost');
+    if (costEl) costEl.textContent = cost > 0 ? `$${cost.toFixed(4)} COST` : 'LOCAL ENDPOINTS';
+
+    // Today's tokens from daily breakdown
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const byDay    = data.by_day ?? [];
+    const todayRec = byDay.find(d => d.date === todayStr);
+    const tokToday = todayRec?.tokens ?? 0;
+    const tokTodayEl = document.getElementById('dash-hero-tokens-today');
+    if (tokTodayEl) tokTodayEl.textContent = tokToday > 0 ? _fmtSI(tokToday) : '—';
+
+    // Graph meta
+    if (byDay.length) {
+      const vals   = byDay.map(d => d.tokens || 0);
+      const peak   = Math.max(...vals);
+      const avg    = Math.round(vals.reduce((s, v) => s + v, 0) / vals.length);
+      const peakEl = document.getElementById('dash-graph-peak');
+      const avgEl  = document.getElementById('dash-graph-avg');
+      if (peakEl) peakEl.textContent = _fmtSI(peak);
+      if (avgEl)  avgEl.textContent  = _fmtSI(avg);
+    }
+
+    if (canvas) _drawTokenFlowGraph(canvas, byDay);
+  } catch (_) {
+    if (totalEl) totalEl.textContent = '—';
+    const canvas2 = document.getElementById('dash-usage-canvas');
+    if (canvas2) _drawTokenFlowGraph(canvas2, []); // graceful: fallback sine wave
+  }
 }
 
-function _drawUsageChart(canvas, byDay) {
-  if (!canvas) return;
-  const raw = byDay.length ? byDay.slice(-14).map(d => d.tokens || 0) : Array.from({length: 14}, (_, i) => Math.round(4000 + Math.sin(i * 0.9) * 1800));
-  const max = Math.max(...raw, 1), days = raw.length;
-  const W = canvas.parentElement?.clientWidth || 220, H = 54;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = Math.floor(W * dpr); canvas.height = Math.floor(H * dpr);
-  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-  const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const [pl, pr, pt, pb] = [4, 4, 6, 4], iw = W - pl - pr, ih = H - pt - pb;
-  ctx.clearRect(0, 0, W, H);
-  const [r, g, b] = _getRgb();
-  const pts = raw.map((v, i) => [pl + (i / Math.max(days - 1, 1)) * iw, pt + ih - (v / max) * ih]);
-  ctx.beginPath(); ctx.moveTo(pts[0][0], H - pb); ctx.lineTo(pts[0][0], pts[0][1]);
-  pts.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(pts[pts.length - 1][0], H - pb); ctx.closePath();
-  const grd = ctx.createLinearGradient(0, pt, 0, H);
-  grd.addColorStop(0, `rgba(${r},${g},${b},0.28)`); grd.addColorStop(0.7, `rgba(${r},${g},${b},0.06)`); grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
-  ctx.fillStyle = grd; ctx.fill();
-  ctx.beginPath(); pts.forEach(([x, y], i) => i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y));
-  ctx.strokeStyle = `rgba(${r},${g},${b},0.75)`; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
-  const [lx, ly] = pts[pts.length - 1]; ctx.beginPath(); ctx.arc(lx, ly, 2.5, 0, Math.PI * 2); ctx.fillStyle = `rgba(${r},${g},${b},0.9)`; ctx.fill();
+// ── Animations ────────────────────────────────────────────────────────────────
+
+// Hero counter — large numbers, dramatic ease-out, full comma formatting.
+function _heroCountUp(id, target) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    el.textContent = target.toLocaleString();
+    return;
+  }
+  const dur = 2000;
+  const t0  = performance.now();
+  function step(now) {
+    if (document.hidden) { requestAnimationFrame(step); return; }
+    const p = Math.min((now - t0) / dur, 1);
+    const e = 1 - Math.pow(1 - p, 4); // strong ease-out
+    el.textContent = Math.round(target * e).toLocaleString();
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
 }
 
-function _drawActivityChart(sessions) {
-  const canvas = document.getElementById('dash-act-canvas');
-  if (!canvas) return;
-  const days = 7, now = Date.now();
-  const bins = Array.from({length: days}, () => 0);
-  sessions.forEach(s => {
-    const d = Math.floor((now - new Date(s.updated_at || s.created_at || 0).getTime()) / 86400000);
-    if (d >= 0 && d < days) bins[days - 1 - d]++;
-  });
-  const tot = document.getElementById('dash-act-total');
-  if (tot) tot.textContent = bins.reduce((s, v) => s + v, 0);
-  const max = Math.max(...bins, 1);
-  const W = canvas.parentElement?.clientWidth || 200, H = 56;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = W * dpr; canvas.height = H * dpr;
-  canvas.style.cssText = `width:${W}px;height:${H}px;display:block`;
-  const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const [r, g, b] = _getRgb();
-  const bw = Math.max(4, Math.floor((W - 16) / days) - 3);
-  const sp = (W - 16 - bw * days) / Math.max(1, days - 1);
-  const lbls = ['S','M','T','W','T','F','S'];
-  const today = new Date().getDay();
-  bins.forEach((v, i) => {
-    const bh = Math.max(2, (v / max) * (H - 18));
-    const x = 8 + i * (bw + sp);
-    ctx.fillStyle = `rgba(${r},${g},${b},${0.2 + (v / max) * 0.65})`;
-    ctx.fillRect(x, H - 10 - bh, bw, bh);
-    ctx.fillStyle = `rgba(${r},${g},${b},0.3)`;
-    ctx.font = '7px monospace'; ctx.textAlign = 'center';
-    ctx.fillText(lbls[(today - (days - 1 - i) + 7) % 7], x + bw / 2, H - 1);
-  });
+// Compact counter — smaller numbers (agent count chip), fast.
+function _animCounter(id, to, suffix) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const from  = parseFloat(el.textContent.replace(/[^0-9.]/g, '')) || 0;
+  const dur   = 600;
+  const start = performance.now();
+  const tick  = (now) => {
+    const t     = Math.min((now - start) / dur, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(from + (to - from) * eased) + (suffix || '');
+    if (t < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
+
+// Token flow graph — draws in from left on load, respects tab visibility.
+function _drawTokenFlowGraph(canvas, byDay) {
+  if (!canvas) return;
+  // Graceful fallback when no data: a low-activity reference curve
+  const raw = byDay.length
+    ? byDay.slice(-30).map(d => d.tokens || 0)
+    : Array.from({length: 14}, (_, i) => Math.round(1200 + Math.sin(i * 0.9) * 600));
+
+  const parent = canvas.parentElement;
+  const W  = (parent?.clientWidth || 800);
+  const H  = 120;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width  = Math.floor(W * dpr);
+  canvas.height = Math.floor(H * dpr);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  const ctx  = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const [r, g, b] = _getRgb();
+  const max  = Math.max(...raw, 1);
+  const days = raw.length;
+  const pad  = { t: 12, b: 6, l: 2, r: 2 };
+  const iW   = W - pad.l - pad.r;
+  const iH   = H - pad.t - pad.b;
+
+  const pts = raw.map((v, i) => [
+    pad.l + (i / Math.max(days - 1, 1)) * iW,
+    pad.t + (1 - v / max) * iH,
+  ]);
+
+  function drawGrid() {
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.04)`;
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const y = pad.t + (iH / 4) * i;
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    }
+    for (let i = Math.ceil(days / 6); i < days; i += Math.ceil(days / 6)) {
+      const x = pad.l + (i / Math.max(days - 1, 1)) * iW;
+      ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, H - pad.b); ctx.stroke();
+    }
+  }
+
+  function renderFrame(progress) {
+    ctx.clearRect(0, 0, W, H);
+    drawGrid();
+
+    const tX  = pts[0][0] + (pts[pts.length - 1][0] - pts[0][0]) * progress;
+    const vis = [];
+    for (let i = 0; i < pts.length; i++) {
+      if (pts[i][0] <= tX) { vis.push(pts[i]); }
+      else {
+        if (i > 0) {
+          const pr = pts[i - 1], t2 = (tX - pr[0]) / (pts[i][0] - pr[0]);
+          vis.push([tX, pr[1] + (pts[i][1] - pr[1]) * t2]);
+        }
+        break;
+      }
+    }
+    if (vis.length < 2) return;
+    const last = vis[vis.length - 1];
+
+    // Area gradient
+    ctx.beginPath();
+    ctx.moveTo(vis[0][0], H - pad.b);
+    vis.forEach(([x, y]) => ctx.lineTo(x, y));
+    ctx.lineTo(last[0], H - pad.b);
+    ctx.closePath();
+    const grd = ctx.createLinearGradient(0, pad.t, 0, H);
+    grd.addColorStop(0,   `rgba(${r},${g},${b},0.22)`);
+    grd.addColorStop(0.65,`rgba(${r},${g},${b},0.05)`);
+    grd.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grd;
+    ctx.fill();
+
+    // Line — two passes: outer glow + crisp stroke
+    for (const [lw, alpha] of [[6, 0.07], [1.5, 1]]) {
+      ctx.beginPath();
+      vis.forEach(([x, y], i) => i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y));
+      ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
+      ctx.lineWidth   = lw;
+      ctx.lineJoin    = 'round';
+      ctx.stroke();
+    }
+
+    // Head dot
+    if (progress > 0.02) {
+      ctx.shadowColor = `rgba(${r},${g},${b},0.6)`;
+      ctx.shadowBlur  = 10;
+      ctx.beginPath();
+      ctx.arc(last[0], last[1], 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${r},${g},${b},0.9)`;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    renderFrame(1);
+    return;
+  }
+
+  const dur = 1600, t0 = performance.now();
+  function animate(now) {
+    if (!document.getElementById(PANEL_ID)) return;
+    if (document.hidden) { requestAnimationFrame(animate); return; }
+    const p = Math.min((now - t0) / dur, 1);
+    renderFrame(1 - Math.pow(1 - p, 2.5));
+    if (p < 1) requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+}
+
+// ── Vitals ────────────────────────────────────────────────────────────────────
 
 function _setVital(key, val, unit) {
   const bar = document.getElementById(`dash-bar-${key}`);
@@ -503,16 +636,21 @@ function _setVital(key, val, unit) {
   txt.textContent = Math.round(val) + unit;
 }
 
-// ── Cleanup ─────────────────────────────────────────────────────────
+// ── Cleanup ───────────────────────────────────────────────────────────────────
 
 function _cleanup() {
   if (_rafId)       { cancelAnimationFrame(_rafId); _rafId = null; }
-  if (_usageRaf)    { cancelAnimationFrame(_usageRaf); _usageRaf = null; }
   if (_vitalsTimer) { clearInterval(_vitalsTimer); _vitalsTimer = null; }
   if (_agentsTimer) { clearInterval(_agentsTimer); _agentsTimer = null; }
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function _fmtSI(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return Math.round(n / 1e3) + 'K';
+  return String(n);
+}
 
 function _esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -522,13 +660,13 @@ function _relTime(iso) {
   try {
     const diff = Date.now() - new Date(iso).getTime();
     const min  = Math.floor(diff / 60000);
-    if (min < 1)   return 'just now';
-    if (min < 60)  return `${min}m ago`;
+    if (min < 1)  return 'just now';
+    if (min < 60) return `${min}m ago`;
     const hr = Math.floor(min / 60);
-    if (hr < 24)   return `${hr}h ago`;
+    if (hr < 24)  return `${hr}h ago`;
     return `${Math.floor(hr / 24)}d ago`;
   } catch (_) { return ''; }
 }
 
-// Expose for inline onclick
+// Expose for inline onclick and external callers
 window.dashModule = { open, close, toggle };

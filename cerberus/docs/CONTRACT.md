@@ -21,16 +21,18 @@ After Phase B/C land, the diff against this doc is the acceptance test.
 | Widget | Card | Data source | Backend endpoint | Status |
 |--------|------|-------------|-----------------|--------|
 | Product identity + status badge | Header | CPU % threshold (client logic) | `/api/cyberapps/operations/vitals` | ✅ live |
+| HUD status chips (ONLINE / AGENTS / AUTH) | Header | Vitals + agents count | `/api/cyberapps/operations/vitals`, `/api/agents` | ✅ live |
 | Live clock | Header | `Date` client-side | — | ✅ live |
-| Globe hero (CSS animated) | Hero | — | — | ✅ live |
-| Date / greeting sub-text | Hero | `Date` client-side | — | ✅ live |
-| Vitals bars — CPU / RAM / DISK / LAT | Vitals | Polled every 8 s | `/api/cyberapps/operations/vitals` | ✅ live |
-| Recent sessions list (last 6) | Sessions | Fetched on open | `/api/sessions?limit=6` | ✅ live |
-| Quick Actions grid (Chat, CC, Notes, Tasks) | Actions | Nav only | — | ✅ live |
-| **Agent activity sparklines** | Agents (new) | Polled every 10 s | `/api/agents` (thin read) | 🔲 Phase B |
-| **Token usage chart** | Usage (new) | Fetched on open | `/api/usage/tokens` | ✅ live |
+| Hero counter — total session count (count-up Orbitron, 52 px) | Hero | Fetched on open | `/api/sessions?limit=1000` | ✅ live |
+| Hero counter — total token count (count-up Orbitron, 42 px) | Hero | Fetched on open | `/api/usage/tokens` | ✅ live |
+| Hero delta — sessions today | Hero | Derived from `created_at` | `/api/sessions?limit=1000` | ✅ live |
+| Hero delta — tokens today | Hero | Derived from `by_day[today]` | `/api/usage/tokens` | ✅ live |
+| Date sub-text under sessions hero | Hero | `Date` client-side | — | ✅ live |
+| Token flow graph (30-day area+line, canvas, draw-in animation) | Graph band | Fetched on open | `/api/usage/tokens` → `by_day` | ✅ live |
+| Recent activity feed (last 8 sessions, click to load) | Activity | Fetched on open | `/api/sessions?limit=1000` | ✅ live |
+| Vitals bars — CPU / RAM / DISK / LAT (semantic colours) | Vitals | Polled every 8 s | `/api/cyberapps/operations/vitals` | ✅ live |
+| Quick Actions grid (Chat, Nexus, Cerberus, CC, Notes, Tasks, Theme) | Actions | Nav only | — | ✅ live |
 | **Briefing feed** (last 3 notes/events) | Briefing (new) | Fetched on open | `/api/notes?limit=3` or `/api/sessions?limit=3` | 🔲 Phase B |
-| **Animated counters** (sessions total, agents count) | Counters (new) | Fetched on open | `/api/sessions`, `/api/agents` | ✅ live |
 
 ### CC widgets
 
@@ -68,10 +70,11 @@ After Phase B/C land, the diff against this doc is the acceptance test.
 
 ## Overlap Rules (strictly enforced)
 
+- **Globe / orbit hero** → CC COMMAND tab only. Dashboard uses JARVIS-style hero counters instead.
 - **Vitals bars** → DASHBOARD only. CC shows timeseries, not percentage bars.
-- **Sessions list** → DASHBOARD only. CC does not duplicate sessions.
-- **Agents list detail** → CC AGENTS tab only. Dashboard shows roster count only.
-- **Token usage detail** → CC OBSERVE tab + DASHBOARD (summary only). CC shows full 30d breakdown; Dashboard shows total + cost.
+- **Sessions list** → DASHBOARD only (activity feed). CC does not duplicate sessions.
+- **Agents list detail** → CC AGENTS tab only. Dashboard shows roster count only (chip in header).
+- **Token usage detail** → CC OBSERVE tab + DASHBOARD (summary only). CC shows full 30d breakdown; Dashboard shows total + cost + 30-day flow graph.
 - **Running tasks** → CC COMMAND tab only. Dashboard shows counter only (number of active tasks).
 - **Notes/briefing** → DASHBOARD only (context at a glance). Full notes live in the Notes panel.
 
