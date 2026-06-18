@@ -1,0 +1,229 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/docs-hud.css
+ * Nexus HUD Stage 2 Batch 2 — Document Library surface chrome.
+ * Scope: body.jx2-active #doclib-modal  (primary)
+ *        body.jx2-active .doclib-*      (general card chrome)
+ *
+ * HUD rule: chrome (modal header, tabs, toolbar, chips, card chrome)
+ * gets full HUD treatment. Document content (preview text, code bodies)
+ * stays readable — system-ui or existing mono at comfortable size.
+ *
+ * Card title: 11px fw-600 (keep as-is, calm).
+ * Card time/session: JetBrains Mono 9px.
+ * Expanded card preview: leave untouched.
+ * ==================================================================== */
+
+/* ── Modal header ────────────────────────────────────────────────────── */
+body.jx2-active #doclib-modal .modal-header,
+body.jx2-active #email-lib-modal .modal-header {
+  background: var(--jx2-hud-surface) !important;
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+}
+
+body.jx2-active #doclib-modal .modal-header h4 {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-crimson-500) !important;
+  text-shadow: var(--jx2-hud-prefix-glow) !important;
+}
+
+body.jx2-active #doclib-modal .modal-header h4::before {
+  content: "// ";
+  color: var(--jx2-hud-prefix-color);
+  font-family: var(--jx2-font-mono);
+  font-size: 1em;
+  letter-spacing: 0.02em;
+  font-weight: 400;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+
+/* ── Library tabs ────────────────────────────────────────────────────── */
+body.jx2-active #doclib-modal .lib-tabs {
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+  background: color-mix(in srgb, var(--jx2-hud-surface) 60%, transparent) !important;
+}
+
+body.jx2-active #doclib-modal .lib-tab {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8.5px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-hud-chip-text) !important;
+  padding: 5px 12px !important;
+  transition: color 150ms, border-color 150ms;
+}
+
+body.jx2-active #doclib-modal .lib-tab:hover {
+  color: var(--fg, #c5c9d0) !important;
+}
+
+body.jx2-active #doclib-modal .lib-tab.active {
+  color: var(--jx2-crimson-200) !important;
+  border-bottom-color: var(--jx2-crimson-500) !important;
+}
+
+/* ── Doclib toolbar area ──────────────────────────────────────────────── */
+body.jx2-active #doclib-modal .doclib-search {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.04em !important;
+  background: color-mix(in srgb, var(--fg, #c5c9d0) 3%, transparent) !important;
+  border: 1px solid var(--jx2-hud-border) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--fg, #c5c9d0) !important;
+}
+
+body.jx2-active #doclib-modal .doclib-search:focus {
+  border-color: var(--jx2-crimson-500) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--jx2-crimson-500) 18%, transparent) !important;
+}
+
+body.jx2-active #doclib-modal .doclib-sort {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.06em !important;
+  background: color-mix(in srgb, var(--fg, #c5c9d0) 3%, transparent) !important;
+  border: 1px solid var(--jx2-hud-border) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: color-mix(in srgb, var(--fg, #c5c9d0) 65%, transparent) !important;
+}
+
+/* ── Filter chips ────────────────────────────────────────────────────── */
+body.jx2-active #doclib-modal .doclib-chip {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  border: 1px solid var(--jx2-hud-chip-border) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  background: var(--jx2-hud-chip-bg) !important;
+  color: var(--jx2-hud-chip-text) !important;
+  padding: 2px 8px !important;
+  transition: border-color 150ms, color 150ms, background 150ms;
+}
+
+body.jx2-active #doclib-modal .doclib-chip:hover {
+  border-color: var(--jx2-hud-hover-border) !important;
+  color: var(--fg, #c5c9d0) !important;
+}
+
+body.jx2-active #doclib-modal .doclib-chip.active {
+  border-color: var(--jx2-crimson-400) !important;
+  color: var(--jx2-crimson-200) !important;
+  background: var(--jx2-hud-active-bg) !important;
+  font-weight: 600 !important;
+}
+
+/* Language filter chips — keep accent color but use HUD shape */
+body.jx2-active #doclib-modal .doclib-lang-chips .doclib-chip {
+  text-transform: uppercase !important;
+}
+
+/* ── Document cards ──────────────────────────────────────────────────── */
+body.jx2-active .doclib-card {
+  border-left: 2px solid transparent !important;
+  border-radius: 0 var(--jx2-radius-sm) var(--jx2-radius-sm) 0 !important;
+  transition: background 150ms, border-left-color 150ms;
+}
+
+body.jx2-active .doclib-card:hover {
+  border-left-color: var(--jx2-hud-hover-border) !important;
+}
+
+body.jx2-active .doclib-card.selected,
+body.jx2-active .doclib-card:has(.memory-select-cb:checked) {
+  border-left-color: var(--jx2-crimson-400) !important;
+  outline: none !important;
+  background: var(--jx2-hud-active-bg) !important;
+}
+
+/* Card title: 11px fw-600 — keep font-family as-is (readable) */
+body.jx2-active .doclib-card-title {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+
+/* Card meta: mono 9px */
+body.jx2-active .doclib-card-session,
+body.jx2-active .doclib-card-time {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* Version badge: keep accent bg/color but HUD shape */
+body.jx2-active .doclib-card-ver {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  letter-spacing: 0.06em !important;
+}
+
+/* Language badge: keep accent color, HUD shape */
+body.jx2-active .doclib-card-lang {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  letter-spacing: 0.06em !important;
+}
+
+/* ── Toolbar action buttons ──────────────────────────────────────────── */
+body.jx2-active #doclib-modal .doclib-toolbar-btn {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  transition: background 150ms, color 150ms, border-color 150ms;
+}
+
+body.jx2-active #doclib-modal .doclib-toolbar-btn:hover {
+  color: var(--jx2-crimson-300) !important;
+  background: var(--jx2-hud-hover-bg) !important;
+}
+
+/* Load more button */
+body.jx2-active #doclib-modal .doclib-load-more button,
+body.jx2-active #doclib-modal .doclib-inline-load-more button {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  transition: border-color 150ms, color 150ms;
+}
+
+body.jx2-active #doclib-modal .doclib-load-more button:hover,
+body.jx2-active #doclib-modal .doclib-inline-load-more button:hover {
+  border-color: var(--jx2-crimson-500) !important;
+  color: var(--jx2-crimson-300) !important;
+}
+
+/* ── Expanded card actions ───────────────────────────────────────────── */
+body.jx2-active .doclib-card-expanded-actions .doclib-card-action-btn {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.06em !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  transition: border-color 150ms, color 150ms, background 150ms;
+}
+
+body.jx2-active .doclib-card-expanded-actions .doclib-card-action-btn:hover {
+  border-color: var(--jx2-crimson-500) !important;
+  color: var(--jx2-crimson-300) !important;
+}
+
+/* ── Expanded preview — don't override content fonts ────────────────── */
+/* .doclib-card-preview code/pre stays as-is — it's already mono at
+   readable size. The HUD content-split rule: chrome gets HUD,
+   code content does not. */
+
+/* ── Reduced-motion ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  body.jx2-active .doclib-card {
+    transition: none !important;
+  }
+}
