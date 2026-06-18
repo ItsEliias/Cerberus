@@ -1390,6 +1390,94 @@ function initializeEventListeners() {
 
   // (Logout handler moved to sidebar user bar above)
 
+  // ── Nexus HUD chips — live ONLINE / AGENTS / AUTH status ──────────
+  (function initHudChips() {
+    const chipOnline = document.getElementById('hud-chip-online');
+    const chipAgents = document.getElementById('hud-chip-agents');
+    const chipAuth   = document.getElementById('hud-chip-auth');
+    if (!chipOnline && !chipAgents && !chipAuth) return;
+
+    function setChip(el, dotClass, label) {
+      if (!el) return;
+      const dot = el.querySelector('.jx2-hud-chip-dot');
+      const lbl = el.querySelector('.jx2-hud-chip-label');
+      if (dot) {
+        dot.className = 'jx2-hud-chip-dot ' + dotClass;
+      }
+      if (lbl) lbl.textContent = label;
+    }
+
+    // AUTH chip — derive from /api/auth/status
+    fetch(`${API_BASE}/api/auth/status`, { credentials: 'same-origin' })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => {
+        if (d.auth_enabled === false) {
+          setChip(chipAuth, 'jx2-hud-chip-dot--unknown', 'NO AUTH');
+        } else if (d.authenticated || d.username) {
+          setChip(chipAuth, 'jx2-hud-chip-dot--auth', 'AUTH');
+        } else {
+          setChip(chipAuth, 'jx2-hud-chip-dot--unknown', 'AUTH?');
+        }
+      })
+      .catch(() => setChip(chipAuth, 'jx2-hud-chip-dot--unknown', 'AUTH?'));
+
+    // AGENTS chip — /api/agents returns { agents: [...] } not a bare array
+    fetch(`${API_BASE}/api/agents`, { credentials: 'same-origin' })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        const list = Array.isArray(data) ? data : (data?.agents || []);
+        setChip(chipAgents, 'jx2-hud-chip-dot--agents', list.length + ' AGENTS');
+      })
+      .catch(() => setChip(chipAgents, 'jx2-hud-chip-dot--unknown', '— AGENTS'));
+
+    // ONLINE chip — /api/diagnostics/services health summary
+    fetch(`${API_BASE}/api/diagnostics/services`, { credentials: 'same-origin' })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        const anyDegraded = data && typeof data === 'object' &&
+          Object.values(data).some(v => v && v.status === 'error');
+        if (anyDegraded) {
+          setChip(chipOnline, 'jx2-hud-chip-dot--auth', 'DEGRADED');
+        } else {
+          setChip(chipOnline, 'jx2-hud-chip-dot--online', 'ONLINE');
+        }
+      })
+      .catch(() => {
+        // Non-admin users can't read service details; treat as online since page loaded
+        setChip(chipOnline, 'jx2-hud-chip-dot--online', 'ONLINE');
+      });
+  })();
+
+  // ── "Reduce HUD effects" toggle — Appearance panel ────────────────
+  (function initReduceHudToggle() {
+    const toggle = document.getElementById('set-reduceHudToggle');
+    if (!toggle) return;
+
+    function applyReduceHud(on) {
+      document.body.classList.toggle('reduce-hud', !!on);
+    }
+
+    fetch(`${API_BASE}/api/prefs/reduce_hud_effects`, { credentials: 'same-origin' })
+      .then(r => r.ok ? r.json() : {})
+      .then(d => {
+        const on = !!d.value;
+        toggle.checked = on;
+        applyReduceHud(on);
+      })
+      .catch(() => {});
+
+    toggle.addEventListener('change', function() {
+      const on = toggle.checked;
+      applyReduceHud(on);
+      fetch(`${API_BASE}/api/prefs/reduce_hud_effects`, {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: on }),
+      }).catch(() => {});
+    });
+  })();
+
   // Rename AI modal
   const renameAiOption = el('rename-ai-option');
   const renameAiModal = el('rename-ai-modal');
