@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUD Stage 2 — Dashboard Variant A · Dense Cockpit</title>
+<style>
+@font-face { font-family:'Orbitron'; font-style:normal; font-weight:400 900; font-display:swap; src:url('../../static/fonts/Orbitron-latin.woff2') format('woff2'); }
+@font-face { font-family:'JetBrains Mono'; font-style:normal; font-weight:400 600; font-display:swap; src:url('../../static/fonts/JetBrainsMono-latin.woff2') format('woff2'); }
+@font-face { font-family:'IBM Plex Sans'; font-style:normal; font-weight:400 600; font-display:swap; src:url('../../static/fonts/IBMPlexSans-latin.woff2') format('woff2'); }
+
+:root {
+  --cr-700:#4a0f0f; --cr-600:#7a1a1a; --cr-500:#c0392b; --cr-400:#e04535; --cr-300:#f06b5a; --cr-200:#ff9080;
+  --s-void:#09090a; --s-base:#0d0d0f; --s-raised:#111115; --s-card:#13131a;
+  --fg-p:#e8e8ec; --fg-s:#9a9aaa; --fg-m:#5a5a6a;
+  --c-green:#22c55e; --c-blue:#3b82f6; --c-yellow:#f59e0b; --c-purple:#a855f7;
+  --b-def:rgba(192,57,43,0.28); --b-glow:rgba(192,57,43,0.55);
+  --fd:'Orbitron',monospace; --fm:'JetBrains Mono',monospace; --fb:'IBM Plex Sans',sans-serif;
+  --r-sm:2px; --r-md:4px;
+  --hud-sl-gap:4px; --hud-sl-color:rgba(0,0,0,0.07); --hud-sl-op:0.5;
+  --hud-prefix:"// "; --hud-pfx-color:var(--cr-500); --hud-pfx-glow:0 0 12px rgba(192,57,43,0.4);
+  --hud-chip-border:rgba(255,255,255,0.07); --hud-chip-bg:rgba(255,255,255,0.025); --hud-chip-text:var(--fg-m);
+  --wm-size:17px; --wm-track:0.15em; --wm-glow:0 0 20px rgba(192,57,43,0.4);
+  --wm-lead:var(--cr-300); --wm-bracket:var(--cr-700);
+}
+@keyframes pulse-cr { 0%,100%{opacity:.5} 50%{opacity:1} }
+@keyframes fadein-x { from{opacity:0;transform:translateX(-5px)} to{opacity:1;transform:none} }
+@keyframes bar-grow { from{width:0} }
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+body { background:#03030a; display:flex; flex-direction:column; align-items:center; min-height:100vh; padding:28px; font-family:var(--fb); color:var(--fg-p); gap:12px; }
+.page-label { font-family:var(--fm); font-size:10px; color:var(--fg-m); letter-spacing:.18em; text-transform:uppercase; }
+.variant-tag { font-family:var(--fm); font-size:9px; color:var(--cr-500); letter-spacing:.12em; text-transform:uppercase; padding:2px 8px; border:1px solid var(--b-def); border-radius:var(--r-sm); background:rgba(192,57,43,0.06); }
+
+/* ── Shell ── */
+.dash { width:100%; max-width:1140px; background:var(--s-base); border:1px solid var(--b-glow); border-radius:var(--r-md); display:flex; flex-direction:column; overflow:hidden; position:relative;
+  box-shadow:0 0 0 1px rgba(192,57,43,0.06),0 4px 48px rgba(0,0,0,.7),0 0 80px rgba(192,57,43,.04); }
+.dash::before { content:''; position:absolute; inset:0; pointer-events:none; z-index:99; opacity:var(--hud-sl-op);
+  background:repeating-linear-gradient(0deg,transparent,transparent calc(var(--hud-sl-gap) - 1px),var(--hud-sl-color) calc(var(--hud-sl-gap) - 1px),var(--hud-sl-color) var(--hud-sl-gap)); }
+
+/* ── Brand bar ── */
+.brand { display:flex; align-items:center; gap:10px; padding:10px 16px 8px; background:var(--s-void); border-bottom:1px solid var(--b-def); flex-shrink:0; position:relative; z-index:2; }
+.wm { font-family:var(--fd); font-size:var(--wm-size); font-weight:700; letter-spacing:var(--wm-track); color:var(--fg-p); text-shadow:var(--wm-glow); text-transform:uppercase; white-space:nowrap; user-select:none; }
+.wm .b { color:var(--wm-bracket); font-size:1.1em; }
+.wm .l { color:var(--wm-lead); }
+.wm-sub { font-family:var(--fm); font-size:9px; letter-spacing:.18em; color:var(--cr-500); text-shadow:var(--hud-pfx-glow); text-transform:uppercase; opacity:.7; }
+.chip-row { display:flex; align-items:center; gap:5px; margin-left:4px; }
+.chip { display:inline-flex; align-items:center; gap:4px; font-family:var(--fm); font-size:8px; color:var(--hud-chip-text); letter-spacing:.1em; text-transform:uppercase; padding:2px 6px; border:1px solid var(--hud-chip-border); border-radius:var(--r-sm); background:var(--hud-chip-bg); white-space:nowrap; user-select:none; }
+.dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.dot-on  { background:var(--c-green); }
+.dot-ag  { background:var(--c-blue); }
+.dot-au  { background:var(--cr-400); animation:pulse-cr 2.4s ease-in-out infinite; }
+.spacer  { flex:1; }
+.clock   { font-family:var(--fd); font-size:11px; letter-spacing:.12em; color:var(--fg-m); font-variant-numeric:tabular-nums; }
+
+/* ── Body ── */
+.body { flex:1; overflow:auto; padding:14px; display:flex; flex-direction:column; gap:12px; position:relative; z-index:1; scrollbar-width:thin; scrollbar-color:var(--b-def) transparent; }
+
+/* ── Stat tiles ── */
+.stat-row { display:grid; grid-template-columns:repeat(6,1fr); gap:9px; }
+.tile { background:var(--s-raised); border:1px solid var(--b-def); border-radius:var(--r-md); padding:11px 10px 9px; position:relative; overflow:hidden; }
+.tile::after { content:''; position:absolute; top:0; left:0; bottom:0; width:2px; background:var(--ta,var(--cr-500)); box-shadow:0 0 8px var(--ts,rgba(192,57,43,.4)); }
+.tl { font-family:var(--fm); font-size:7.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--fg-m); margin-bottom:6px; }
+.tv { font-family:var(--fd); font-size:21px; font-weight:700; letter-spacing:.03em; color:var(--ta,var(--fg-p)); font-variant-numeric:tabular-nums; line-height:1; text-shadow:0 0 10px var(--ts,rgba(192,57,43,.25)); }
+.td { font-family:var(--fm); font-size:8px; letter-spacing:.06em; color:var(--fg-m); margin-top:4px; }
+.up { color:var(--c-green); }
+
+/* ── Spark row ── */
+.spark-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.spark-panel { background:var(--s-raised); border:1px solid var(--b-def); border-radius:var(--r-md); padding:10px 12px 8px; }
+.ptitle { font-family:var(--fm); font-size:8px; letter-spacing:.16em; text-transform:uppercase; color:var(--cr-500); text-shadow:var(--hud-pfx-glow); margin-bottom:8px; }
+.ptitle::before { content:var(--hud-prefix); }
+.spark-wrap { position:relative; }
+canvas.spark { display:block; width:100%; height:72px; }
+.smeta { display:flex; justify-content:space-between; margin-top:5px; }
+.smeta span { font-family:var(--fm); font-size:7.5px; letter-spacing:.08em; color:var(--fg-m); }
+.smeta span em { font-style:normal; color:var(--fg-s); }
+
+/* ── Bottom row ── */
+.bot-row { display:grid; grid-template-columns:240px 1fr; gap:10px; }
+
+/* Vitals */
+.vitals { background:var(--s-raised); border:1px solid var(--b-def); border-radius:var(--r-md); padding:10px 12px; }
+.vrow { margin-bottom:9px; }
+.vrow:last-child { margin-bottom:0; }
+.vhdr { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px; }
+.vname { font-family:var(--fm); font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:var(--fg-s); }
+.vval  { font-family:var(--fm); font-size:8.5px; letter-spacing:.04em; color:var(--vc,var(--fg-p)); font-variant-numeric:tabular-nums; }
+.vtrack { height:3px; background:rgba(255,255,255,.05); border-radius:1px; overflow:hidden; }
+.vbar { height:100%; border-radius:1px; background:var(--vc,var(--cr-500)); box-shadow:0 0 6px var(--vs,rgba(192,57,43,.4)); width:0; transition:width 1s cubic-bezier(.23,1,.32,1); }
+
+/* Activity */
+.activity { background:var(--s-raised); border:1px solid var(--b-def); border-radius:var(--r-md); padding:10px 12px; overflow:hidden; }
+.alist { display:flex; flex-direction:column; margin-top:8px; }
+.aitem { display:flex; align-items:flex-start; gap:8px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.035); opacity:0; animation:fadein-x 320ms ease-out forwards; }
+.aitem:last-child { border-bottom:none; }
+.aicon { width:16px; height:16px; border-radius:var(--r-sm); background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+.atext { font-family:var(--fm); font-size:10px; line-height:1.55; color:var(--fg-s); flex:1; }
+.atext strong { font-weight:600; }
+.atime { font-family:var(--fm); font-size:7.5px; color:var(--fg-m); flex-shrink:0; margin-top:2px; }
+
+@media (prefers-reduced-motion:reduce) {
+  .vbar { transition:none; }
+  .dot-au { animation:none; }
+  .aitem { opacity:1; animation:none; }
+}
+</style>
+</head>
+<body>
+
+<span class="page-label">Nexus HUD — Stage 2 · Batch 1 Revision · Mockup</span>
+<span class="variant-tag">Variant A — Dense Cockpit</span>
+
+<div class="dash">
+
+  <div class="brand">
+    <div class="wm"><span class="b">[</span><span class="l">C</span>ERBERUS<span class="b">]</span></div>
+    <span class="wm-sub">DASHBOARD</span>
+    <div class="chip-row">
+      <div class="chip"><span class="dot dot-on"></span>ONLINE</div>
+      <div class="chip"><span class="dot dot-ag"></span>3 AGENTS</div>
+      <div class="chip"><span class="dot dot-au"></span>AUTH</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="clock" id="clk">00:00:00</div>
+  </div>
+
+  <div class="body">
+
+    <!-- Row 1 — stat tiles -->
+    <div class="stat-row">
+      <div class="tile" style="--ta:#c0392b;--ts:rgba(192,57,43,.35)">
+        <div class="tl">Sessions</div>
+        <div class="tv" id="t-sessions">0</div>
+        <div class="td"><span class="up">↑ 12</span> today</div>
+      </div>
+      <div class="tile" style="--ta:#3b82f6;--ts:rgba(59,130,246,.35)">
+        <div class="tl">Tokens Used</div>
+        <div class="tv" id="t-tokens">0</div>
+        <div class="td"><span style="color:var(--c-blue)">↑ 38K</span> / hr</div>
+      </div>
+      <div class="tile" style="--ta:#22c55e;--ts:rgba(34,197,94,.35)">
+        <div class="tl">Agents Online</div>
+        <div class="tv" id="t-agents">0</div>
+        <div class="td" style="color:var(--c-green)">● ACTIVE</div>
+      </div>
+      <div class="tile" style="--ta:#f59e0b;--ts:rgba(245,158,11,.35)">
+        <div class="tl">Tasks Queued</div>
+        <div class="tv" id="t-tasks">0</div>
+        <div class="td">4 processing</div>
+      </div>
+      <div class="tile" style="--ta:#22c55e;--ts:rgba(34,197,94,.25)">
+        <div class="tl">Uptime</div>
+        <div class="tv" style="font-size:19px">99.2%</div>
+        <div class="td">30-day avg</div>
+      </div>
+      <div class="tile" style="--ta:#a855f7;--ts:rgba(168,85,247,.35)">
+        <div class="tl">Avg Latency</div>
+        <div class="tv" style="font-size:19px">4.2s</div>
+        <div class="td">p95 response</div>
+      </div>
+    </div>
+
+    <!-- Row 2 — sparklines -->
+    <div class="spark-row">
+      <div class="spark-panel">
+        <div class="ptitle">TOKEN FLOW · LAST 24H</div>
+        <div class="spark-wrap"><canvas class="spark" id="spark-tok" width="524" height="72"></canvas></div>
+        <div class="smeta">
+          <span>MIN <em id="sm-tok-min">—</em></span>
+          <span>AVG <em id="sm-tok-avg" style="color:var(--cr-300)">—</em></span>
+          <span>MAX <em id="sm-tok-max">—</em></span>
+          <span>NOW <em id="sm-tok-now" style="color:var(--cr-300)">—</em></span>
+        </div>
+      </div>
+      <div class="spark-panel">
+        <div class="ptitle">AGENT ACTIVITY · LAST 24H</div>
+        <div class="spark-wrap"><canvas class="spark" id="spark-agt" width="524" height="72"></canvas></div>
+        <div class="smeta">
+          <span>PEAK <em id="sm-ag-peak" style="color:var(--c-green)">—</em></span>
+          <span>AVG <em id="sm-ag-avg" style="color:var(--c-green)">—</em></span>
+          <span>NOW <em id="sm-ag-now" style="color:var(--c-green)">—</em></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3 — vitals + activity -->
+    <div class="bot-row">
+
+      <div class="vitals">
+        <div class="ptitle">SYSTEM VITALS</div>
+        <div class="vrow" style="--vc:#f59e0b;--vs:rgba(245,158,11,.4)">
+          <div class="vhdr"><span class="vname">CPU</span><span class="vval">67%</span></div>
+          <div class="vtrack"><div class="vbar" data-w="67"></div></div>
+        </div>
+        <div class="vrow" style="--vc:#3b82f6;--vs:rgba(59,130,246,.4)">
+          <div class="vhdr"><span class="vname">MEM</span><span class="vval">54%</span></div>
+          <div class="vtrack"><div class="vbar" data-w="54"></div></div>
+        </div>
+        <div class="vrow" style="--vc:#22c55e;--vs:rgba(34,197,94,.4)">
+          <div class="vhdr"><span class="vname">DISK</span><span class="vval">38%</span></div>
+          <div class="vtrack"><div class="vbar" data-w="38"></div></div>
+        </div>
+        <div class="vrow" style="--vc:#a855f7;--vs:rgba(168,85,247,.4)">
+          <div class="vhdr"><span class="vname">LAT</span><span class="vval">82ms</span></div>
+          <div class="vtrack"><div class="vbar" data-w="55"></div></div>
+        </div>
+      </div>
+
+      <div class="activity">
+        <div class="ptitle">RECENT ACTIVITY</div>
+        <div class="alist" id="alist"></div>
+      </div>
+
+    </div>
+
+  </div><!-- /body -->
+</div><!-- /dash -->
+
+<script>
+(function() {
+'use strict';
+
+const rm = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+let paused = false;
+document.addEventListener('visibilitychange', () => { paused = document.hidden; });
+
+// ─── Clock ───────────────────────────────────────────────────────
+function tickClock() {
+  const d = new Date();
+  document.getElementById('clk').textContent =
+    [d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+}
+tickClock(); setInterval(tickClock, 1000);
+
+// ─── Count-up ────────────────────────────────────────────────────
+function countUp(el, target, ms, fmt) {
+  if (rm) { el.textContent = fmt(target); return; }
+  const t0 = performance.now();
+  function step(now) {
+    if (paused) { requestAnimationFrame(step); return; }
+    const p = Math.min((now - t0) / ms, 1);
+    const e = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(Math.round(target * e));
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+const fmtN  = n => n.toLocaleString();
+const fmtSI = n => n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(0)+'K' : String(n);
+
+countUp(document.getElementById('t-sessions'), 1247,  1200, fmtN);
+countUp(document.getElementById('t-tokens'),   2418,  1400, n => fmtSI(n*1000));
+countUp(document.getElementById('t-agents'),      3,   600, fmtN);
+countUp(document.getElementById('t-tasks'),      12,   800, fmtN);
+
+// ─── Sparkline ───────────────────────────────────────────────────
+const tokData = [45,32,28,19,24,67,142,218,312,389,445,421,398,412,445,467,489,502,478,434,389,312,245,178];
+const agtData = [0,0,0,0,0,1,2,3,3,3,3,3,3,3,3,3,3,3,3,2,2,1,1,0];
+
+function spark(canvas, data, lineColor, fillColor) {
+  const ctx  = canvas.getContext('2d');
+  // match CSS rendered width at 1:1 pixel ratio (mockup only)
+  const W = canvas.width, H = canvas.height;
+  const pad = { t:8, b:6, l:1, r:1 };
+  const iW = W - pad.l - pad.r, iH = H - pad.t - pad.b;
+  const min = Math.min(...data), max = Math.max(...data), rng = max - min || 1;
+  const pts = data.map((v,i) => ({
+    x: pad.l + (i/(data.length-1))*iW,
+    y: pad.t + (1-(v-min)/rng)*iH
+  }));
+
+  function render(progress) {
+    ctx.clearRect(0,0,W,H);
+    const tX = pts[0].x + (pts[pts.length-1].x - pts[0].x)*progress;
+    const vis = [];
+    for (let i=0; i<pts.length; i++) {
+      if (pts[i].x <= tX) { vis.push(pts[i]); }
+      else {
+        if (i>0) {
+          const pr = pts[i-1], t = (tX-pr.x)/(pts[i].x-pr.x);
+          vis.push({ x:tX, y:pr.y+(pts[i].y-pr.y)*t });
+        }
+        break;
+      }
+    }
+    if (vis.length < 2) return;
+    const last = vis[vis.length-1];
+
+    // area
+    ctx.beginPath();
+    ctx.moveTo(vis[0].x, H);
+    vis.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(last.x, H);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0, fillColor); g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fill();
+
+    // line
+    ctx.beginPath();
+    ctx.moveTo(vis[0].x, vis[0].y);
+    for (let i=1; i<vis.length; i++) ctx.lineTo(vis[i].x, vis[i].y);
+    ctx.strokeStyle = lineColor; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
+
+    // head dot
+    if (progress > 0.02) {
+      ctx.beginPath(); ctx.arc(last.x, last.y, 2.5, 0, Math.PI*2);
+      ctx.fillStyle = lineColor; ctx.fill();
+    }
+  }
+
+  if (rm) { render(1); return; }
+  const dur = 1400, t0 = performance.now();
+  function frame(now) {
+    if (paused) { requestAnimationFrame(frame); return; }
+    const p = Math.min((now-t0)/dur, 1);
+    render(1 - Math.pow(1-p, 2));
+    if (p < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+spark(document.getElementById('spark-tok'), tokData, '#c0392b', 'rgba(192,57,43,0.14)');
+spark(document.getElementById('spark-agt'), agtData, '#22c55e', 'rgba(34,197,94,0.10)');
+
+// Sparkline meta
+const tokMin = Math.min(...tokData), tokMax = Math.max(...tokData);
+const tokAvg = Math.round(tokData.reduce((a,b)=>a+b,0)/tokData.length);
+document.getElementById('sm-tok-min').textContent = tokMin+'K';
+document.getElementById('sm-tok-max').textContent = tokMax+'K';
+document.getElementById('sm-tok-avg').textContent = tokAvg+'K';
+document.getElementById('sm-tok-now').textContent = tokData[tokData.length-1]+'K';
+document.getElementById('sm-ag-peak').textContent = Math.max(...agtData);
+document.getElementById('sm-ag-avg').textContent  = (agtData.reduce((a,b)=>a+b)/agtData.length).toFixed(1);
+document.getElementById('sm-ag-now').textContent  = agtData[agtData.length-1];
+
+// ─── Vitals bars (CSS transition, needs layout first) ────────────
+setTimeout(() => {
+  document.querySelectorAll('.vbar').forEach(b => { b.style.width = b.dataset.w + '%'; });
+}, 250);
+
+// ─── Activity feed ───────────────────────────────────────────────
+const EVENTS = [
+  { color:'#c0392b', type:'AGENT',   msg:'agent:alpha — task completed',         time:'2m ago' },
+  { color:'#3b82f6', type:'SESSION', msg:'session #1247 — created',               time:'5m ago' },
+  { color:'#f59e0b', type:'ALERT',   msg:'token 75% daily threshold reached',     time:'8m ago' },
+  { color:'#22c55e', type:'MODEL',   msg:'gpt-4o responded in 3.8s',              time:'11m ago' },
+  { color:'#c0392b', type:'AGENT',   msg:'agent:beta — new task assigned',         time:'14m ago' },
+  { color:'#a855f7', type:'SYSTEM',  msg:'memory snapshot 128 MB written',         time:'20m ago' },
+  { color:'#3b82f6', type:'SESSION', msg:'session #1246 — closed',                 time:'31m ago' },
+];
+
+const list = document.getElementById('alist');
+EVENTS.forEach((ev, i) => {
+  const el = document.createElement('div');
+  el.className = 'aitem';
+  el.style.animationDelay = (rm ? 0 : 300 + i*70) + 'ms';
+  el.innerHTML = `
+    <div class="aicon"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="none" stroke="${ev.color}" stroke-width="1.2"/></svg></div>
+    <div class="atext"><strong style="color:${ev.color}">${ev.type}</strong> — ${ev.msg}</div>
+    <div class="atime">${ev.time}</div>
+  `;
+  list.appendChild(el);
+});
+
+})();
+</script>
+</body>
+</html>

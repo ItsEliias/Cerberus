@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUD Stage 2 — Dashboard Mockup</title>
+<style>
+/* ── Self-hosted fonts ────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('../../static/fonts/Orbitron-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../../static/fonts/JetBrainsMono-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../../static/fonts/IBMPlexSans-latin.woff2') format('woff2');
+}
+
+/* ── jarvis-v2 tokens (exact live values from hud.css) ────────────── */
+:root {
+  --jx2-crimson-900: #1a0505;
+  --jx2-crimson-800: #2d0a0a;
+  --jx2-crimson-700: #4a0f0f;
+  --jx2-crimson-600: #7a1a1a;
+  --jx2-crimson-500: #c0392b;
+  --jx2-crimson-400: #e04535;
+  --jx2-crimson-300: #f06b5a;
+  --jx2-crimson-200: #ff9080;
+
+  --jx2-surface-void:   #09090a;
+  --jx2-surface-base:   #0d0d0f;
+  --jx2-surface-raised: #111115;
+
+  --jx2-fg-primary:   #e8e8ec;
+  --jx2-fg-secondary: #9a9aaa;
+  --jx2-fg-muted:     #5a5a6a;
+
+  --jx2-border-default: rgba(192,57,43,0.28);
+  --jx2-border-glow:    rgba(192,57,43,0.55);
+
+  --jx2-status-active:     #22c55e;
+  --jx2-status-processing: #3b82f6;
+  --jx2-status-idle:       #f59e0b;
+
+  --jx2-font-display: 'Orbitron', monospace;
+  --jx2-font-mono:    'JetBrains Mono', monospace;
+  --jx2-font-body:    'IBM Plex Sans', sans-serif;
+
+  --jx2-radius-sm: 2px;
+  --jx2-radius-md: 4px;
+  --jx2-radius-lg: 8px;
+
+  /* hud.css live token values */
+  --jx2-hud-surface:           var(--jx2-surface-void);
+  --jx2-hud-border:            var(--jx2-border-default);
+  --jx2-hud-scanline-gap:      4px;
+  --jx2-hud-scanline-color:    rgba(0,0,0,0.07);
+  --jx2-hud-scanline-opacity:  0.5;
+  --jx2-hud-active-bg:         rgba(192,57,43,0.12);
+  --jx2-hud-active-glow:       inset 0 0 16px rgba(192,57,43,0.10), 0 0 0 1px rgba(192,57,43,0.12);
+  --jx2-hud-active-border:     var(--jx2-crimson-400);
+  --jx2-hud-hover-bg:          rgba(192,57,43,0.08);
+  --jx2-hud-prefix:            "// ";
+  --jx2-hud-prefix-color:      var(--jx2-crimson-500);
+  --jx2-hud-prefix-glow:       0 0 12px rgba(192,57,43,0.4);
+  --jx2-hud-chip-border:       rgba(255,255,255,0.07);
+  --jx2-hud-chip-bg:           rgba(255,255,255,0.025);
+  --jx2-hud-chip-text:         var(--jx2-fg-muted);
+  --jx2-hud-wordmark-size:     17px;
+  --jx2-hud-wordmark-tracking: 0.15em;
+  --jx2-hud-wordmark-glow:     0 0 20px rgba(192,57,43,0.4);
+  --jx2-hud-wordmark-lead-color:    var(--jx2-crimson-300);
+  --jx2-hud-wordmark-bracket-color: var(--jx2-crimson-700);
+  --jx2-hud-userbar-edge:      linear-gradient(90deg, transparent, var(--jx2-crimson-700) 25%, var(--jx2-crimson-500) 50%, var(--jx2-crimson-700) 75%, transparent);
+}
+
+@keyframes jx2-pulse-crimson {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1.0; }
+}
+@keyframes dash-globe-idle {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50%       { transform: scale(1.015); filter: brightness(1.08); }
+}
+@keyframes dash-wire-spin {
+  from { transform: rotateY(0deg); }
+  to   { transform: rotateY(360deg); }
+}
+@keyframes halo-breathe {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%       { opacity: 1.0; transform: scale(1.06); }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #04040a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 32px;
+  font-family: var(--jx2-font-body);
+  color: var(--jx2-fg-primary);
+  gap: 20px;
+}
+
+.page-label {
+  font-family: var(--jx2-font-mono);
+  font-size: 10px;
+  color: var(--jx2-fg-muted);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* ── Dashboard shell ─────────────────────────────────────────────── */
+.dash-shell {
+  width: 100%;
+  max-width: 1100px;
+  background: var(--jx2-surface-base);
+  border: 1px solid var(--jx2-border-glow);
+  border-radius: var(--jx2-radius-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 0 0 1px rgba(192,57,43,0.06),
+    0 4px 64px rgba(0,0,0,0.75),
+    0 0 100px rgba(192,57,43,0.04);
+}
+
+/* Scanline overlay */
+.dash-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent calc(var(--jx2-hud-scanline-gap) - 1px),
+    var(--jx2-hud-scanline-color) calc(var(--jx2-hud-scanline-gap) - 1px),
+    var(--jx2-hud-scanline-color) var(--jx2-hud-scanline-gap)
+  );
+  pointer-events: none;
+  z-index: 99;
+  opacity: var(--jx2-hud-scanline-opacity);
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.dash-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px 10px;
+  background: var(--jx2-hud-surface);
+  border-bottom: 1px solid var(--jx2-hud-border);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+/* gradient top accent (matching sidebar user-bar treatment) */
+.dash-header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: var(--jx2-hud-userbar-edge);
+  pointer-events: none;
+}
+
+.dash-wordmark {
+  font-family: var(--jx2-font-display);
+  font-size: var(--jx2-hud-wordmark-size);
+  font-weight: 700;
+  letter-spacing: var(--jx2-hud-wordmark-tracking);
+  color: var(--jx2-fg-primary);
+  text-shadow: var(--jx2-hud-wordmark-glow);
+  text-transform: uppercase;
+  user-select: none;
+}
+.dash-wordmark .hud-bracket { color: var(--jx2-hud-wordmark-bracket-color); font-size: 1.1em; }
+.dash-wordmark .hud-lead    { color: var(--jx2-hud-wordmark-lead-color); }
+
+.dash-header-chips {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+}
+
+.hud-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--jx2-font-mono);
+  font-size: 8px;
+  color: var(--jx2-hud-chip-text);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border: 1px solid var(--jx2-hud-chip-border);
+  border-radius: var(--jx2-radius-sm);
+  background: var(--jx2-hud-chip-bg);
+  white-space: nowrap;
+  user-select: none;
+}
+.hud-chip-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.hud-chip-dot--online { background: var(--jx2-status-active); }
+.hud-chip-dot--agents { background: var(--jx2-status-processing); }
+.hud-chip-dot--auth   { background: var(--jx2-crimson-400); animation: jx2-pulse-crimson 2.4s ease-in-out infinite; }
+
+.dash-spacer { flex: 1; }
+
+.dash-clock {
+  font-family: var(--jx2-font-display);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--jx2-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--jx2-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border: 1px solid var(--jx2-hud-border);
+  border-radius: var(--jx2-radius-sm);
+  background: transparent;
+  color: var(--jx2-fg-muted);
+  cursor: pointer;
+  transition: all 150ms;
+}
+.dash-settings-btn:hover {
+  border-color: var(--jx2-crimson-500);
+  color: var(--jx2-crimson-300);
+}
+
+/* ── Grid body ───────────────────────────────────────────────────── */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 12px;
+  padding: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Shared card */
+.dash-card {
+  background: rgba(0,0,0,0.22);
+  border: 1px solid var(--jx2-hud-border);
+  border-radius: var(--jx2-radius-md);
+  padding: 12px 14px;
+  position: relative;
+}
+
+/* Section title with // prefix */
+.dash-card-title {
+  font-family: var(--jx2-font-mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--jx2-crimson-500);
+  text-shadow: var(--jx2-hud-prefix-glow);
+  margin-bottom: 10px;
+}
+.dash-card-title::before {
+  content: var(--jx2-hud-prefix);
+  color: var(--jx2-hud-prefix-color);
+  font-weight: 400;
+  font-size: 0.9em;
+  letter-spacing: 0.04em;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+
+/* ── Hero card (globe + greeting) ────────────────────────────────── */
+.dash-hero {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 14px 18px;
+  border-color: rgba(192,57,43,0.35);
+  box-shadow:
+    0 0 16px rgba(192,57,43,0.06),
+    inset 0 0 24px rgba(192,57,43,0.03);
+}
+.dash-hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, rgba(192,57,43,0.06), transparent 65%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.dash-globe-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 140px; height: 140px;
+}
+
+.dash-globe-sphere {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 33% 30%,
+    rgba(192,57,43,0.75) 0%,
+    rgba(192,57,43,0.22) 38%,
+    rgba(9,9,10,0.97) 70%
+  );
+  box-shadow:
+    inset -10px -10px 24px rgba(0,0,0,0.9),
+    inset 5px 5px 16px rgba(192,57,43,0.2),
+    0 0 30px rgba(192,57,43,0.12),
+    0 0 60px rgba(192,57,43,0.05);
+  position: relative;
+  overflow: hidden;
+  animation: dash-globe-idle 4s ease-in-out infinite;
+}
+.dash-globe-wire {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  opacity: 0.2;
+  display: flex; align-items: center; justify-content: center;
+}
+.dash-globe-wire svg { width: 100%; height: 100%; color: var(--jx2-crimson-500); }
+
+.dash-globe-halo {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px solid rgba(192,57,43,0.18);
+  box-shadow: 0 0 18px rgba(192,57,43,0.1);
+  animation: halo-breathe 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.dash-greeting {
+  font-family: var(--jx2-font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--jx2-fg-primary);
+  text-shadow: var(--jx2-hud-wordmark-glow);
+  text-align: center;
+}
+.dash-greeting-sub {
+  font-family: var(--jx2-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--jx2-fg-muted);
+  text-align: center;
+  margin-top: -6px;
+}
+
+/* Counters */
+.dash-counters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+.dash-counter-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border: 1px solid var(--jx2-hud-border);
+  border-radius: var(--jx2-radius-md);
+  background: rgba(0,0,0,0.2);
+}
+.dash-counter-val {
+  font-family: var(--jx2-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--jx2-crimson-300);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 10px rgba(192,57,43,0.35);
+}
+.dash-counter-lbl {
+  font-family: var(--jx2-font-mono);
+  font-size: 7.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--jx2-fg-muted);
+}
+
+/* ── Vitals card ─────────────────────────────────────────────────── */
+.dash-vitals {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.dash-vitals-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.dash-vital-item { display: flex; flex-direction: column; gap: 3px; }
+.dash-vital-bar-wrap {
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.dash-vital-bar {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--jx2-crimson-500);
+  box-shadow: 0 0 6px rgba(192,57,43,0.5);
+  transition: width 600ms ease;
+}
+.dash-vital-bar.cpu  { background: #f1c40f; box-shadow: 0 0 5px rgba(241,196,15,0.5); }
+.dash-vital-bar.ram  { background: #3b82f6; box-shadow: 0 0 5px rgba(59,130,246,0.5); }
+.dash-vital-bar.disk { background: var(--jx2-status-active); box-shadow: 0 0 5px rgba(34,197,94,0.4); }
+.dash-vital-bar.lat  { background: #9b59b6; box-shadow: 0 0 5px rgba(155,89,182,0.4); }
+.dash-vital-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dash-vital-lbl {
+  font-family: var(--jx2-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: var(--jx2-fg-muted);
+}
+.dash-vital-val {
+  font-family: var(--jx2-font-mono);
+  font-size: 10px;
+  color: var(--jx2-fg-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Sessions card ───────────────────────────────────────────────── */
+.dash-sessions {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.dash-session-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: background 150ms;
+  border-radius: var(--jx2-radius-sm);
+}
+.dash-session-item:hover { background: var(--jx2-hud-hover-bg); }
+.dash-session-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.dash-session-meta { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow: hidden; }
+.dash-session-title {
+  font-family: var(--jx2-font-mono);
+  font-size: 11px;
+  color: var(--jx2-fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-session-time {
+  font-family: var(--jx2-font-mono);
+  font-size: 9px;
+  color: var(--jx2-fg-muted);
+  letter-spacing: 0.04em;
+}
+
+/* ── Agents card ─────────────────────────────────────────────────── */
+.dash-agents {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.dash-agent-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.dash-agent-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dash-agent-dot.active {
+  background: var(--jx2-status-active);
+  box-shadow: 0 0 5px var(--jx2-status-active);
+}
+.dash-agent-dot.idle {
+  background: var(--jx2-fg-muted);
+  opacity: 0.3;
+}
+.dash-agent-dot.processing {
+  background: var(--jx2-crimson-400);
+  box-shadow: 0 0 5px var(--jx2-crimson-400);
+  animation: jx2-pulse-crimson 1.2s ease-in-out infinite;
+}
+.dash-agent-name {
+  font-family: var(--jx2-font-mono);
+  font-size: 11px;
+  flex: 1;
+  color: var(--jx2-fg-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-agent-role {
+  font-family: var(--jx2-font-mono);
+  font-size: 9px;
+  color: var(--jx2-fg-muted);
+  letter-spacing: 0.06em;
+}
+
+/* ── Quick Actions card ──────────────────────────────────────────── */
+.dash-actions {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.dash-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.dash-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid var(--jx2-hud-border);
+  border-radius: var(--jx2-radius-sm);
+  background: rgba(0,0,0,0.15);
+  color: var(--jx2-fg-secondary);
+  cursor: pointer;
+  font-family: var(--jx2-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: all 150ms;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.dash-action-btn:hover {
+  background: var(--jx2-hud-hover-bg);
+  border-color: var(--jx2-crimson-600);
+  color: var(--jx2-fg-primary);
+}
+.dash-action-btn svg { flex-shrink: 0; opacity: 0.5; }
+.dash-action-btn:hover svg { opacity: 1; }
+
+/* Primary action (NEW CHAT) gets crimson treatment */
+.dash-action-primary {
+  grid-column: 1 / 3;
+  background: var(--jx2-hud-active-bg);
+  border-color: var(--jx2-hud-active-border);
+  color: var(--jx2-crimson-200);
+  box-shadow: var(--jx2-hud-active-glow);
+  font-size: 11px;
+  padding: 9px 12px;
+}
+.dash-action-primary:hover {
+  background: rgba(192,57,43,0.18);
+  border-color: var(--jx2-crimson-300);
+  color: var(--jx2-fg-primary);
+}
+.dash-action-primary svg { opacity: 1; }
+
+/* ── Token Usage ─────────────────────────────────────────────────── */
+.dash-usage {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.dash-usage-chart {
+  width: 100%;
+  height: 60px;
+  display: block;
+  border-radius: var(--jx2-radius-sm);
+  overflow: hidden;
+}
+
+.dash-usage-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 8px;
+}
+.dash-usage-total {
+  font-family: var(--jx2-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--jx2-crimson-300);
+  font-variant-numeric: tabular-nums;
+}
+.dash-usage-period {
+  font-family: var(--jx2-font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  color: var(--jx2-fg-muted);
+  text-transform: uppercase;
+}
+.dash-mock-badge {
+  font-family: var(--jx2-font-mono);
+  font-size: 7px;
+  padding: 1px 5px;
+  border: 1px solid rgba(245,158,11,0.3);
+  background: rgba(245,158,11,0.07);
+  color: #f59e0b;
+  border-radius: var(--jx2-radius-sm);
+  letter-spacing: 0.08em;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ── Session Activity ────────────────────────────────────────────── */
+.dash-activity {
+  grid-column: 2 / 4;
+  grid-row: 3;
+}
+
+.dash-activity-chart {
+  width: 100%;
+  height: 60px;
+  display: block;
+}
+.dash-act-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 8px;
+}
+.dash-act-total {
+  font-family: var(--jx2-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--jx2-crimson-300);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-globe-sphere,
+  .dash-globe-halo,
+  .dash-agent-dot.processing,
+  .hud-chip-dot--auth { animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<p class="page-label">HUD Stage 2 · Batch 1 · Dashboard Mockup · feat/hud-stage2-batch1-mockups</p>
+
+<div class="dash-shell">
+
+  <!-- Header -->
+  <header class="dash-header">
+    <span class="dash-wordmark">
+      <span class="hud-bracket">[</span><span class="hud-lead">C</span>ERBERUS<span class="hud-bracket">]</span>
+    </span>
+    <div class="dash-header-chips">
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--online"></span>ONLINE</span>
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--agents"></span>4 AGENTS</span>
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--auth"></span>AUTH</span>
+    </div>
+    <div class="dash-spacer"></div>
+    <span class="dash-clock">14:32:07</span>
+    <button class="dash-settings-btn">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      SETTINGS
+    </button>
+  </header>
+
+  <!-- Grid body -->
+  <div class="dash-grid">
+
+    <!-- Hero: globe + greeting + counters -->
+    <div class="dash-card dash-hero">
+      <div class="dash-globe-stage">
+        <div class="dash-globe-sphere">
+          <div class="dash-globe-wire">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+              <ellipse cx="50" cy="50" rx="49" ry="10" fill="none" stroke="currentColor" stroke-width="0.7"/>
+              <ellipse cx="50" cy="36" rx="42" ry="7"  fill="none" stroke="currentColor" stroke-width="0.5"/>
+              <ellipse cx="50" cy="64" rx="42" ry="7"  fill="none" stroke="currentColor" stroke-width="0.5"/>
+              <ellipse cx="50" cy="22" rx="28" ry="5"  fill="none" stroke="currentColor" stroke-width="0.4"/>
+              <ellipse cx="50" cy="78" rx="28" ry="5"  fill="none" stroke="currentColor" stroke-width="0.4"/>
+              <ellipse cx="50" cy="50" rx="9"  ry="49" fill="none" stroke="currentColor" stroke-width="0.55"/>
+              <ellipse cx="50" cy="50" rx="49" ry="49" fill="none" stroke="currentColor" stroke-width="0.55"/>
+              <ellipse cx="50" cy="50" rx="30" ry="49" fill="none" stroke="currentColor" stroke-width="0.4"/>
+            </svg>
+          </div>
+        </div>
+        <div class="dash-globe-halo"></div>
+      </div>
+
+      <div class="dash-greeting">GUARDIAN ONLINE</div>
+      <div class="dash-greeting-sub">WEDNESDAY, 18 JUNE 2025</div>
+
+      <div class="dash-counters">
+        <div class="dash-counter-item">
+          <span class="dash-counter-val">24</span>
+          <span class="dash-counter-lbl">SESSIONS</span>
+        </div>
+        <div class="dash-counter-item">
+          <span class="dash-counter-val">4</span>
+          <span class="dash-counter-lbl">AGENTS</span>
+        </div>
+        <div class="dash-counter-item">
+          <span class="dash-counter-val" style="color:var(--jx2-status-active);text-shadow:0 0 8px rgba(34,197,94,0.4);">OK</span>
+          <span class="dash-counter-lbl">STATUS</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Vitals -->
+    <div class="dash-card dash-vitals">
+      <div class="dash-card-title">System Vitals</div>
+      <div class="dash-vitals-grid">
+        <div class="dash-vital-item">
+          <div class="dash-vital-bar-wrap"><div class="dash-vital-bar cpu" style="width:34%"></div></div>
+          <div class="dash-vital-row">
+            <span class="dash-vital-lbl">CPU</span>
+            <span class="dash-vital-val">34%</span>
+          </div>
+        </div>
+        <div class="dash-vital-item">
+          <div class="dash-vital-bar-wrap"><div class="dash-vital-bar ram" style="width:58%"></div></div>
+          <div class="dash-vital-row">
+            <span class="dash-vital-lbl">RAM</span>
+            <span class="dash-vital-val">58%</span>
+          </div>
+        </div>
+        <div class="dash-vital-item">
+          <div class="dash-vital-bar-wrap"><div class="dash-vital-bar disk" style="width:31%"></div></div>
+          <div class="dash-vital-row">
+            <span class="dash-vital-lbl">DISK</span>
+            <span class="dash-vital-val">31%</span>
+          </div>
+        </div>
+        <div class="dash-vital-item">
+          <div class="dash-vital-bar-wrap"><div class="dash-vital-bar lat" style="width:8%"></div></div>
+          <div class="dash-vital-row">
+            <span class="dash-vital-lbl">LAT</span>
+            <span class="dash-vital-val">12ms</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Sessions -->
+    <div class="dash-card dash-sessions">
+      <div class="dash-card-title">Recent Sessions</div>
+      <div style="display:flex;flex-direction:column;">
+        <div class="dash-session-item">
+          <span class="dash-session-dot" style="background:var(--jx2-crimson-400);box-shadow:0 0 4px var(--jx2-crimson-400)"></span>
+          <div class="dash-session-meta">
+            <span class="dash-session-title">HUD Stage 2 mockup planning</span>
+            <span class="dash-session-time">2m ago</span>
+          </div>
+        </div>
+        <div class="dash-session-item">
+          <span class="dash-session-dot" style="background:var(--jx2-fg-muted);opacity:0.4"></span>
+          <div class="dash-session-meta">
+            <span class="dash-session-title">Sidebar identity implementation</span>
+            <span class="dash-session-time">1h ago</span>
+          </div>
+        </div>
+        <div class="dash-session-item">
+          <span class="dash-session-dot" style="background:var(--jx2-fg-muted);opacity:0.4"></span>
+          <div class="dash-session-meta">
+            <span class="dash-session-title">Memory consolidation review</span>
+            <span class="dash-session-time">3h ago</span>
+          </div>
+        </div>
+        <div class="dash-session-item">
+          <span class="dash-session-dot" style="background:var(--jx2-fg-muted);opacity:0.3"></span>
+          <div class="dash-session-meta">
+            <span class="dash-session-title">Phase 2b agent memory tests</span>
+            <span class="dash-session-time">Yesterday</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Agents -->
+    <div class="dash-card dash-agents">
+      <div class="dash-card-title">Active Agents</div>
+      <div style="display:flex;flex-direction:column;">
+        <div class="dash-agent-item">
+          <span class="dash-agent-dot processing"></span>
+          <span class="dash-agent-name">summarizer</span>
+          <span class="dash-agent-role">RUNNING</span>
+        </div>
+        <div class="dash-agent-item">
+          <span class="dash-agent-dot processing"></span>
+          <span class="dash-agent-name">indexer</span>
+          <span class="dash-agent-role">RUNNING</span>
+        </div>
+        <div class="dash-agent-item">
+          <span class="dash-agent-dot idle"></span>
+          <span class="dash-agent-name">memory</span>
+          <span class="dash-agent-role">IDLE</span>
+        </div>
+        <div class="dash-agent-item">
+          <span class="dash-agent-dot idle"></span>
+          <span class="dash-agent-name">planner</span>
+          <span class="dash-agent-role">IDLE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="dash-card dash-actions">
+      <div class="dash-card-title">Quick Access</div>
+      <div class="dash-actions-grid">
+        <button class="dash-action-btn dash-action-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          NEW CHAT
+        </button>
+        <button class="dash-action-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          NEXUS
+        </button>
+        <button class="dash-action-btn">
+          <svg width="11" height="13" viewBox="0 0 100 115" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round"><path d="M50 5 L8 22 L8 55 C8 78 26 100 50 110 C74 100 92 78 92 55 L92 22 Z"/></svg>
+          CERBERUS
+        </button>
+        <button class="dash-action-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          COMMAND
+        </button>
+        <button class="dash-action-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          NOTES
+        </button>
+        <button class="dash-action-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          TASKS
+        </button>
+      </div>
+    </div>
+
+    <!-- Token Usage -->
+    <div class="dash-card dash-usage">
+      <div class="dash-card-title">Token Usage <span class="dash-mock-badge">PREVIEW</span></div>
+      <svg class="dash-usage-chart" viewBox="0 0 260 60" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="tok-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#c0392b" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="#c0392b" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <!-- bars -->
+        <rect x="4"   y="42" width="24" height="14" rx="1" fill="rgba(192,57,43,0.25)" stroke="rgba(192,57,43,0.4)" stroke-width="0.5"/>
+        <rect x="32"  y="30" width="24" height="26" rx="1" fill="rgba(192,57,43,0.3)"  stroke="rgba(192,57,43,0.5)" stroke-width="0.5"/>
+        <rect x="60"  y="38" width="24" height="18" rx="1" fill="rgba(192,57,43,0.25)" stroke="rgba(192,57,43,0.4)" stroke-width="0.5"/>
+        <rect x="88"  y="20" width="24" height="36" rx="1" fill="rgba(192,57,43,0.4)"  stroke="rgba(192,57,43,0.6)" stroke-width="0.5"/>
+        <rect x="116" y="34" width="24" height="22" rx="1" fill="rgba(192,57,43,0.28)" stroke="rgba(192,57,43,0.45)" stroke-width="0.5"/>
+        <rect x="144" y="10" width="24" height="46" rx="1" fill="rgba(192,57,43,0.45)" stroke="var(--jx2-crimson-400)" stroke-width="0.5"/>
+        <rect x="172" y="28" width="24" height="28" rx="1" fill="rgba(192,57,43,0.3)"  stroke="rgba(192,57,43,0.5)" stroke-width="0.5"/>
+        <rect x="200" y="36" width="24" height="20" rx="1" fill="rgba(192,57,43,0.25)" stroke="rgba(192,57,43,0.4)" stroke-width="0.5"/>
+        <rect x="228" y="24" width="24" height="32" rx="1" fill="rgba(192,57,43,0.35)" stroke="rgba(192,57,43,0.55)" stroke-width="0.5"/>
+      </svg>
+      <div class="dash-usage-foot">
+        <span class="dash-usage-total">2.4M</span>
+        <span class="dash-usage-period">This month</span>
+      </div>
+    </div>
+
+    <!-- Session Activity -->
+    <div class="dash-card dash-activity">
+      <div class="dash-card-title">Session Activity <span class="dash-mock-badge">7D</span></div>
+      <svg class="dash-activity-chart" viewBox="0 0 600 60" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="act-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#c0392b" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="#c0392b" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <polygon
+          points="0,55 85,40 170,30 255,18 340,26 425,12 510,22 600,10 600,60 0,60"
+          fill="url(#act-grad)"/>
+        <polyline
+          points="0,55 85,40 170,30 255,18 340,26 425,12 510,22 600,10"
+          fill="none" stroke="var(--jx2-crimson-500)" stroke-width="1.5" stroke-linejoin="round"/>
+        <!-- endpoint dot -->
+        <circle cx="600" cy="10" r="3" fill="var(--jx2-crimson-300)" opacity="0.9"/>
+      </svg>
+      <div class="dash-act-foot">
+        <span class="dash-act-total">47</span>
+        <span class="dash-usage-period">This week</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Annotation -->
+<div style="width:100%;max-width:1100px;background:rgba(192,57,43,0.04);border:1px solid rgba(192,57,43,0.15);border-radius:4px;padding:12px 16px;">
+  <h3 style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:#c0392b;margin-bottom:8px;">// HUD Stage 2 Treatment — Dashboard</h3>
+  <ul style="list-style:none;display:flex;flex-direction:column;gap:5px;">
+    <li style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9a9aaa;"><span style="color:#c0392b;opacity:0.7;">→  </span>Header: <code>[CERBERUS]</code> wordmark at 17px Orbitron + same HUD chip row as sidebar; top crimson gradient edge mirrors sidebar user-bar separator</li>
+    <li style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9a9aaa;"><span style="color:#c0392b;opacity:0.7;">→  </span>All card section titles get <code>//</code> prefix in JetBrains Mono, replacing the existing <code>UPPERCASE ORBITRON</code> headers</li>
+    <li style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9a9aaa;"><span style="color:#c0392b;opacity:0.7;">→  </span>Vitals bars: thin 3px tracks with coloured fills (same palette as Command Center dials) — not changed to crimson, preserving semantic colour coding</li>
+    <li style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9a9aaa;"><span style="color:#c0392b;opacity:0.7;">→  </span>Hero globe: same sphere rendering as current; greeting "GUARDIAN ONLINE" in Orbitron with crimson glow; counter cells use HUD border/bg tokens</li>
+    <li style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9a9aaa;"><span style="color:#c0392b;opacity:0.7;">→  </span>Quick Access: primary button (NEW CHAT) uses <code>--jx2-hud-active-bg/border/glow</code>; secondary buttons use the same left-bar-on-hover pattern as sidebar nav items</li>
+    <li style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9a9aaa;"><span style="color:#c0392b;opacity:0.7;">→  </span>Scanline overlay, void header, and crimson border-glow on the shell are consistent with Command Center and sidebar</li>
+  </ul>
+</div>
+
+</body>
+</html>
