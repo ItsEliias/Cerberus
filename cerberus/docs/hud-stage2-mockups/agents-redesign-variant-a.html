@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AGENTS Tab — Variant A: Dense Roster Table</title>
+<style>
+/* ── Self-hosted fonts ──────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal; font-weight: 400 900; font-display: swap;
+  src: url('../../static/fonts/Orbitron.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('../../static/fonts/JetBrainsMono.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal; font-weight: 600; font-display: swap;
+  src: url('../../static/fonts/JetBrainsMono.woff2') format('woff2');
+}
+
+/* ── Design tokens ─────────────────────────────────────────────────── */
+:root {
+  --red: #c0392b;
+  --brand-red:     #c0392b;
+  --brand-red-300: #f06b5a;
+  --brand-red-glow: rgba(192,57,43,0.4);
+
+  --bg:      #0d0f12;
+  --panel:   #111318;
+  --card:    rgba(255,255,255,0.022);
+  --border:  rgba(255,255,255,0.07);
+  --border-brand: color-mix(in srgb, var(--brand-red) 30%, transparent);
+
+  --fg:       #c5c9d0;
+  --fg-dim:   color-mix(in srgb, #c5c9d0 55%, transparent);
+  --fg-muted: color-mix(in srgb, #c5c9d0 35%, transparent);
+
+  /* Semantic status (immutable — never theme-reactive) */
+  --status-active:  #22c55e;
+  --status-standby: #f59e0b;
+  --status-ready:   #3b82f6;
+  --status-idle:    rgba(255,255,255,0.22);
+  --status-alert:   #e74c3c;
+
+  /* Category accents — used only for sigil bg + section identity */
+  --cat-core:     #3498db;
+  --cat-security: #c0392b;
+  --cat-ops:      #e67e22;
+  --cat-data:     #2ecc71;
+  --cat-comms:    #9b59b6;
+  --cat-custom:   rgba(197,201,208,0.45);
+
+  --font-display: 'Orbitron', monospace;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+button { font-family: var(--font-mono); cursor: pointer; }
+
+/* ── CC shell (context wrapper) ────────────────────────────────────── */
+body {
+  background: #060708;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 24px;
+  font-family: var(--font-mono);
+}
+.cc-shell {
+  width: 900px; height: 620px;
+  display: flex; flex-direction: column;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--border-brand);
+  border-radius: 4px; overflow: hidden;
+  position: relative;
+  box-shadow: 0 0 40px rgba(192,57,43,0.08);
+}
+/* CRT scanlines */
+.cc-shell::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 100;
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent 3px, rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px);
+  opacity: 0.5;
+}
+
+/* ── Brand bar ─────────────────────────────────────────────────────── */
+.cc-brand-bar {
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+  background: var(--panel); position: relative; z-index: 2;
+}
+.cc-wordmark {
+  font-family: var(--font-display);
+  font-size: 17px; font-weight: 700; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--fg);
+  text-shadow: 0 0 20px var(--brand-red-glow);
+  white-space: nowrap; user-select: none;
+}
+.cc-wordmark .bracket { color: rgba(192,57,43,0.35); font-size: 1.1em; }
+.cc-wordmark .lead    { color: var(--brand-red-300); }
+.cc-wordmark-sub {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--fg); opacity: 0.5; white-space: nowrap;
+}
+.cc-hud-chips { display: flex; gap: 5px; margin-left: 6px; }
+.hud-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px;
+  font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--fg-muted); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 2px; background: rgba(255,255,255,0.025); white-space: nowrap;
+}
+.hud-dot { width: 5px; height: 5px; border-radius: 50%; }
+.hud-dot-online  { background: var(--status-active); }
+.hud-dot-agents  { background: var(--status-ready); }
+.hud-dot-auth    { background: var(--brand-red); animation: pulse-auth 2.4s ease-in-out infinite; }
+@keyframes pulse-auth { 0%,100%{opacity:.5} 50%{opacity:1} }
+.cc-spacer { flex: 1; }
+.cc-clock {
+  font-size: 11px; letter-spacing: 0.12em; opacity: 0.4;
+  font-family: var(--font-display); font-variant-numeric: tabular-nums;
+}
+
+/* ── Tab nav ────────────────────────────────────────────────────────── */
+.cc-tab-nav {
+  display: flex; gap: 2px; padding: 6px 16px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0; overflow-x: auto;
+  scrollbar-width: none; position: relative; z-index: 2; background: var(--panel);
+}
+.cc-tab-btn {
+  padding: 4px 10px; border: 1px solid transparent; border-radius: 3px;
+  background: transparent; color: var(--fg); font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; opacity: 0.45; transition: all 0.15s;
+  font-family: var(--font-mono); white-space: nowrap;
+}
+.cc-tab-btn:hover { opacity: 0.75; border-color: var(--border); }
+.cc-tab-btn.active {
+  background: rgba(192,57,43,0.12); border-color: var(--brand-red);
+  color: var(--brand-red-300); opacity: 1;
+  box-shadow: inset 0 0 16px rgba(192,57,43,0.10), 0 0 0 1px rgba(192,57,43,0.12);
+}
+.cc-tab-btn.active::before { content: '// '; color: var(--brand-red); font-size: 0.9em; }
+
+/* ── AGENTS tab shell ──────────────────────────────────────────────── */
+.agents-tab { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+.agents-header {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap;
+}
+.agents-title {
+  font-size: 8.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--fg-dim);
+}
+.agents-title::before { content: '// '; color: var(--brand-red); font-size: 0.9em; }
+.agent-count-chip {
+  font-size: 9px; padding: 1px 7px; border-radius: 2px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--fg-dim);
+}
+
+/* Filter pills */
+.filter-pills { display: flex; gap: 3px; }
+.filter-pill {
+  padding: 2px 8px; font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase;
+  border: 1px solid var(--border); border-radius: 2px; background: transparent;
+  color: var(--fg-muted); transition: all 0.15s;
+}
+.filter-pill:hover { border-color: rgba(255,255,255,0.2); color: var(--fg-dim); }
+.filter-pill.active {
+  background: var(--brand-red); border-color: var(--brand-red); color: #fff;
+}
+
+.new-agent-btn {
+  margin-left: auto; font-size: 9px; letter-spacing: 0.08em; padding: 3px 10px;
+  border: 1px solid var(--border-brand); background: transparent;
+  color: var(--brand-red-300); border-radius: 2px; transition: background 0.15s;
+}
+.new-agent-btn:hover { background: rgba(192,57,43,0.1); }
+
+/* ── Column header ──────────────────────────────────────────────────── */
+.roster-col-header {
+  display: grid;
+  grid-template-columns: 14px 26px 1fr 150px 80px 42px 126px;
+  gap: 10px; padding: 4px 16px 3px;
+  font-size: 7px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--fg-muted); border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+
+/* ── Roster scroll body ─────────────────────────────────────────────── */
+.roster-body { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
+
+/* ── Category section ───────────────────────────────────────────────── */
+.cat-section { margin-bottom: 2px; }
+.cat-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 16px 5px; cursor: pointer; user-select: none;
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  backdrop-filter: blur(4px);
+}
+.cat-head-prefix {
+  font-size: 8px; letter-spacing: 0.02em; font-weight: 400;
+  color: var(--brand-red); text-shadow: 0 0 8px var(--brand-red-glow);
+}
+.cat-head-label {
+  font-size: 7.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--fg-dim);
+}
+.cat-head-count {
+  font-size: 7px; padding: 0 5px; background: rgba(255,255,255,0.06);
+  border-radius: 2px; color: var(--fg-muted);
+}
+.cat-head-chevron { margin-left: auto; color: var(--fg-muted); font-size: 9px; transition: transform 0.2s; }
+.cat-section.collapsed .cat-head-chevron { transform: rotate(-90deg); }
+.cat-section.collapsed .cat-rows { display: none; }
+
+/* ── Agent row ─────────────────────────────────────────────────────── */
+.agent-row {
+  display: grid;
+  grid-template-columns: 14px 26px 1fr 150px 80px 42px 126px;
+  gap: 10px; align-items: center;
+  padding: 5px 16px; cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.025);
+  border-left: 2px solid transparent;
+  transition: background 0.1s, border-left-color 0.15s;
+  position: relative;
+}
+.agent-row:hover { background: rgba(255,255,255,0.025); }
+.agent-row.is-active {
+  border-left-color: rgba(192,57,43,0.35);
+  background: rgba(192,57,43,0.03);
+}
+.agent-row.expanded { background: rgba(255,255,255,0.02); }
+
+/* Status pip */
+.status-pip {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.status-pip.active  { background: var(--status-active);  box-shadow: 0 0 5px var(--status-active); animation: pip-pulse 2s ease-in-out infinite; }
+.status-pip.idle    { background: rgba(255,255,255,0.2); }
+.status-pip.standby { background: var(--status-standby); }
+.status-pip.ready   { background: var(--status-ready); }
+.status-pip.alert   { background: var(--status-alert); animation: pip-pulse 0.8s ease-in-out infinite; }
+@keyframes pip-pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
+
+/* Sigil */
+.row-sigil {
+  width: 24px; height: 24px; border-radius: 3px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+}
+
+/* Name */
+.row-name {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--fg); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Role */
+.row-role {
+  font-size: 10px; color: var(--fg-muted); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Model */
+.row-model {
+  font-size: 8px; padding: 1px 5px; border-radius: 2px;
+  background: rgba(52,152,219,0.1); color: rgba(52,152,219,0.8);
+  white-space: nowrap; display: inline-block;
+}
+
+/* Score */
+.row-score {
+  font-size: 10px; text-align: right; color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Row actions */
+.row-actions {
+  display: flex; gap: 4px; align-items: center; justify-content: flex-end;
+}
+.row-btn {
+  font-size: 8px; letter-spacing: 0.07em; padding: 2px 7px; border-radius: 2px;
+  text-transform: uppercase; transition: all 0.15s; white-space: nowrap;
+}
+.row-btn-chat {
+  background: rgba(192,57,43,0.1); border: 1px solid rgba(192,57,43,0.32);
+  color: var(--brand-red-300);
+}
+.row-btn-chat:hover { background: rgba(192,57,43,0.18); }
+.row-btn-invoke {
+  background: transparent; border: 1px solid rgba(255,255,255,0.12);
+  color: var(--fg-muted);
+}
+.row-btn-invoke:hover { border-color: rgba(255,255,255,0.25); color: var(--fg-dim); }
+.row-btn-overflow {
+  background: transparent; border: 1px solid rgba(255,255,255,0.08);
+  color: var(--fg-muted); padding: 2px 5px; font-size: 10px; line-height: 1;
+  position: relative; letter-spacing: 0;
+}
+.row-btn-overflow:hover { border-color: rgba(255,255,255,0.2); color: var(--fg-dim); }
+
+/* Overflow dropdown */
+.overflow-menu {
+  position: absolute; right: 16px; top: calc(100% + 2px); z-index: 50;
+  background: #171a20; border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 3px; min-width: 100px; display: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.overflow-menu.open { display: block; }
+.overflow-item {
+  display: block; width: 100%; text-align: left;
+  padding: 6px 12px; font-size: 9px; letter-spacing: 0.06em;
+  text-transform: uppercase; background: transparent; border: none;
+  color: var(--fg-muted); border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.1s, color 0.1s;
+}
+.overflow-item:last-child { border-bottom: none; }
+.overflow-item:hover { background: rgba(255,255,255,0.05); color: var(--fg-dim); }
+.overflow-item.danger:hover { color: #e74c3c; }
+
+/* ── Expand detail panel ────────────────────────────────────────────── */
+.agent-detail {
+  display: none; padding: 10px 16px 12px 56px;
+  background: rgba(0,0,0,0.22); border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-left: 2px solid rgba(192,57,43,0.2);
+}
+.agent-detail.open { display: block; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.detail-section { display: flex; flex-direction: column; gap: 6px; }
+.detail-label {
+  font-size: 7px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted);
+}
+.detail-prompt {
+  font-size: 9px; line-height: 1.5; color: var(--fg-dim); max-height: 54px;
+  overflow: hidden; text-overflow: ellipsis;
+  border-left: 2px solid rgba(255,255,255,0.08); padding-left: 8px;
+}
+.detail-stats { display: flex; gap: 12px; font-size: 9px; color: var(--fg-muted); }
+.detail-stat span { color: var(--fg-dim); }
+.detail-actions { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.detail-btn {
+  font-size: 8px; letter-spacing: 0.07em; padding: 3px 9px; border-radius: 2px;
+  text-transform: uppercase; transition: all 0.15s; background: transparent;
+}
+.detail-btn-primary {
+  border: 1px solid rgba(192,57,43,0.35); color: var(--brand-red-300);
+  background: rgba(192,57,43,0.08);
+}
+.detail-btn-primary:hover { background: rgba(192,57,43,0.16); }
+.detail-btn-secondary {
+  border: 1px solid rgba(255,255,255,0.1); color: var(--fg-muted);
+}
+.detail-btn-secondary:hover { border-color: rgba(255,255,255,0.22); color: var(--fg-dim); }
+.detail-btn-danger:hover { border-color: rgba(231,76,60,0.5); color: #e74c3c; }
+
+/* ── Invoke inline form (inside detail) ─────────────────────────────── */
+.invoke-form { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+.invoke-form textarea {
+  width: 100%; padding: 5px 7px; font-size: 10px; resize: vertical; min-height: 44px;
+  background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--fg); border-radius: 2px; font-family: var(--font-mono);
+}
+.invoke-form textarea:focus { outline: none; border-color: rgba(192,57,43,0.4); }
+.invoke-row { display: flex; gap: 5px; }
+
+/* Status badge (in detail header) */
+.detail-status {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 2px; border: 1px solid;
+}
+.detail-status.active  { color: var(--status-active);  border-color: rgba(34,197,94,0.35);  background: rgba(34,197,94,0.08); }
+.detail-status.idle    { color: var(--fg-muted); border-color: rgba(255,255,255,0.1); background: transparent; }
+.detail-status.standby { color: var(--status-standby); border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.08); }
+.detail-status.ready   { color: var(--status-ready);   border-color: rgba(59,130,246,0.35); background: rgba(59,130,246,0.08); }
+
+/* ── Empty / loading states ─────────────────────────────────────────── */
+.empty-state { text-align: center; padding: 40px; font-size: 11px; color: var(--fg-muted); }
+</style>
+</head>
+<body>
+
+<div class="cc-shell">
+
+  <!-- Brand bar -->
+  <div class="cc-brand-bar">
+    <span class="cc-wordmark">
+      <span class="bracket">[</span><span class="lead">C</span><span class="bracket">]</span>ERBERUS
+    </span>
+    <span class="cc-wordmark-sub">COMMAND CENTER</span>
+    <div class="cc-hud-chips">
+      <span class="hud-chip"><span class="hud-dot hud-dot-online"></span>ONLINE</span>
+      <span class="hud-chip"><span class="hud-dot hud-dot-agents"></span>16 AGENTS</span>
+      <span class="hud-chip"><span class="hud-dot hud-dot-auth"></span>AUTH</span>
+    </div>
+    <span class="cc-spacer"></span>
+    <span class="cc-clock">14:37:22</span>
+  </div>
+
+  <!-- Tab nav -->
+  <nav class="cc-tab-nav">
+    <button class="cc-tab-btn">COMMAND</button>
+    <button class="cc-tab-btn">COUNCIL</button>
+    <button class="cc-tab-btn">WORKSPACE</button>
+    <button class="cc-tab-btn">FINANCE</button>
+    <button class="cc-tab-btn">ASSISTANT</button>
+    <button class="cc-tab-btn">GATEWAY</button>
+    <button class="cc-tab-btn active">AGENTS</button>
+    <button class="cc-tab-btn">ROOMS</button>
+    <button class="cc-tab-btn">OBSERVE</button>
+  </nav>
+
+  <!-- AGENTS tab -->
+  <div class="agents-tab">
+
+    <!-- Header -->
+    <div class="agents-header">
+      <span class="agents-title">AGENT ROSTER</span>
+      <span class="agent-count-chip">16</span>
+      <div class="filter-pills">
+        <button class="filter-pill active" data-filter="all">ALL</button>
+        <button class="filter-pill" data-filter="active">ACTIVE</button>
+        <button class="filter-pill" data-filter="idle">IDLE</button>
+        <button class="filter-pill" data-filter="standby">STANDBY</button>
+        <button class="filter-pill" data-filter="ready">READY</button>
+      </div>
+      <button class="new-agent-btn">+ New Agent</button>
+    </div>
+
+    <!-- Column labels -->
+    <div class="roster-col-header">
+      <span></span>
+      <span></span>
+      <span>Agent</span>
+      <span>Role</span>
+      <span>Model</span>
+      <span>Score</span>
+      <span style="text-align:right">Actions</span>
+    </div>
+
+    <!-- Roster -->
+    <div class="roster-body" id="roster-body">
+
+      <!-- CORE -->
+      <div class="cat-section" data-cat="core">
+        <div class="cat-head" onclick="toggleCat(this)">
+          <span class="cat-head-prefix">//</span>
+          <span class="cat-head-label">CORE</span>
+          <span class="cat-head-count">5</span>
+          <span class="cat-head-chevron">›</span>
+        </div>
+        <div class="cat-rows">
+
+          <!-- ARCHITECT — active, expanded example -->
+          <div class="agent-row is-active expanded" data-id="ag-001" data-status="active" onclick="toggleDetail('ag-001', event)">
+            <span class="status-pip active"></span>
+            <span class="row-sigil" style="background:#2980b9">🏗</span>
+            <span class="row-name">ARCHITECT</span>
+            <span class="row-role">system architect</span>
+            <span class="row-model">claude-sonnet</span>
+            <span class="row-score">94</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-001')">···</button>
+                <div class="overflow-menu" id="ov-001">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-detail open" id="detail-ag-001">
+            <div class="detail-grid">
+              <div class="detail-section">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                  <span class="detail-status active">● ACTIVE</span>
+                  <span style="font-size:9px;color:var(--fg-muted)">↑ 1.4M  ↓ 740K tokens</span>
+                </div>
+                <div class="detail-label">System Prompt</div>
+                <div class="detail-prompt">You are Cerberus's system architect. You design modular, maintainable architectures and produce clear API contracts. You prioritize simplicity over cleverness, and document trade-offs explicitly.</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-label">Quick Actions</div>
+                <div class="detail-actions">
+                  <button class="detail-btn detail-btn-primary">Chat ›</button>
+                  <button class="detail-btn detail-btn-primary">Invoke ›</button>
+                  <button class="detail-btn detail-btn-secondary">📞 Call</button>
+                  <button class="detail-btn detail-btn-secondary">◎ Memory</button>
+                  <button class="detail-btn detail-btn-secondary">✎ Edit</button>
+                  <button class="detail-btn detail-btn-secondary detail-btn-danger">✕ Del</button>
+                </div>
+                <div class="detail-label" style="margin-top:6px">Invoke</div>
+                <div class="invoke-form">
+                  <textarea placeholder="Enter a task for ARCHITECT…"></textarea>
+                  <div class="invoke-row">
+                    <button class="detail-btn detail-btn-primary">Send</button>
+                    <button class="detail-btn detail-btn-secondary">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CODER -->
+          <div class="agent-row" data-id="ag-002" data-status="idle" onclick="toggleDetail('ag-002', event)">
+            <span class="status-pip idle"></span>
+            <span class="row-sigil" style="background:#e67e22">⚡</span>
+            <span class="row-name">CODER</span>
+            <span class="row-role">implementation specialist</span>
+            <span class="row-model">claude-sonnet</span>
+            <span class="row-score">88</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-002')">···</button>
+                <div class="overflow-menu" id="ov-002">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-detail" id="detail-ag-002"></div>
+
+          <!-- TESTER -->
+          <div class="agent-row" data-id="ag-003" data-status="standby" onclick="toggleDetail('ag-003', event)">
+            <span class="status-pip standby"></span>
+            <span class="row-sigil" style="background:#27ae60">🧪</span>
+            <span class="row-name">TESTER</span>
+            <span class="row-role">test engineer</span>
+            <span class="row-model">claude-haiku</span>
+            <span class="row-score">76</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-003')">···</button>
+                <div class="overflow-menu" id="ov-003">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-detail" id="detail-ag-003"></div>
+
+          <!-- RESEARCHER -->
+          <div class="agent-row" data-id="ag-004" data-status="idle" onclick="toggleDetail('ag-004', event)">
+            <span class="status-pip idle"></span>
+            <span class="row-sigil" style="background:#8e44ad">🔍</span>
+            <span class="row-name">RESEARCHER</span>
+            <span class="row-role">research &amp; analysis</span>
+            <span class="row-model">claude-sonnet</span>
+            <span class="row-score">82</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-004')">···</button>
+                <div class="overflow-menu" id="ov-004">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-detail" id="detail-ag-004"></div>
+
+          <!-- REVIEWER -->
+          <div class="agent-row" data-id="ag-005" data-status="ready" onclick="toggleDetail('ag-005', event)">
+            <span class="status-pip ready"></span>
+            <span class="row-sigil" style="background:#16a085">✅</span>
+            <span class="row-name">REVIEWER</span>
+            <span class="row-role">code reviewer</span>
+            <span class="row-model">claude-haiku</span>
+            <span class="row-score">79</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-005')">···</button>
+                <div class="overflow-menu" id="ov-005">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-detail" id="detail-ag-005"></div>
+        </div>
+      </div>
+
+      <!-- SECURITY -->
+      <div class="cat-section" data-cat="security">
+        <div class="cat-head" onclick="toggleCat(this)">
+          <span class="cat-head-prefix">//</span>
+          <span class="cat-head-label">SECURITY</span>
+          <span class="cat-head-count">1</span>
+          <span class="cat-head-chevron">›</span>
+        </div>
+        <div class="cat-rows">
+          <div class="agent-row" data-id="ag-006" data-status="idle" onclick="toggleDetail('ag-006', event)">
+            <span class="status-pip idle"></span>
+            <span class="row-sigil" style="background:#c0392b">🛡</span>
+            <span class="row-name">SECURITY</span>
+            <span class="row-role">security auditor</span>
+            <span class="row-model">claude-opus</span>
+            <span class="row-score">91</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-006')">···</button>
+                <div class="overflow-menu" id="ov-006">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-detail" id="detail-ag-006"></div>
+        </div>
+      </div>
+
+      <!-- OPS -->
+      <div class="cat-section" data-cat="ops">
+        <div class="cat-head" onclick="toggleCat(this)">
+          <span class="cat-head-prefix">//</span>
+          <span class="cat-head-label">OPS</span>
+          <span class="cat-head-count">4</span>
+          <span class="cat-head-chevron">›</span>
+        </div>
+        <div class="cat-rows">
+          <div class="agent-row is-active" data-id="ag-007" data-status="active" onclick="toggleDetail('ag-007', event)">
+            <span class="status-pip active"></span>
+            <span class="row-sigil" style="background:#d35400">🎯</span>
+            <span class="row-name">ORCHESTRATOR</span>
+            <span class="row-role">task orchestration</span>
+            <span class="row-model">claude-sonnet</span>
+            <span class="row-score">87</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-007')">···</button>
+                <div class="overflow-menu" id="ov-007">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-detail" id="detail-ag-007"></div>
+
+          <div class="agent-row" data-id="ag-008" data-status="standby" onclick="toggleDetail('ag-008', event)">
+            <span class="status-pip standby"></span>
+            <span class="row-sigil" style="background:#2c3e50">⚙</span>
+            <span class="row-name">DEVOPS</span>
+            <span class="row-role">infrastructure</span>
+            <span class="row-model">claude-haiku</span>
+            <span class="row-score">71</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-008')">···</button>
+                <div class="overflow-menu" id="ov-008">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-detail" id="detail-ag-008"></div>
+
+          <div class="agent-row" data-id="ag-009" data-status="idle" onclick="toggleDetail('ag-009', event)">
+            <span class="status-pip idle"></span>
+            <span class="row-sigil" style="background:#2980b9">🐛</span>
+            <span class="row-name">DEBUGGER</span>
+            <span class="row-role">root cause analysis</span>
+            <span class="row-model">claude-sonnet</span>
+            <span class="row-score">85</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-009')">···</button>
+                <div class="overflow-menu" id="ov-009">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-detail" id="detail-ag-009"></div>
+
+          <div class="agent-row" data-id="ag-010" data-status="ready" onclick="toggleDetail('ag-010', event)">
+            <span class="status-pip ready"></span>
+            <span class="row-sigil" style="background:#27ae60">📋</span>
+            <span class="row-name">PLANNER</span>
+            <span class="row-role">project planning</span>
+            <span class="row-model">claude-haiku</span>
+            <span class="row-score">73</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-010')">···</button>
+                <div class="overflow-menu" id="ov-010">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-detail" id="detail-ag-010"></div>
+        </div>
+      </div>
+
+      <!-- DATA -->
+      <div class="cat-section" data-cat="data">
+        <div class="cat-head" onclick="toggleCat(this)">
+          <span class="cat-head-prefix">//</span>
+          <span class="cat-head-label">DATA</span>
+          <span class="cat-head-count">3</span>
+          <span class="cat-head-chevron">›</span>
+        </div>
+        <div class="cat-rows">
+          <div class="agent-row" data-id="ag-011" data-status="idle">
+            <span class="status-pip idle"></span>
+            <span class="row-sigil" style="background:#8e44ad">📊</span>
+            <span class="row-name">DATA-ANALYST</span>
+            <span class="row-role">data analysis</span>
+            <span class="row-model">claude-sonnet</span>
+            <span class="row-score">84</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-011')">···</button>
+                <div class="overflow-menu" id="ov-011">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-row" data-id="ag-012" data-status="standby">
+            <span class="status-pip standby"></span>
+            <span class="row-sigil" style="background:#16a085">📚</span>
+            <span class="row-name">LIBRARIAN</span>
+            <span class="row-role">knowledge base</span>
+            <span class="row-model">claude-haiku</span>
+            <span class="row-score">68</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-012')">···</button>
+                <div class="overflow-menu" id="ov-012">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-row" data-id="ag-013" data-status="idle">
+            <span class="status-pip idle"></span>
+            <span class="row-sigil" style="background:#c0392b">⚡</span>
+            <span class="row-name">OPTIMIZER</span>
+            <span class="row-role">performance tuning</span>
+            <span class="row-model">claude-sonnet</span>
+            <span class="row-score">80</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-013')">···</button>
+                <div class="overflow-menu" id="ov-013">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMMS -->
+      <div class="cat-section" data-cat="comms">
+        <div class="cat-head" onclick="toggleCat(this)">
+          <span class="cat-head-prefix">//</span>
+          <span class="cat-head-label">COMMS</span>
+          <span class="cat-head-count">3</span>
+          <span class="cat-head-chevron">›</span>
+        </div>
+        <div class="cat-rows">
+          <div class="agent-row" data-id="ag-014" data-status="idle">
+            <span class="status-pip idle"></span>
+            <span class="row-sigil" style="background:#e67e22">✍</span>
+            <span class="row-name">SCRIBE</span>
+            <span class="row-role">documentation</span>
+            <span class="row-model">claude-haiku</span>
+            <span class="row-score">72</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-014')">···</button>
+                <div class="overflow-menu" id="ov-014">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-row" data-id="ag-015" data-status="ready">
+            <span class="status-pip ready"></span>
+            <span class="row-sigil" style="background:#d35400">🎨</span>
+            <span class="row-name">DESIGNER</span>
+            <span class="row-role">UI/UX design</span>
+            <span class="row-model">claude-haiku</span>
+            <span class="row-score">75</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-015')">···</button>
+                <div class="overflow-menu" id="ov-015">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+          <div class="agent-row" data-id="ag-016" data-status="idle">
+            <span class="status-pip idle"></span>
+            <span class="row-sigil" style="background:#2c3e50">🔧</span>
+            <span class="row-name">PROMPTSMITH</span>
+            <span class="row-role">prompt engineering</span>
+            <span class="row-model">claude-sonnet</span>
+            <span class="row-score">83</span>
+            <span class="row-actions" onclick="event.stopPropagation()">
+              <button class="row-btn row-btn-chat">Chat</button>
+              <button class="row-btn row-btn-invoke">Run</button>
+              <div style="position:relative">
+                <button class="row-btn row-btn-overflow" onclick="toggleOverflow('ov-016')">···</button>
+                <div class="overflow-menu" id="ov-016">
+                  <button class="overflow-item">📞 Call</button>
+                  <button class="overflow-item">◎ Memory</button>
+                  <button class="overflow-item">✎ Edit</button>
+                  <button class="overflow-item danger">✕ Delete</button>
+                </div>
+              </div>
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /roster-body -->
+  </div><!-- /agents-tab -->
+</div><!-- /cc-shell -->
+
+<script>
+// ── Filter pills ─────────────────────────────────────────────────────
+document.querySelectorAll('.filter-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    const f = pill.dataset.filter;
+    document.querySelectorAll('.agent-row').forEach(row => {
+      const show = f === 'all' || row.dataset.status === f;
+      row.style.display = show ? '' : 'none';
+      const detail = document.getElementById('detail-' + row.dataset.id);
+      if (detail && !show) detail.style.display = 'none';
+    });
+  });
+});
+
+// ── Category collapse ────────────────────────────────────────────────
+function toggleCat(head) {
+  head.closest('.cat-section').classList.toggle('collapsed');
+}
+
+// ── Row expand / collapse ────────────────────────────────────────────
+function toggleDetail(id, event) {
+  if (event.target.closest('.row-actions')) return;
+  const detail = document.getElementById('detail-' + id);
+  if (!detail) return;
+  const row = document.querySelector(`.agent-row[data-id="${id}"]`);
+  const isOpen = detail.classList.contains('open');
+  detail.classList.toggle('open', !isOpen);
+  if (row) row.classList.toggle('expanded', !isOpen);
+}
+
+// ── Overflow menus ────────────────────────────────────────────────────
+function toggleOverflow(id) {
+  const menu = document.getElementById(id);
+  if (!menu) return;
+  const isOpen = menu.classList.contains('open');
+  document.querySelectorAll('.overflow-menu').forEach(m => m.classList.remove('open'));
+  if (!isOpen) menu.classList.add('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.row-btn-overflow')) {
+    document.querySelectorAll('.overflow-menu').forEach(m => m.classList.remove('open'));
+  }
+});
+
+// ── Live clock ───────────────────────────────────────────────────────
+const clockEl = document.querySelector('.cc-clock');
+if (clockEl) {
+  const tick = () => clockEl.textContent = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  tick(); setInterval(tick, 1000);
+}
+</script>
+</body>
+</html>
