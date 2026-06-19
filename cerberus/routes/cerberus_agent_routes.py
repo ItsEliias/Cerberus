@@ -107,11 +107,13 @@ def _seed_defaults(db, owner: str) -> None:
     for defn in _DEFAULT_AGENTS:
         if defn["name"] in existing_names:
             continue
+        # Serialize list fields (e.g. tool_allowlist) to JSON strings for Text columns.
+        db_defn = {k: json.dumps(v) if isinstance(v, list) else v for k, v in defn.items()}
         agent = CerberusAgent(
             id=str(uuid.uuid4()),
             owner=owner,
             is_suppressed=False,
-            **defn,
+            **db_defn,
         )
         db.add(agent)
     db.commit()

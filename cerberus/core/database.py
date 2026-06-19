@@ -1,3 +1,4 @@
+import json
 import os
 import logging
 import sqlite3
@@ -701,6 +702,7 @@ class CerberusAgent(TimestampMixin, Base):
     is_suppressed       = Column(Boolean, default=False, nullable=False)   # owner-deleted default: skip back-fill
     tts_voice           = Column(String, nullable=True)                    # preferred TTS voice for this agent
     context_window      = Column(Integer, nullable=True)                   # per-agent thread context size (None → global default)
+    tool_allowlist      = Column(Text, nullable=True)                      # JSON array of permitted tool names; None = no restriction
 
     __table_args__ = (
         Index('ix_cerberus_agents_owner_name', 'owner', 'name', unique=True),
@@ -727,6 +729,7 @@ class CerberusAgent(TimestampMixin, Base):
             "is_suppressed": bool(self.is_suppressed),
             "tts_voice": self.tts_voice or "",
             "context_window": self.context_window,
+            "tool_allowlist": json.loads(self.tool_allowlist) if self.tool_allowlist else None,
         }
 
 
