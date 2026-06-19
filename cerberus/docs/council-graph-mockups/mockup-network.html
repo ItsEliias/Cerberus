@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>COUNCIL — Session Replay View (Static Mockup)</title>
+<style>
+:root {
+  --bg:              #0d0f12;
+  --bg-raised:       #0f1215;
+  --bg-void:         #080a0c;
+  --fg-primary:      #c5c9d0;
+  --fg-secondary:    #8b919e;
+  --fg-muted:        #4e5566;
+  --border-hairline: rgba(255,255,255,0.055);
+  --border-default:  rgba(255,255,255,0.10);
+  --border-glow:     rgba(192,57,43,0.38);
+  --red:             #c0392b;
+  --crimson-300:     #e05c4a;
+  --crimson-500:     #c0392b;
+  --crimson-600:     #9e2f22;
+  --status-active:   #2ecc71;
+  --status-idle:     #e67e22;
+  --status-standby:  #3d4857;
+  --font-mono: 'JetBrains Mono','Fira Code','Courier New',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;background:var(--bg);color:var(--fg-primary);font-family:var(--font-mono)}
+.shell{max-width:1040px;margin:0 auto;padding:22px 18px 36px}
+.mockup-badge{font-size:7.5px;letter-spacing:.20em;text-transform:uppercase;color:var(--fg-muted);border:1px solid var(--border-hairline);padding:2px 8px;display:inline-block;margin-bottom:16px}
+.mode-bar{display:flex;align-items:center;gap:3px;margin-bottom:14px}
+.mode-btn{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;padding:4px 11px;border:1px solid var(--border-default);background:transparent;color:var(--fg-muted);cursor:default}
+.mode-btn.on{border-color:var(--crimson-600);background:rgba(192,57,43,.10);color:var(--crimson-300)}
+.mode-sep{color:var(--fg-muted);font-size:9px;margin:0 3px}
+.sec-label{font-size:7px;font-weight:600;letter-spacing:.20em;text-transform:uppercase;color:var(--crimson-500);margin-bottom:10px}
+.sec-label::before{content:"// ";color:rgba(192,57,43,.40)}
+.graph-wrap{border:1px solid var(--border-hairline);border-top:1px solid var(--border-glow);background:var(--bg-raised);overflow:hidden}
+.graph-svg{display:block;width:100%}
+/* Replay timeline strip */
+.timeline{display:flex;align-items:center;gap:0;padding:10px 16px;border-top:1px solid var(--border-hairline);background:var(--bg-void);overflow-x:auto}
+.tl-step{display:flex;align-items:center;gap:0;flex-shrink:0}
+.tl-node{font-family:var(--font-mono);font-size:7px;letter-spacing:.10em;padding:4px 10px;border:1px solid var(--border-hairline);color:var(--fg-muted);white-space:nowrap;position:relative}
+.tl-node.done{border-color:rgba(46,204,113,.35);color:#2ecc71}
+.tl-node.hot{border-color:rgba(192,57,43,.70);color:var(--crimson-300);background:rgba(192,57,43,.08)}
+.tl-node.next{border-color:rgba(255,255,255,.10);color:rgba(197,201,208,.40)}
+.tl-arrow{font-size:8px;color:var(--fg-muted);padding:0 4px;flex-shrink:0}
+.tl-arrow.done{color:rgba(46,204,113,.60)}
+.tl-arrow.hot{color:rgba(192,57,43,.80)}
+.tl-room-badge{font-family:var(--font-mono);font-size:7px;letter-spacing:.10em;color:var(--fg-muted);margin-left:auto;flex-shrink:0;border:1px solid var(--border-hairline);padding:3px 8px;white-space:nowrap}
+.note{margin-top:12px;font-size:7.5px;color:var(--fg-muted);letter-spacing:.07em;line-height:1.7;border-left:2px solid var(--border-glow);padding-left:10px}
+.note b{color:var(--crimson-300)}
+/* Animations */
+@keyframes orch-ring{0%,100%{opacity:.45;r:50}50%{opacity:0;r:72}}
+@keyframes edge-flow{to{stroke-dashoffset:-18}}
+@keyframes node-pulse{0%,100%{opacity:.25}50%{opacity:.55}}
+@keyframes hot-glow{0%,100%{opacity:.65}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){
+  .orch-ring,.edge-live,.node-pulse,.hex-hot{animation:none!important}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="mockup-badge">COUNCIL GRAPH — STATIC MOCKUP B — SESSION REPLAY VIEW</div>
+
+  <div class="mode-bar">
+    <button class="mode-btn">[ HIERARCHY ]</button>
+    <span class="mode-sep">|</span>
+    <button class="mode-btn on">[ SESSION REPLAY ]</button>
+  </div>
+
+  <div class="sec-label">LIVE AGENT NETWORK — ROOM: ALPHA COUNCIL · STEP 3 / 5</div>
+
+  <div class="graph-wrap">
+    <!--
+      Radial layout: ORCHESTRATOR at center (480, 270).
+      15 specialists in a circle, radius 200, starting from top (-90°).
+      θ_i = -90 + i * 24°
+
+      Node positions (cx, cy):
+      0  ARCHITECT    (480, 70)         top
+      1  CODER        (566, 97)
+      2  TESTER       (636, 145)
+      3  RESEARCHER   (674, 216)
+      4  REVIEWER     (681, 296)
+      5  SECURITY     (655, 374)
+      6  DEVOPS       (597, 435)
+      7  DEBUGGER     (519, 466)        bottom-right
+      8  PLANNER      (441, 466)        bottom-left
+      9  LIBRARIAN    (363, 435)
+      10 DATA-ANALYST  (305, 374)
+      11 DESIGNER      (279, 296)
+      12 SCRIBE        (286, 216)
+      13 OPTIMIZER     (324, 145)
+      14 PROMPTSMITH   (394, 97)
+    -->
+    <svg class="graph-svg" viewBox="0 0 960 556" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="grid2" width="38" height="38" patternUnits="userSpaceOnUse">
+          <path d="M38 0L0 0 0 38" fill="none" stroke="rgba(255,255,255,.024)" stroke-width=".5"/>
+        </pattern>
+        <!-- Radial atmo glow behind graph -->
+        <radialGradient id="atmo" cx="50%" cy="49%" r="38%">
+          <stop offset="0%"   stop-color="rgba(192,57,43,.06)"/>
+          <stop offset="100%" stop-color="rgba(192,57,43,0)"/>
+        </radialGradient>
+        <filter id="fr" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="7" result="b"/>
+          <feComposite in="SourceGraphic" in2="b" operator="over"/>
+        </filter>
+        <filter id="fg" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="4" result="b"/>
+          <feComposite in="SourceGraphic" in2="b" operator="over"/>
+        </filter>
+        <filter id="fs" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="2.5" result="b"/>
+          <feComposite in="SourceGraphic" in2="b" operator="over"/>
+        </filter>
+        <!-- Arrow markers -->
+        <marker id="ma" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+          <path d="M0,0 L0,5 L5,2.5z" fill="rgba(192,57,43,.85)"/>
+        </marker>
+        <marker id="md" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+          <path d="M0,0 L0,5 L5,2.5z" fill="rgba(46,204,113,.50)"/>
+        </marker>
+      </defs>
+
+      <rect width="960" height="556" fill="url(#grid2)"/>
+      <!-- Atmospheric red glow behind ORCHESTRATOR center -->
+      <ellipse cx="480" cy="270" rx="220" ry="200" fill="url(#atmo)"/>
+
+      <!-- ── Cold edges (all standby connections) ── -->
+      <!-- These are the structural skeleton — very dim -->
+      <line x1="480" y1="270" x2="480" y2="70"  stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="566" y2="97"  stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="636" y2="145" stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="674" y2="216" stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="681" y2="296" stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="655" y2="374" stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="597" y2="435" stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="519" y2="466" stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="441" y2="466" stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="363" y2="435" stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="305" y2="374" stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="279" y2="296" stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="286" y2="216" stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="324" y2="145" stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+      <line x1="480" y1="270" x2="394" y2="97"  stroke="rgba(255,255,255,.04)" stroke-width=".8"/>
+
+      <!-- ── Hot edges — replay step 3: ORCH→ARCHITECT (done), ORCH→TESTER (done), ORCH→CODER (active) ── -->
+      <!-- Step 1 completed: USER → ORCHESTRATOR (white, dimming) -->
+      <!-- (USER is a virtual node, implied by ORCHESTRATOR glow — no node rendered) -->
+
+      <!-- Step 2 completed: ORCHESTRATOR → ARCHITECT (green, fading) -->
+      <line x1="480" y1="270" x2="480" y2="70"
+        stroke="rgba(46,204,113,.32)" stroke-width="1.5" marker-end="url(#md)"/>
+
+      <!-- Step 3 active: ORCHESTRATOR → CODER (red, animated) -->
+      <line x1="480" y1="270" x2="566" y2="97"
+        stroke="rgba(192,57,43,.70)" stroke-width="2"
+        stroke-dasharray="6 3" class="edge-live"
+        style="animation:edge-flow 1s linear infinite"
+        marker-end="url(#ma)"/>
+      <!-- Glow trail on active edge -->
+      <line x1="480" y1="270" x2="566" y2="97"
+        stroke="rgba(192,57,43,.14)" stroke-width="8" filter="url(#fg)"/>
+
+      <!-- ── Specialist nodes ── -->
+      <!-- Helper: hex-node uses pointy-top hexagon -->
+      <!-- 0 ARCHITECT (480,70) — completed turn, fading -->
+      <g transform="translate(480,70)">
+        <circle r="22" fill="rgba(46,204,113,.08)" class="node-pulse" style="animation:node-pulse 3s ease-in-out infinite;transform-box:fill-box;transform-origin:center"/>
+        <polygon points="0,-18 15.6,-9 15.6,9 0,18 -15.6,9 -15.6,-9"
+          fill="rgba(15,18,21,.95)" stroke="rgba(46,204,113,.45)" stroke-width="1"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.80)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5" font-weight="600" letter-spacing=".08em">ARCHITECT</text>
+        <circle cx="12" cy="-12" r="2.5" fill="#2ecc71"/>
+      </g>
+      <!-- 1 CODER (566,97) — HOT, receiving -->
+      <g transform="translate(566,97)">
+        <circle r="30" fill="rgba(192,57,43,.10)" filter="url(#fg)" class="hex-hot" style="animation:hot-glow 1.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center"/>
+        <polygon points="0,-22 19,-11 19,11 0,22 -19,11 -19,-11"
+          fill="rgba(15,18,21,.95)" stroke="rgba(192,57,43,.85)" stroke-width="2"/>
+        <polygon points="0,-18 15.6,-9 15.6,9 0,18 -15.6,9 -15.6,-9"
+          fill="rgba(192,57,43,.05)" stroke="rgba(192,57,43,.28)" stroke-width=".7"/>
+        <text text-anchor="middle" y="-2" dominant-baseline="middle" fill="#e05c4a"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="6.5" font-weight="700" letter-spacing=".08em">CODER</text>
+        <text text-anchor="middle" y="9" dominant-baseline="middle" fill="rgba(192,57,43,.60)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="4.5" letter-spacing=".10em">responding…</text>
+        <circle cx="15" cy="-15" r="3" fill="#c0392b" filter="url(#fs)"/>
+      </g>
+      <!-- 2 TESTER (636,145) standby -->
+      <g transform="translate(636,145)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(61,72,87,.30)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.38)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5" font-weight="600" letter-spacing=".07em">TESTER</text>
+        <circle cx="11" cy="-10" r="2" fill="#3d4857"/>
+      </g>
+      <!-- 3 RESEARCHER (674,216) idle -->
+      <g transform="translate(674,216)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(230,126,34,.28)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.55)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5" font-weight="600" letter-spacing=".07em">RESEARCHER</text>
+        <circle cx="11" cy="-10" r="2" fill="#e67e22"/>
+      </g>
+      <!-- 4 REVIEWER (681,296) standby -->
+      <g transform="translate(681,296)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(61,72,87,.25)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.36)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5" font-weight="600" letter-spacing=".07em">REVIEWER</text>
+        <circle cx="11" cy="-10" r="2" fill="#3d4857"/>
+      </g>
+      <!-- 5 SECURITY (655,374) standby -->
+      <g transform="translate(655,374)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(61,72,87,.22)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.32)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5" font-weight="600" letter-spacing=".07em">SECURITY</text>
+        <circle cx="11" cy="-10" r="2" fill="#3d4857"/>
+      </g>
+      <!-- 6 DEVOPS (597,435) standby -->
+      <g transform="translate(597,435)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(61,72,87,.22)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.32)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5" font-weight="600" letter-spacing=".07em">DEVOPS</text>
+        <circle cx="11" cy="-10" r="2" fill="#3d4857"/>
+      </g>
+      <!-- 7 DEBUGGER (519,466) idle -->
+      <g transform="translate(519,466)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(230,126,34,.25)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.50)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5" font-weight="600" letter-spacing=".07em">DEBUGGER</text>
+        <circle cx="11" cy="-10" r="2" fill="#e67e22"/>
+      </g>
+      <!-- 8 PLANNER (441,466) standby -->
+      <g transform="translate(441,466)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(61,72,87,.22)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.32)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5" font-weight="600" letter-spacing=".07em">PLANNER</text>
+        <circle cx="11" cy="-10" r="2" fill="#3d4857"/>
+      </g>
+      <!-- 9 LIBRARIAN (363,435) standby -->
+      <g transform="translate(363,435)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(61,72,87,.22)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.32)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5" font-weight="600" letter-spacing=".07em">LIBRARIAN</text>
+        <circle cx="11" cy="-10" r="2" fill="#3d4857"/>
+      </g>
+      <!-- 10 DATA-ANALYST (305,374) standby -->
+      <g transform="translate(305,374)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(61,72,87,.22)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.30)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="4.5" font-weight="600" letter-spacing=".07em">DATA-ANALYST</text>
+        <circle cx="13" cy="-10" r="2" fill="#3d4857"/>
+      </g>
+      <!-- 11 DESIGNER (279,296) standby -->
+      <g transform="translate(279,296)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(61,72,87,.22)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.32)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5" font-weight="600" letter-spacing=".07em">DESIGNER</text>
+        <circle cx="11" cy="-10" r="2" fill="#3d4857"/>
+      </g>
+      <!-- 12 SCRIBE (286,216) standby -->
+      <g transform="translate(286,216)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(61,72,87,.22)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.32)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5" font-weight="600" letter-spacing=".07em">SCRIBE</text>
+        <circle cx="11" cy="-10" r="2" fill="#3d4857"/>
+      </g>
+      <!-- 13 OPTIMIZER (324,145) standby -->
+      <g transform="translate(324,145)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(61,72,87,.22)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.32)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5" font-weight="600" letter-spacing=".07em">OPTIMIZER</text>
+        <circle cx="11" cy="-10" r="2" fill="#3d4857"/>
+      </g>
+      <!-- 14 PROMPTSMITH (394,97) standby -->
+      <g transform="translate(394,97)">
+        <polygon points="0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8"
+          fill="rgba(15,18,21,.95)" stroke="rgba(61,72,87,.22)" stroke-width=".8"/>
+        <text text-anchor="middle" y="1" dominant-baseline="middle" fill="rgba(197,201,208,.30)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="4.5" font-weight="600" letter-spacing=".07em">PROMPTSMITH</text>
+        <circle cx="12" cy="-10" r="2" fill="#3d4857"/>
+      </g>
+
+      <!-- ── ORCHESTRATOR center node ── -->
+      <circle cx="480" cy="270" r="55" fill="none" stroke="rgba(192,57,43,.22)" stroke-width=".7"
+        class="orch-ring" style="animation:orch-ring 2.4s ease-out infinite;transform-box:fill-box;transform-origin:center"/>
+      <circle cx="480" cy="270" r="38" fill="rgba(192,57,43,.09)" filter="url(#fr)"/>
+      <!-- Outer hex -->
+      <polygon points="480,236 510,252 510,288 480,304 450,288 450,252"
+        fill="rgba(192,57,43,.07)" stroke="rgba(192,57,43,.80)" stroke-width="1.5"/>
+      <!-- Inner hex -->
+      <polygon points="480,241 506,255 506,285 480,299 454,285 454,255"
+        fill="rgba(192,57,43,.04)" stroke="rgba(192,57,43,.22)" stroke-width=".6"/>
+      <text x="480" y="265" text-anchor="middle" dominant-baseline="middle"
+        fill="#c0392b" font-family="'JetBrains Mono','Courier New',monospace"
+        font-size="7" font-weight="700" letter-spacing=".14em">ORCHESTRATOR</text>
+      <text x="480" y="280" text-anchor="middle" dominant-baseline="middle"
+        fill="rgba(192,57,43,.48)" font-family="'JetBrains Mono','Courier New',monospace"
+        font-size="5.5" letter-spacing=".12em">routing…</text>
+      <circle cx="508" cy="247" r="3.5" fill="#c0392b" filter="url(#fs)"/>
+
+      <!-- ── Right-side HUD panel ── -->
+      <g transform="translate(756,80)">
+        <rect width="188" height="168" rx="3" fill="rgba(8,10,12,.93)" stroke="rgba(255,255,255,.055)" stroke-width="1"/>
+        <rect width="188" height="14" rx="3" fill="rgba(192,57,43,.07)"/>
+        <text x="10" y="10" dominant-baseline="middle" fill="rgba(192,57,43,.55)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5" font-weight="600" letter-spacing=".18em">// SESSION INFO</text>
+        <!-- Room name -->
+        <text x="10" y="28" dominant-baseline="middle" fill="rgba(197,201,208,.50)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5" letter-spacing=".10em">ROOM</text>
+        <text x="10" y="40" dominant-baseline="middle" fill="rgba(197,201,208,.85)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="7" font-weight="600">Alpha Council</text>
+        <!-- Mode -->
+        <text x="10" y="58" dominant-baseline="middle" fill="rgba(197,201,208,.50)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5" letter-spacing=".10em">MODE</text>
+        <text x="10" y="70" dominant-baseline="middle" fill="rgba(192,57,43,.90)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="7" font-weight="600">OPEN — cap 5</text>
+        <!-- Step counter -->
+        <text x="10" y="88" dominant-baseline="middle" fill="rgba(197,201,208,.50)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5" letter-spacing=".10em">STEP</text>
+        <text x="10" y="100" dominant-baseline="middle" fill="rgba(197,201,208,.85)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="14" font-weight="700">3</text>
+        <text x="28" y="100" dominant-baseline="middle" fill="rgba(197,201,208,.35)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="7">/ 5</text>
+        <!-- Progress bar -->
+        <rect x="10" y="110" width="168" height="4" rx="2" fill="rgba(255,255,255,.06)"/>
+        <rect x="10" y="110" width="100" height="4" rx="2" fill="rgba(192,57,43,.70)"/>
+        <!-- Current -->
+        <text x="10" y="126" dominant-baseline="middle" fill="rgba(197,201,208,.50)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5" letter-spacing=".10em">RESPONDING</text>
+        <text x="10" y="138" dominant-baseline="middle" fill="#e05c4a"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="8" font-weight="600">CODER</text>
+        <text x="10" y="152" dominant-baseline="middle" fill="rgba(197,201,208,.35)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5">Implementing API endpoint…</text>
+      </g>
+
+      <!-- ── Edge legend ── -->
+      <g transform="translate(756,268)">
+        <rect width="188" height="90" rx="3" fill="rgba(8,10,12,.88)" stroke="rgba(255,255,255,.04)" stroke-width="1"/>
+        <rect width="188" height="13" rx="3" fill="rgba(192,57,43,.06)"/>
+        <text x="10" y="9.5" dominant-baseline="middle" fill="rgba(192,57,43,.50)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5" font-weight="600" letter-spacing=".18em">// EDGE KEY</text>
+        <!-- Row 1: active -->
+        <line x1="10" y1="27" x2="50" y2="27" stroke="rgba(192,57,43,.75)" stroke-width="2" stroke-dasharray="6 3"/>
+        <text x="58" y="27" dominant-baseline="middle" fill="rgba(197,201,208,.55)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5">Routing (active step)</text>
+        <!-- Row 2: done -->
+        <line x1="10" y1="44" x2="50" y2="44" stroke="rgba(46,204,113,.40)" stroke-width="1.5"/>
+        <text x="58" y="44" dominant-baseline="middle" fill="rgba(197,201,208,.55)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5">Completed turn</text>
+        <!-- Row 3: cold -->
+        <line x1="10" y1="61" x2="50" y2="61" stroke="rgba(255,255,255,.10)" stroke-width="1"/>
+        <text x="58" y="61" dominant-baseline="middle" fill="rgba(197,201,208,.40)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5">Standby connection</text>
+        <!-- Row 4: hex -->
+        <polygon points="30,78 38,74 38,82 30,86 22,82 22,74" fill="rgba(192,57,43,.10)" stroke="rgba(192,57,43,.70)" stroke-width="1.2"/>
+        <text x="58" y="78" dominant-baseline="middle" fill="rgba(197,201,208,.40)"
+          font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5">ORCHESTRATOR node</text>
+        <polygon points="30,78 38,74 38,82 30,86 22,82 22,74" fill="none" stroke="rgba(46,204,113,.45)" stroke-width="1"/>
+      </g>
+
+      <!-- ── Replay mode label bottom-left ── -->
+      <text x="14" y="540" fill="rgba(255,255,255,.14)"
+        font-family="'JetBrains Mono','Courier New',monospace" font-size="5.5" letter-spacing=".12em">// REPLAY — data from room_messages transcript · polling /api/rooms/{id} every 3s</text>
+    </svg>
+
+    <!-- Timeline strip -->
+    <div class="timeline">
+      <div class="tl-step">
+        <div class="tl-node done">USER</div>
+        <span class="tl-arrow done">→</span>
+      </div>
+      <div class="tl-step">
+        <div class="tl-node done">ORCHESTRATOR</div>
+        <span class="tl-arrow done">→</span>
+      </div>
+      <div class="tl-step">
+        <div class="tl-node done">ARCHITECT</div>
+        <span class="tl-arrow hot">→</span>
+      </div>
+      <div class="tl-step">
+        <div class="tl-node hot">● CODER</div>
+        <span class="tl-arrow" style="color:rgba(255,255,255,.15)">→</span>
+      </div>
+      <div class="tl-step">
+        <div class="tl-node next">REVIEWER</div>
+      </div>
+      <div class="tl-room-badge">ROOM: ALPHA COUNCIL · OPEN MODE · 3/5</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>SESSION REPLAY VIEW</b> — network topology + turn-by-turn replay from room transcript.
+    Edge animation shows completed turns (green) and the active routing step (red, pulsing dash).
+    Data source: <b>real</b> — <code>GET /api/rooms/{id}</code> returns the full <code>room_messages</code> transcript;
+    sender_name sequence = edge sequence. Polled every ~3s; new turns appear as new edge pulses.
+    No backend changes needed. Labeled "REPLAY" not "LIVE" — honest about the polling gap.
+    <br>
+    Future upgrade path: add <code>routing_events</code> table + broadcast SSE → instant edge animation without polling (see DATA_AUDIT.md §4).
+  </div>
+</div>
+</body>
+</html>
