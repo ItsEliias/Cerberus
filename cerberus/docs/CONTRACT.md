@@ -45,7 +45,7 @@ After Phase B/C land, the diff against this doc is the acceptance test.
 | Agent count / agent list grid | COMMAND | Polled | `/api/agents` | ✅ live |
 | **Live running tasks feed** | COMMAND (new) | Polled every 8 s | `/api/tasks/active` | ✅ live |
 | **Model status panel** (loaded model, ctx usage) | COMMAND (new) | Polled every 8 s | `/api/model/status` | ✅ live |
-| Council tab | COUNCIL | Fetched on tab open | existing council API | ✅ live |
+| **COUNCIL two-mode graph** (HIERARCHY org-chart + SESSION REPLAY radial network) | COUNCIL | Hierarchy: `/api/agents` polled 5 s; Replay: `/api/rooms/{id}` polled 3 s | `/api/agents`, `/api/rooms`, `/api/rooms/{id}` | ✅ live |
 | Workspace tab | WORKSPACE | Fetched on tab open | existing workspace API | ✅ live |
 | Finance tab | FINANCE | Fetched on tab open | existing finance API | ✅ live |
 | Assistant tab | ASSISTANT | Streaming | existing assistant API | ✅ live |

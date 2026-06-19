@@ -1,0 +1,270 @@
+/* council-graph.css — COUNCIL tab two-mode graph: layout + SVG animations */
+
+/* ── Root + Toolbar ──────────────────────────────────────────────────────── */
+
+.ccg-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg, #060708);
+  overflow: hidden;
+  position: relative;
+}
+
+.ccg-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid rgba(255,255,255,.045);
+  flex-shrink: 0;
+}
+
+/* ── Mode buttons ────────────────────────────────────────────────────────── */
+
+.ccg-mode-btns { display: flex; gap: 6px; }
+
+.ccg-mode-btn {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(197,201,208,.40);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 2px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.ccg-mode-btn:hover {
+  color: rgba(197,201,208,.72);
+  border-color: rgba(255,255,255,.18);
+}
+.ccg-mode-btn.active {
+  color: var(--cc-crimson, #c0392b);
+  border-color: rgba(192,57,43,.55);
+  background: rgba(192,57,43,.07);
+}
+
+/* ── Room picker ─────────────────────────────────────────────────────────── */
+
+.ccg-room-pick {
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+.ccg-room-lbl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: .14em;
+  color: rgba(192,57,43,.55);
+  white-space: nowrap;
+}
+.ccg-room-sel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: rgba(197,201,208,.78);
+  background: rgba(10,12,15,.95);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 2px;
+  padding: 4px 8px;
+  cursor: pointer;
+  min-width: 160px;
+  max-width: 260px;
+}
+.ccg-room-sel:focus { outline: none; border-color: rgba(192,57,43,.45); }
+.ccg-room-sel option { background: #0f1215; color: rgba(197,201,208,.85); }
+
+/* ── Canvas (SVG container) ──────────────────────────────────────────────── */
+
+.ccg-canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+.cc-graph-svg {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  display: block;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+
+.ccg-empty {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: .18em;
+  color: rgba(192,57,43,.35);
+  text-align: center;
+  padding: 60px 24px;
+  line-height: 1.8;
+}
+
+/* ── Timeline strip ──────────────────────────────────────────────────────── */
+
+.ccg-timeline {
+  flex-shrink: 0;
+  display: none;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 14px;
+  border-top: 1px solid rgba(255,255,255,.04);
+  background: rgba(6,7,8,.82);
+  overflow-x: auto;
+  min-height: 34px;
+  scrollbar-width: none;
+}
+.ccg-timeline::-webkit-scrollbar { display: none; }
+
+.ccg-tl-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 7.5px;
+  letter-spacing: .10em;
+  padding: 3px 7px;
+  border-radius: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ccg-tl-done {
+  color: rgba(46,204,113,.75);
+  border: 1px solid rgba(46,204,113,.22);
+  background: rgba(46,204,113,.05);
+}
+.ccg-tl-active {
+  color: var(--cc-crimson, #c0392b);
+  border: 1px solid rgba(192,57,43,.55);
+  background: rgba(192,57,43,.10);
+}
+.ccg-tl-arrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  color: rgba(255,255,255,.14);
+  flex-shrink: 0;
+}
+
+/* ── Detail overlay ──────────────────────────────────────────────────────── */
+
+.ccg-detail-overlay {
+  position: absolute;
+  top: 50px;
+  right: 14px;
+  z-index: 10;
+  width: 218px;
+  display: none;
+}
+.ccg-detail-panel {
+  background: rgba(8,10,12,.97);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 3px;
+  box-shadow: 0 4px 28px rgba(0,0,0,.65);
+}
+.ccg-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.055);
+  background: rgba(192,57,43,.055);
+}
+.ccg-detail-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  color: var(--cc-crimson, #c0392b);
+}
+.ccg-detail-close {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  color: rgba(197,201,208,.38);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.ccg-detail-close:hover { color: rgba(197,201,208,.80); }
+
+.ccg-detail-body { padding: 10px 10px 12px; }
+.ccg-detail-row {
+  display: flex;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+  align-items: baseline;
+}
+.ccg-detail-row:last-child { border-bottom: none; }
+.ccg-detail-lbl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 6.5px;
+  letter-spacing: .14em;
+  color: rgba(192,57,43,.50);
+  min-width: 50px;
+}
+.ccg-detail-body span:not(.ccg-detail-lbl) {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: rgba(197,201,208,.80);
+  word-break: break-word;
+}
+.ccg-ds-active     { color: #2ecc71 !important; }
+.ccg-ds-processing { color: var(--cc-crimson, #c0392b) !important; }
+.ccg-ds-idle       { color: #e67e22 !important; }
+.ccg-ds-standby    { color: rgba(197,201,208,.40) !important; }
+
+/* ── SVG Animations ──────────────────────────────────────────────────────── */
+
+@keyframes ccg-ring-pulse {
+  0%, 100% { opacity: .28; transform: scale(1);    }
+  50%       { opacity: .60; transform: scale(1.07); }
+}
+
+@keyframes ccg-edge-dash {
+  from { stroke-dashoffset: 0;  }
+  to   { stroke-dashoffset: -9; }
+}
+
+@keyframes ccg-halo-scale {
+  0%, 100% { transform: scale(1);    }
+  50%       { transform: scale(1.18); }
+}
+
+.ccg-orch-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ccg-ring-pulse 3s ease-in-out infinite;
+}
+.ccg-edge-active {
+  animation: ccg-edge-dash .9s linear infinite;
+}
+.ccg-node-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ccg-halo-scale 2.2s ease-in-out infinite;
+}
+
+/* Pause all SVG animations when the tab is hidden */
+.ccg-paused .ccg-orch-ring,
+.ccg-paused .ccg-edge-active,
+.ccg-paused .ccg-node-halo {
+  animation-play-state: paused;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ccg-orch-ring,
+  .ccg-edge-active,
+  .ccg-node-halo {
+    animation: none;
+  }
+  .ccg-mode-btn { transition: none; }
+}
