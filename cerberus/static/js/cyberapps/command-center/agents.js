@@ -6,6 +6,40 @@
 
 import { openAgentChat } from './chat.js';
 
+// ---------------------------------------------------------------------------
+// Voice picker — lazily fetched from /api/tts/voices, cached for session
+// ---------------------------------------------------------------------------
+
+let _voicesCache = null;   // null = not yet fetched; [] = fetched (may be empty)
+let _voicesFetch = null;   // in-flight promise dedup
+
+async function _getVoices() {
+  if (_voicesCache !== null) return _voicesCache;
+  if (_voicesFetch) return _voicesFetch;
+  _voicesFetch = fetch('/api/tts/voices', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : { voices: [] })
+    .then(d => { _voicesCache = d.voices || []; _voicesFetch = null; return _voicesCache; })
+    .catch(() => { _voicesCache = []; _voicesFetch = null; return _voicesCache; });
+  return _voicesFetch;
+}
+
+async function _populateVoiceSelect(selectEl, currentVoice) {
+  const voices = await _getVoices();
+  const prev = selectEl.value;
+  selectEl.innerHTML = '<option value="">— none —</option>' +
+    voices.map(v => {
+      const label = `${v.name} (${v.lang}, ${v.gender})`;
+      const sel   = v.id === (currentVoice || prev) ? ' selected' : '';
+      return `<option value="${_esc(v.id)}"${sel}>${_esc(label)}</option>`;
+    }).join('');
+  if (!voices.length) {
+    const opt = document.createElement('option');
+    opt.disabled = true;
+    opt.textContent = 'Kokoro not installed — enter voice ID manually';
+    selectEl.appendChild(opt);
+  }
+}
+
 function _esc(s) {
   const d = document.createElement('div');
   d.textContent = String(s ?? '');
@@ -176,7 +210,9 @@ function _agentDetail(agent) {
     <label>Model alias</label>
     <input class="cc-ag-edit-model"      value="${_esc(agent.model_alias || 'default')}" placeholder="default">
     <label>TTS voice (optional)</label>
-    <input class="cc-ag-edit-tts-voice"  value="${_esc(agent.tts_voice || '')}" placeholder="e.g. alloy, nova, onyx">
+    <select class="cc-ag-edit-tts-voice" data-current="${_esc(agent.tts_voice || '')}">
+      <option value="">— loading voices… —</option>
+    </select>
     <label>System prompt</label>
     <textarea class="cc-ag-edit-prompt" rows="5">${_esc(agent.system_prompt || '')}</textarea>
     <div class="cc-ag-invoke-actions">
@@ -244,6 +280,18 @@ async function _openCall(container, row, agentId) {
 }
 
 // ---------------------------------------------------------------------------
+// Voice picker init — called once when the edit form is first shown
+// ---------------------------------------------------------------------------
+
+function _initEditVoicePicker(editForm) {
+  const sel = editForm.querySelector('.cc-ag-edit-tts-voice');
+  if (!sel || sel.dataset.voiceLoaded) return;
+  sel.dataset.voiceLoaded = '1';
+  const current = sel.dataset.current || '';
+  _populateVoiceSelect(sel, current);
+}
+
+// ---------------------------------------------------------------------------
 // Wire a single row + detail pair
 // ---------------------------------------------------------------------------
 
@@ -300,7 +348,11 @@ function _wireRow(container, agentId) {
       overflowMenu.classList.remove('open');
       if (!detail.classList.contains('open')) _toggleDetail(row, detail);
       const editForm = detail.querySelector(`#cc-ag-edit-${agentId}`);
-      if (editForm) editForm.style.display = editForm.style.display === 'none' ? 'block' : 'none';
+      if (editForm) {
+        const opening = editForm.style.display === 'none';
+        editForm.style.display = opening ? 'block' : 'none';
+        if (opening) _initEditVoicePicker(editForm);
+      }
     });
     overflowMenu.querySelector('.cc-ov-delete')?.addEventListener('click', () => {
       overflowMenu.classList.remove('open');
@@ -338,8 +390,12 @@ function _wireRow(container, agentId) {
   detail.querySelector('.cc-detail-edit-btn')?.addEventListener('click', () => {
     const editForm = detail.querySelector(`#cc-ag-edit-${agentId}`);
     const invForm  = detail.querySelector(`#cc-ag-invoke-${agentId}`);
-    if (editForm) editForm.style.display = editForm.style.display === 'none' ? 'block' : 'none';
-    if (invForm)  invForm.style.display  = 'none';
+    if (editForm) {
+      const opening = editForm.style.display === 'none';
+      editForm.style.display = opening ? 'block' : 'none';
+      if (opening) _initEditVoicePicker(editForm);
+    }
+    if (invForm) invForm.style.display = 'none';
   });
 
   // Detail: Delete

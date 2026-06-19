@@ -2,14 +2,30 @@
 """Multi-provider TTS service — dispatches to local Kokoro, OpenAI-compatible API, or browser."""
 
 import io
+import os
 import wave
 import logging
 import hashlib
 import httpx
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from src.constants import TTS_CACHE_DIR
+
+# All voices shipped with Kokoro-82M v1.0
+KOKORO_VOICES: List[Dict[str, str]] = [
+    {"id": "af_heart",    "name": "Heart",    "lang": "en-US", "gender": "female"},
+    {"id": "af_bella",    "name": "Bella",    "lang": "en-US", "gender": "female"},
+    {"id": "af_nicole",   "name": "Nicole",   "lang": "en-US", "gender": "female"},
+    {"id": "af_sarah",    "name": "Sarah",    "lang": "en-US", "gender": "female"},
+    {"id": "af_sky",      "name": "Sky",      "lang": "en-US", "gender": "female"},
+    {"id": "am_adam",     "name": "Adam",     "lang": "en-US", "gender": "male"},
+    {"id": "am_michael",  "name": "Michael",  "lang": "en-US", "gender": "male"},
+    {"id": "bf_emma",     "name": "Emma",     "lang": "en-GB", "gender": "female"},
+    {"id": "bf_isabella", "name": "Isabella", "lang": "en-GB", "gender": "female"},
+    {"id": "bm_george",   "name": "George",   "lang": "en-GB", "gender": "male"},
+    {"id": "bm_lewis",    "name": "Lewis",    "lang": "en-GB", "gender": "male"},
+]
 
 logger = logging.getLogger(__name__)
 
@@ -141,15 +157,20 @@ class TTSService:
             logger.error(f"API TTS synthesis failed: {e}")
             return None
 
+    def list_voices(self) -> List[Dict[str, str]]:
+        """Return available Kokoro voices (always the full list — not runtime-dependent)."""
+        return list(KOKORO_VOICES)
+
     # ── Public interface ──
 
-    def synthesize(self, text: str, use_cache: bool = True) -> Optional[bytes]:
+    def synthesize(self, text: str, use_cache: bool = True, voice: Optional[str] = None) -> Optional[bytes]:
         settings = self._load_settings()
         if settings.get("tts_enabled") is False:
             return None
         provider = settings["tts_provider"]
         model = settings["tts_model"]
-        voice = settings["tts_voice"]
+        # Per-call voice override wins over global setting
+        voice = voice or settings["tts_voice"]
         speed = _safe_speed(settings.get("tts_speed", "1"))
 
         if provider in ("disabled", "browser"):
@@ -187,9 +208,9 @@ class TTSService:
 
         return audio_data
 
-    def synthesize_to_base64(self, text: str) -> Optional[str]:
+    def synthesize_to_base64(self, text: str, voice: Optional[str] = None) -> Optional[str]:
         import base64
-        audio = self.synthesize(text)
+        audio = self.synthesize(text, voice=voice)
         if audio:
             return base64.b64encode(audio).decode("utf-8")
         return None
@@ -219,7 +240,10 @@ class TTSService:
 
         if provider == "local":
             kokoro = self._get_kokoro()
-            stats["model"] = "Kokoro-82M (GPU)" if (kokoro and kokoro.available) else "Kokoro (not loaded)"
+            if kokoro and kokoro.available:
+                stats["model"] = "Kokoro-82M (GPU)" if kokoro._use_cuda else "Kokoro-82M (CPU)"
+            else:
+                stats["model"] = "Kokoro (not loaded)"
         elif provider == "browser":
             stats["model"] = "Browser (Web Speech API)"
         elif provider.startswith("endpoint:"):
@@ -229,30 +253,42 @@ class TTSService:
 
 
 class _KokoroPipeline:
-    """Encapsulates the Kokoro-82M local GPU pipeline."""
+    """Encapsulates the Kokoro-82M local TTS pipeline (GPU preferred, CPU fallback)."""
 
     def __init__(self):
         self.pipeline = None
         self.available = False
         self.device = None
+        self._use_cuda = False
         self._init()
 
     def _init(self):
+        # Allow opting out via env without removing the package
+        if os.environ.get("KOKORO_ENABLED", "").lower() in ("false", "0", "no"):
+            logger.info("Kokoro TTS disabled via KOKORO_ENABLED=false")
+            return
         try:
             import torch
             from kokoro import KPipeline
 
-            if not torch.cuda.is_available():
-                logger.warning("CUDA not available for Kokoro TTS")
-                return
-
-            self.device = torch.device("cuda:0")
-            with torch.cuda.device(0):
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda:0")
+                self._use_cuda = True
+                with torch.cuda.device(0):
+                    self.pipeline = KPipeline(lang_code="a")
+                    if hasattr(self.pipeline, "model"):
+                        self.pipeline.model = self.pipeline.model.to(self.device)
+                logger.info("Kokoro-82M TTS pipeline loaded on GPU")
+            else:
+                logger.warning("CUDA not available — Kokoro falling back to CPU (slower)")
+                self.device = torch.device("cpu")
+                self._use_cuda = False
                 self.pipeline = KPipeline(lang_code="a")
                 if hasattr(self.pipeline, "model"):
                     self.pipeline.model = self.pipeline.model.to(self.device)
+                logger.info("Kokoro-82M TTS pipeline loaded on CPU")
+
             self.available = True
-            logger.info("Kokoro-82M TTS pipeline loaded")
         except ImportError as e:
             logger.warning(f"Kokoro TTS not available: {e}")
             logger.warning("Install with: pip install kokoro soundfile")
@@ -263,13 +299,14 @@ class _KokoroPipeline:
         if not self.available:
             return None
         try:
-            import torch
             import numpy as np
 
-            with torch.cuda.device(self.device):
-                chunks = []
-                for _, _, audio in self.pipeline(text, voice=voice):
-                    chunks.append(audio)
+            if self._use_cuda:
+                import torch
+                with torch.cuda.device(self.device):
+                    chunks = [audio for _, _, audio in self.pipeline(text, voice=voice)]
+            else:
+                chunks = [audio for _, _, audio in self.pipeline(text, voice=voice)]
 
             if not chunks:
                 return None
