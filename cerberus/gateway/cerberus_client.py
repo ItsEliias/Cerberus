@@ -1,19 +1,18 @@
 """
 gateway/cerberus_client.py — HTTP client for the Cerberus chat REST API.
 
-Routes Discord/Telegram/Slack messages through the Cerberus agent thread
-endpoint (/api/agents/{id}/thread/send) so the gateway has a proper identity,
-system prompt, and persistent conversation history.
+Routes messages through /api/chat (the main session endpoint) so the gateway
+has full tool access — calendar, files, email, web search, etc.
 
-Auth: cookie-based session (logs in as the gateway user on first use).
+Auth: cookie-based login via POST /api/auth/login (cached for process lifetime).
+Session: one Cerberus session per (platform, chat_id), created on first use
+         and cached. !reset clears both the local cache and the remote history.
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import os
 from typing import Dict, Optional
 
 import httpx
@@ -22,28 +21,24 @@ from gateway.config import CerberusConfig
 
 logger = logging.getLogger(__name__)
 
-# Cache the auth cookie for the process lifetime
+# Process-lifetime caches
 _AUTH_COOKIE: Optional[str] = None
 _AUTH_LOCK = asyncio.Lock()
 
-# Cache per-channel session locks
+_SESSION_CACHE: Dict[str, str] = {}          # cache_key → cerberus session id
 _SESSION_LOCKS: Dict[str, asyncio.Lock] = {}
 _SESSION_LOCKS_LOCK = asyncio.Lock()
 
 _MAX_RESPONSE_CHARS = 32_000
 
-GATEWAY_AGENT_ID = os.environ.get("CERBERUS_GATEWAY_AGENT_ID", "")
+
+class CerberusClientError(RuntimeError):
+    pass
 
 
-async def _session_lock(key: str) -> asyncio.Lock:
-    async with _SESSION_LOCKS_LOCK:
-        if key not in _SESSION_LOCKS:
-            _SESSION_LOCKS[key] = asyncio.Lock()
-        return _SESSION_LOCKS[key]
-
+# ── Auth ──────────────────────────────────────────────────────────────────────
 
 async def _get_auth_cookie(cfg: CerberusConfig, client: httpx.AsyncClient) -> str:
-    """Login to Cerberus and return the session cookie value."""
     global _AUTH_COOKIE
     async with _AUTH_LOCK:
         if _AUTH_COOKIE:
@@ -66,9 +61,53 @@ def _cookie_header(cookie: str) -> Dict[str, str]:
     return {"Cookie": f"cerberus_session={cookie}"}
 
 
-class CerberusClientError(RuntimeError):
-    pass
+def _clear_auth_cookie() -> None:
+    global _AUTH_COOKIE
+    _AUTH_COOKIE = None
 
+
+# ── Session management ────────────────────────────────────────────────────────
+
+async def _channel_lock(key: str) -> asyncio.Lock:
+    async with _SESSION_LOCKS_LOCK:
+        if key not in _SESSION_LOCKS:
+            _SESSION_LOCKS[key] = asyncio.Lock()
+        return _SESSION_LOCKS[key]
+
+
+async def _get_or_create_session(
+    cfg: CerberusConfig,
+    client: httpx.AsyncClient,
+    cookie: str,
+    cache_key: str,
+    session_name: str,
+) -> str:
+    if cache_key in _SESSION_CACHE:
+        return _SESSION_CACHE[cache_key]
+
+    lock = await _channel_lock(cache_key)
+    async with lock:
+        if cache_key in _SESSION_CACHE:
+            return _SESSION_CACHE[cache_key]
+
+        logger.info("cerberus_client: creating session name=%r", session_name)
+        resp = await client.post(
+            f"{cfg.api_url}/session",
+            data={"name": session_name, "model": cfg.session_model},
+            headers=_cookie_header(cookie),
+            timeout=15.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        session_id = data.get("id") or data.get("session_id")
+        if not session_id:
+            raise CerberusClientError(f"No session ID in response: {data}")
+        _SESSION_CACHE[cache_key] = session_id
+        logger.info("cerberus_client: session created id=%r", session_id)
+        return session_id
+
+
+# ── Public interface ──────────────────────────────────────────────────────────
 
 async def send_message(
     cfg: CerberusConfig,
@@ -78,74 +117,63 @@ async def send_message(
     message: str,
     session_name_prefix: str = "gateway",
 ) -> str:
-    """
-    Send a message to Cerberus via the agent thread endpoint and return
-    the full assistant response text.
-    """
+    """Send a message through /api/chat and return the assistant response."""
     if not message or not message.strip():
         raise CerberusClientError("Empty message")
     if len(message) > 50_000:
         message = message[:50_000]
 
-    if not GATEWAY_AGENT_ID:
-        raise CerberusClientError(
-            "CERBERUS_GATEWAY_AGENT_ID not set — create a gateway agent and set the env var"
-        )
+    cache_key = f"{platform}:{chat_id}"
+    session_name = f"{session_name_prefix}:{platform}:{chat_id}"
 
     async with httpx.AsyncClient(follow_redirects=False) as client:
         cookie = await _get_auth_cookie(cfg, client)
 
+        # Ensure a Cerberus chat session exists for this channel
+        try:
+            session_id = await _get_or_create_session(
+                cfg, client, cookie, cache_key, session_name
+            )
+        except Exception as exc:
+            raise CerberusClientError(f"Failed to get/create session: {exc}") from exc
+
         logger.debug(
-            "cerberus_client: POST /api/agents/%s/thread/send message_len=%d",
-            GATEWAY_AGENT_ID, len(message),
+            "cerberus_client: POST /api/chat session=%r message_len=%d",
+            session_id, len(message),
         )
 
         try:
-            async with client.stream(
-                "POST",
-                f"{cfg.api_url}/api/agents/{GATEWAY_AGENT_ID}/thread/send",
-                json={"message": message},
+            resp = await client.post(
+                f"{cfg.api_url}/api/chat",
+                json={"message": message, "session": session_id},
                 headers=_cookie_header(cookie),
                 timeout=120.0,
-            ) as resp:
-                if resp.status_code == 401:
-                    # Cookie expired — clear and retry once
-                    global _AUTH_COOKIE
-                    _AUTH_COOKIE = None
-                    cookie = await _get_auth_cookie(cfg, client)
-                    raise CerberusClientError("Auth expired — retry")
+            )
 
-                if resp.status_code != 200:
-                    body = await resp.aread()
-                    raise CerberusClientError(
-                        f"Cerberus API error {resp.status_code}: {body[:200].decode()}"
-                    )
+            if resp.status_code == 401:
+                # Cookie expired — clear, re-auth, retry once
+                _clear_auth_cookie()
+                cookie = await _get_auth_cookie(cfg, client)
+                resp = await client.post(
+                    f"{cfg.api_url}/api/chat",
+                    json={"message": message, "session": session_id},
+                    headers=_cookie_header(cookie),
+                    timeout=120.0,
+                )
 
-                # Consume SSE stream and collect text deltas
-                parts: list[str] = []
-                async for line in resp.aiter_lines():
-                    if not line.startswith("data:"):
-                        continue
-                    raw = line[5:].strip()
-                    if not raw or "[DONE]" in raw:
-                        continue
-                    try:
-                        obj = json.loads(raw)
-                        if obj.get("type") == "usage":
-                            continue
-                        delta = (
-                            obj.get("delta")
-                            or obj.get("text")
-                            or obj.get("content")
-                            or ""
-                        )
-                        if delta:
-                            parts.append(delta)
-                    except Exception:
-                        pass
+            if resp.status_code == 404:
+                # Session was deleted server-side — evict and let next call recreate
+                _SESSION_CACHE.pop(cache_key, None)
+                raise CerberusClientError(
+                    "Chat session not found (deleted server-side) — retry"
+                )
 
-                response_text = "".join(parts)
-                return response_text[:_MAX_RESPONSE_CHARS] if response_text else ""
+            resp.raise_for_status()
+            data = resp.json()
+            response_text = data.get("response", "")
+            if not isinstance(response_text, str):
+                response_text = str(response_text)
+            return response_text[:_MAX_RESPONSE_CHARS]
 
         except CerberusClientError:
             raise
@@ -154,7 +182,10 @@ async def send_message(
 
 
 def invalidate_session(platform: str, chat_id: str | int) -> None:
-    """On !reset — clear the agent thread instead of a session."""
-    logger.info("cerberus_client: reset requested for %s:%s", platform, chat_id)
-    # Thread history is cleared via DELETE /api/agents/{id}/thread
-    # We fire this async in the background from the discord adapter
+    """Remove the cached session for this channel (called on !reset)."""
+    key = f"{platform}:{chat_id}"
+    removed = _SESSION_CACHE.pop(key, None)
+    if removed:
+        logger.info("cerberus_client: invalidated session %r for %r", removed, key)
+    else:
+        logger.info("cerberus_client: no cached session for %r to invalidate", key)
