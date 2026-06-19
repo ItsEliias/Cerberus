@@ -206,8 +206,9 @@ def setup_agent_thread_routes() -> APIRouter:
             )
             if not agent:
                 raise HTTPException(404, "Agent not found")
-            system_prompt = agent.system_prompt or ""
-            model_alias   = agent.model_alias or "default"
+            system_prompt  = agent.system_prompt or ""
+            model_alias    = agent.model_alias or "default"
+            raw_allowlist  = agent.tool_allowlist  # JSON string or None
 
             # Per-agent window wins; fall back to global default (clamped 1-200).
             from src.settings import get_setting
@@ -236,6 +237,13 @@ def setup_agent_thread_routes() -> APIRouter:
         from routes.cerberus_agent_routes import _resolve_agent_endpoint
         url, model, headers = _resolve_agent_endpoint(model_alias, owner)
 
+        _agent_allowlist = set(json.loads(raw_allowlist)) if raw_allowlist else None
+        from src.tool_policy import build_effective_tool_policy
+        _tool_policy = build_effective_tool_policy(
+            agent_allowlist=_agent_allowlist,
+            last_user_message=text,
+        )
+
         # Inject relevant agent memories into the system prompt as fenced data block
         memory_block = _build_memory_block(owner, agent_id, text)
         effective_system = system_prompt + memory_block
@@ -250,7 +258,7 @@ def setup_agent_thread_routes() -> APIRouter:
         extraction_messages = list(messages)
 
         async def _generate():
-            from src.llm_core import stream_llm
+            from src.agent_loop import stream_agent_loop
             if not url or not model:
                 yield (
                     f'event: error\ndata: {json.dumps({"error": "No LLM provider configured."
@@ -261,7 +269,13 @@ def setup_agent_thread_routes() -> APIRouter:
             parts: list[str] = []
             errored = False
             try:
-                async for chunk in stream_llm(url, model, messages, headers=headers):
+                async for chunk in stream_agent_loop(
+                    url, model, messages, headers=headers,
+                    owner=owner,
+                    tool_policy=_tool_policy,
+                    relevant_tools=_agent_allowlist,
+                    session_id=thread_id,
+                ):
                     if chunk.startswith("event: error"):
                         errored = True
                         yield chunk

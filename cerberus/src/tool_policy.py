@@ -175,17 +175,34 @@ def build_effective_tool_policy(
     *,
     disabled_tools: Optional[Iterable[str]] = None,
     last_user_message: object = "",
+    agent_allowlist: Optional[Iterable[str]] = None,
 ) -> ToolPolicy:
     """Compose the effective policy for one agent turn.
 
     Existing callers still provide the already-composed disabled-tool denylist.
     This function adds higher-level turn policy on top so enforcement is not
     delegated to prompt compliance.
+
+    ``agent_allowlist`` is a per-agent whitelist of permitted tool names.  When
+    provided, every tool NOT in the allowlist is added to the denylist.  This is
+    applied before the guide-only check so guide-only always wins.  It cannot
+    expand beyond what the session owner is permitted — ``stream_agent_loop``
+    applies ``blocked_tools_for_owner`` independently and additively.
     """
 
     disabled = {str(t) for t in (disabled_tools or []) if t}
     hidden: Set[str] = set()
     reasons = {tool: "Tool is disabled for this request." for tool in disabled}
+
+    if agent_allowlist is not None:
+        allowed = {str(t) for t in agent_allowlist if t}
+        all_tools = known_tool_names()
+        agent_blocked = all_tools - allowed
+        disabled.update(agent_blocked)
+        reasons.update({
+            t: "Not in this agent's tool allowlist."
+            for t in agent_blocked if t not in reasons
+        })
 
     guide_reason = detect_guide_only_turn(last_user_message)
     if guide_reason:

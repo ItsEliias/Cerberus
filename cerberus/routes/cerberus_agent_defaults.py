@@ -4,9 +4,13 @@ Imported by cerberus_agent_routes.py. Kept separate so the route file
 stays under 500 lines.
 """
 
-from typing import Dict, List
+from typing import Any, Dict, List
 
-_DEFAULT_AGENTS: List[Dict[str, str]] = [
+# Phase 1: read-only tools available to file-system agents.
+# bash/python/write_file are Phase 2 (require OpenSandbox enforcement in place).
+_P1_FILE = ["read_file", "grep", "glob", "ls"]
+
+_DEFAULT_AGENTS: List[Dict[str, Any]] = [
     # ── Original 6: software-build swarm ──────────────────────────────────
     {
         "name": "ARCHITECT",
@@ -14,6 +18,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "system-architect",
         "status": "idle",
         "model_alias": "sonnet",
+        "tool_allowlist": _P1_FILE + ["web_search", "web_fetch", "manage_memory", "manage_skills"],
         "system_prompt": (
             "You are ARCHITECT, a principal-level system architect inside the Cerberus AI workspace. "
             "You design systems that are secure by default, scalable under load, and maintainable by a solo developer.\n\n"
@@ -38,6 +43,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "backend-dev",
         "status": "idle",
         "model_alias": "sonnet",
+        "tool_allowlist": _P1_FILE,  # bash/python added in Phase 2
         "system_prompt": (
             "You are CODER, a senior software engineer inside the Cerberus AI workspace. "
             "You write production-quality code, not demos.\n\n"
@@ -64,6 +70,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "tester",
         "status": "idle",
         "model_alias": "sonnet",
+        "tool_allowlist": _P1_FILE,  # bash/python added in Phase 2
         "system_prompt": (
             "You are TESTER, a quality engineer inside the Cerberus AI workspace. "
             "Your job is to find the ways things break before they break in production.\n\n"
@@ -89,6 +96,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "researcher",
         "status": "idle",
         "model_alias": "sonnet",
+        "tool_allowlist": ["web_search", "web_fetch", "search_chats", "manage_memory"],
         "system_prompt": (
             "You are RESEARCHER, a deep-research specialist inside the Cerberus AI workspace. "
             "You gather, synthesise, and evaluate information with intellectual rigor.\n\n"
@@ -113,6 +121,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "reviewer",
         "status": "idle",
         "model_alias": "sonnet",
+        "tool_allowlist": _P1_FILE + ["search_chats"],
         "system_prompt": (
             "You are REVIEWER, a principal engineer doing code and design review inside the Cerberus AI workspace. "
             "You are blunt, specific, and actionable. Vague feedback is useless.\n\n"
@@ -140,6 +149,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "security-auditor",
         "status": "standby",
         "model_alias": "sonnet",
+        "tool_allowlist": _P1_FILE + ["web_search", "web_fetch"],
         "system_prompt": (
             "You are SECURITY, a security architect and adversarial thinker inside the Cerberus AI workspace. "
             "Your job is to find what breaks before an attacker does.\n\n"
@@ -169,6 +179,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "coordinator",
         "status": "ready",
         "model_alias": "default",
+        "tool_allowlist": ["manage_tasks", "search_chats", "manage_memory"],
         "system_prompt": (
             "You are ORCHESTRATOR, the coordinating mind of the Cerberus AI workspace. "
             "You never do specialist work yourself — your job is decomposition, delegation, and sequencing.\n\n"
@@ -193,6 +204,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "ops-engineer",
         "status": "idle",
         "model_alias": "default",
+        "tool_allowlist": _P1_FILE,  # bash added in Phase 2; manage_webhooks needs approval gate (Phase 3)
         "system_prompt": (
             "You are DEVOPS, a senior SRE and platform engineer inside the Cerberus AI workspace. "
             "You keep the system running, observable, and recoverable.\n\n"
@@ -219,6 +231,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "analyst",
         "status": "idle",
         "model_alias": "default",
+        "tool_allowlist": _P1_FILE,  # python added in Phase 2
         "system_prompt": (
             "You are DATA-ANALYST, a quantitative specialist inside the Cerberus AI workspace. "
             "You turn raw data into decisions.\n\n"
@@ -242,6 +255,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "documentation",
         "status": "idle",
         "model_alias": "default",
+        "tool_allowlist": _P1_FILE + ["create_document", "edit_document", "update_document"],
         "system_prompt": (
             "You are SCRIBE, a technical writer inside the Cerberus AI workspace. "
             "You make complex systems legible.\n\n"
@@ -266,6 +280,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "design",
         "status": "idle",
         "model_alias": "default",
+        "tool_allowlist": _P1_FILE + ["create_document", "edit_document", "update_document"],
         "system_prompt": (
             "You are DESIGNER, the frontend and UX specialist inside the Cerberus AI workspace. "
             "You make interfaces that feel deliberate — not templated.\n\n"
@@ -291,6 +306,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "incident-response",
         "status": "idle",
         "model_alias": "default",
+        "tool_allowlist": _P1_FILE + ["search_chats"],  # bash/python added in Phase 2
         "system_prompt": (
             "You are DEBUGGER, a root-cause specialist inside the Cerberus AI workspace. "
             "You don't guess — you diagnose.\n\n"
@@ -313,6 +329,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "product-manager",
         "status": "idle",
         "model_alias": "default",
+        "tool_allowlist": ["manage_tasks", "manage_memory", "search_chats"],
         "system_prompt": (
             "You are PLANNER, a product and engineering planning specialist inside the Cerberus AI workspace. "
             "You turn fuzzy goals into shippable scope.\n\n"
@@ -336,6 +353,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "memory-rag",
         "status": "standby",
         "model_alias": "default",
+        "tool_allowlist": ["manage_memory", "manage_skills", "search_chats"],
         "system_prompt": (
             "You are LIBRARIAN, the knowledge and memory curator inside the Cerberus AI workspace. "
             "You keep the memory store, skills, and RAG index coherent, useful, and trustworthy.\n\n"
@@ -358,6 +376,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "performance",
         "status": "standby",
         "model_alias": "default",
+        "tool_allowlist": _P1_FILE,  # bash/python added in Phase 2
         "system_prompt": (
             "You are OPTIMIZER, a performance and efficiency specialist inside the Cerberus AI workspace. "
             "You find waste and eliminate it.\n\n"
@@ -382,6 +401,7 @@ _DEFAULT_AGENTS: List[Dict[str, str]] = [
         "agent_type": "tooling",
         "status": "standby",
         "model_alias": "default",
+        "tool_allowlist": ["manage_skills", "search_chats", "manage_memory"],
         "system_prompt": (
             "You are PROMPTSMITH, the prompt engineer and tooling specialist inside the Cerberus AI workspace. "
             "You make the other agents sharper.\n\n"
