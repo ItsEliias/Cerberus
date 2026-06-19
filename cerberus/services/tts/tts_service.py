@@ -63,9 +63,16 @@ class TTSService:
     def _load_settings(self) -> dict:
         from src.settings import load_settings
         saved = load_settings()
+        # Auto-detect default provider: use 'local' if Kokoro loaded successfully, otherwise 'disabled'.
+        # Explicit setting in settings.json always wins.
+        if "tts_provider" not in saved:
+            kokoro = self._get_kokoro()
+            default_provider = "local" if (kokoro and kokoro.available) else "disabled"
+        else:
+            default_provider = saved["tts_provider"]
         return {
             "tts_enabled": saved.get("tts_enabled", True),
-            "tts_provider": saved.get("tts_provider", "disabled"),
+            "tts_provider": default_provider,
             "tts_model": saved.get("tts_model", "tts-1"),
             "tts_voice": saved.get("tts_voice", "alloy"),
             "tts_speed": saved.get("tts_speed", "1"),
@@ -331,4 +338,10 @@ def get_tts_service() -> TTSService:
     global _tts_service
     if _tts_service is None:
         _tts_service = TTSService()
+        kokoro = _tts_service._get_kokoro()
+        if kokoro and kokoro.available:
+            cpu_or_gpu = "GPU" if kokoro._use_cuda else "CPU"
+            logger.info(f"Kokoro TTS ready ({cpu_or_gpu}) — provider: local")
+        else:
+            logger.info("Kokoro TTS not available — provider: disabled (install kokoro package)")
     return _tts_service

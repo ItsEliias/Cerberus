@@ -30,6 +30,7 @@ function _buildChatPanel(agentName, agentAvatar, accentColor, ttsVoice) {
   <div class="cc-chat-input-row">
     <textarea class="cc-chat-input" id="cc-chat-input"
       placeholder="Message ${_esc(agentName)}… (Ctrl+Enter to send)" rows="2"></textarea>
+    <button class="cc-chat-stop-btn" title="Stop audio">⏹ STOP</button>
     <button class="cc-chat-send-btn" id="cc-chat-send-btn">Send</button>
   </div>
 </div>`.trim();
@@ -79,6 +80,15 @@ async function _loadThread(agentId, messagesEl) {
 // TTS — fire-and-forget, same provider detection as voice.js
 // ---------------------------------------------------------------------------
 
+// Voice ID prefixes that belong to Kokoro and must always route to the server.
+// Browser speechSynthesis has no Kokoro voices — routing them browser-side
+// produces the OS default voice instead of the selected agent voice.
+const _KOKORO_PREFIXES = ['af_', 'am_', 'bf_', 'bm_'];
+
+function _isKokoroVoice(voiceId) {
+  return !!voiceId && _KOKORO_PREFIXES.some(p => voiceId.startsWith(p));
+}
+
 let _ttsChatProvider = null;
 
 async function _getTtsChatProvider() {
@@ -90,36 +100,6 @@ async function _getTtsChatProvider() {
     _ttsChatProvider = data.provider || 'disabled';
   } catch (_) { _ttsChatProvider = 'disabled'; }
   return _ttsChatProvider;
-}
-
-async function _speakChatReply(text, ttsVoice) {
-  if (!text || !ttsVoice) return;
-  const provider = await _getTtsChatProvider();
-  if (provider === 'disabled') return;
-
-  if (provider === 'browser') {
-    const utt = new SpeechSynthesisUtterance(text);
-    const voices = speechSynthesis.getVoices();
-    const match = voices.find(v => v.name === ttsVoice || v.voiceURI === ttsVoice);
-    if (match) utt.voice = match;
-    speechSynthesis.speak(utt);
-    return;
-  }
-
-  // Server-side TTS
-  try {
-    const res = await fetch('/api/tts/synthesize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, format: 'base64', voice: ttsVoice }),
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    const b64 = data.audio_base64 || data.audio || '';
-    if (!b64) return;
-    const audio = new Audio(`data:audio/wav;base64,${b64}`);
-    audio.play().catch(() => {});
-  } catch (_) {}
 }
 
 async function _streamSSE(body, contentEl) {
@@ -157,7 +137,7 @@ async function _streamSSE(body, contentEl) {
   }
 }
 
-async function _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice = '') {
+async function _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice = '', speakFn = null) {
   const text = input?.value?.trim();
   if (!text) return;
 
@@ -199,8 +179,8 @@ async function _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice = '') 
   }
 
   // Speak the reply if a voice is configured and the response was not an error
-  if (!errored && ttsVoice && contentEl.textContent && !contentEl.classList.contains('cc-chat-error')) {
-    _speakChatReply(contentEl.textContent, ttsVoice);
+  if (!errored && ttsVoice && speakFn && contentEl.textContent && !contentEl.classList.contains('cc-chat-error')) {
+    speakFn(contentEl.textContent, ttsVoice);
   }
 }
 
@@ -209,20 +189,80 @@ async function _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice = '') 
 export async function openAgentChat(container, agentId, agentName, agentAvatar, accentColor, ttsVoice = '') {
   container.innerHTML = _buildChatPanel(agentName, agentAvatar, accentColor || 'rgba(197,201,208,0.5)', ttsVoice);
 
-  const messagesEl = container.querySelector('#cc-chat-messages');
-  const input      = container.querySelector('#cc-chat-input');
-  const sendBtn    = container.querySelector('#cc-chat-send-btn');
-  const backBtn    = container.querySelector('.cc-chat-back-btn');
-  const clearBtn   = container.querySelector('.cc-chat-clear-btn');
+  const messagesEl  = container.querySelector('#cc-chat-messages');
+  const input       = container.querySelector('#cc-chat-input');
+  const sendBtn     = container.querySelector('#cc-chat-send-btn');
+  const backBtn     = container.querySelector('.cc-chat-back-btn');
+  const clearBtn    = container.querySelector('.cc-chat-clear-btn');
+  const stopBtn     = container.querySelector('.cc-chat-stop-btn');
   const chatCallBtn = container.querySelector('.cc-chat-call-btn');
+  const chatPanel   = container.querySelector('#cc-agent-chat');
+
+  // ---- Audio lifecycle (Bug 3) ----
+  let _currentAudio = null;
+
+  function _stopAudio() {
+    if (_currentAudio) {
+      _currentAudio.pause();
+      _currentAudio.currentTime = 0;
+      _currentAudio = null;
+    }
+    chatPanel?.classList.remove('cc-chat--speaking');
+  }
+
+  // ---- TTS (Bug 2 + Bug 3) ----
+  async function _speakChatReply(text, voice) {
+    if (!text || !voice) return;
+
+    // Kokoro voice IDs always route to server — they don't exist in the browser voice list
+    if (!_isKokoroVoice(voice)) {
+      const provider = await _getTtsChatProvider();
+      if (provider === 'disabled') return;
+      if (provider === 'browser') {
+        _stopAudio();
+        const utt = new SpeechSynthesisUtterance(text);
+        const voices = speechSynthesis.getVoices();
+        const match = voices.find(v => v.name === voice || v.voiceURI === voice);
+        if (match) utt.voice = match;
+        speechSynthesis.speak(utt);
+        return;
+      }
+    }
+
+    // Server-side TTS
+    try {
+      const res = await fetch('/api/tts/synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, format: 'base64', voice }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const b64 = data.audio_base64 || data.audio || '';
+      if (!b64) return;
+      _stopAudio();
+      const audio = new Audio(`data:audio/wav;base64,${b64}`);
+      _currentAudio = audio;
+      chatPanel?.classList.add('cc-chat--speaking');
+      audio.onended = () => _stopAudio();
+      audio.onerror = () => _stopAudio();
+      audio.play().catch(() => _stopAudio());
+    } catch (_) { _stopAudio(); }
+  }
+
+  // ---- Event wiring ----
+
+  stopBtn?.addEventListener('click', () => _stopAudio());
 
   chatCallBtn?.addEventListener('click', async () => {
+    _stopAudio();
     const { openVoiceCall } = await import('./voice.js');
     openVoiceCall(container, agentId, agentName, agentAvatar, accentColor || 'rgba(197,201,208,0.5)', ttsVoice);
   });
 
   // Back — re-mount the roster
   backBtn?.addEventListener('click', async () => {
+    _stopAudio();
     const { buildAgentsTab, loadAgents } = await import('./agents.js');
     container.innerHTML = buildAgentsTab();
     await loadAgents(container);
@@ -230,6 +270,7 @@ export async function openAgentChat(container, agentId, agentName, agentAvatar, 
 
   // Clear thread
   clearBtn?.addEventListener('click', async () => {
+    _stopAudio();
     if (!confirm('Clear this conversation? All messages will be deleted.')) return;
     try {
       await fetch(`/api/agents/${encodeURIComponent(agentId)}/thread`, { method: 'DELETE' });
@@ -240,11 +281,11 @@ export async function openAgentChat(container, agentId, agentName, agentAvatar, 
   });
 
   // Send
-  sendBtn?.addEventListener('click', () => _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice));
+  sendBtn?.addEventListener('click', () => _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice, _speakChatReply));
   input?.addEventListener('keydown', e => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice);
+      _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice, _speakChatReply);
     }
   });
 

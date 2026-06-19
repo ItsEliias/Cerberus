@@ -89,6 +89,9 @@ function _appendStreamingTurn(transcriptEl) {
 // TTS provider detection + playback
 // ---------------------------------------------------------------------------
 
+// Kokoro voice ID prefixes — these must always route to the server (Bug 2)
+const _KOKORO_PREFIXES = ['af_', 'am_', 'bf_', 'bm_'];
+
 let _ttsProvider = null;
 
 async function _getTtsProvider() {
@@ -104,10 +107,14 @@ async function _getTtsProvider() {
   return _ttsProvider;
 }
 
-async function _speak(text, ttsVoice, onStart, onEnd) {
-  const provider = await _getTtsProvider();
+// _speak returns a function that cancels playback when called (Bug 3).
+// onStart/onEnd callbacks fire at the usual points.
+async function _speak(text, ttsVoice, onStart, onEnd, cancelRef) {
+  const isKokoroVoice = !!ttsVoice && _KOKORO_PREFIXES.some(p => ttsVoice.startsWith(p));
+  // Kokoro voice IDs always route to server regardless of provider setting
+  const provider = isKokoroVoice ? 'local' : await _getTtsProvider();
 
-  if (provider === 'browser') {
+  if (!isKokoroVoice && provider === 'browser') {
     const utt = new SpeechSynthesisUtterance(text);
     if (ttsVoice) {
       const voices = speechSynthesis.getVoices();
@@ -118,6 +125,7 @@ async function _speak(text, ttsVoice, onStart, onEnd) {
     utt.onend    = onEnd;
     utt.onerror  = onEnd;
     speechSynthesis.speak(utt);
+    if (cancelRef) cancelRef.cancel = () => { speechSynthesis.cancel(); onEnd?.(); };
     return;
   }
 
@@ -142,8 +150,10 @@ async function _speak(text, ttsVoice, onStart, onEnd) {
     const b64 = data.audio_base64 || data.audio || '';
     if (!b64) { onEnd?.(); return; }
     const audio = new Audio(`data:audio/wav;base64,${b64}`);
-    audio.onended = onEnd;
-    audio.onerror = onEnd;
+    // Bug 3: expose cancel handle so the caller can stop mid-playback
+    if (cancelRef) cancelRef.cancel = () => { audio.pause(); audio.currentTime = 0; onEnd?.(); };
+    audio.onended = () => { if (cancelRef) cancelRef.cancel = null; onEnd?.(); };
+    audio.onerror = () => { if (cancelRef) cancelRef.cancel = null; onEnd?.(); };
     await audio.play();
   } catch (_) {
     onEnd?.();
@@ -260,6 +270,7 @@ export async function openVoiceCall(container, agentId, agentName, agentAvatar, 
   _setState(panel, 'idle');
   _ttsProvider = null; // reset per session
   _sttProvider = null;
+  const _speakCancel = { cancel: null }; // Bug 3: mutable cancel handle for active audio
 
   // ---- Text fallback toggle ----
   let textMode = false;
@@ -273,6 +284,7 @@ export async function openVoiceCall(container, agentId, agentName, agentAvatar, 
   // ---- Back: restore chat panel ----
   backBtn?.addEventListener('click', async () => {
     speechSynthesis?.cancel();
+    _speakCancel.cancel?.(); // stop any server-side audio (Bug 3)
     const { openAgentChat } = await import('./chat.js');
     openAgentChat(container, agentId, agentName, agentAvatar, accentColor, ttsVoice);
   });
@@ -407,8 +419,9 @@ export async function openVoiceCall(container, agentId, agentName, agentAvatar, 
 
     if (agentText) {
       _setState(panel, 'speaking');
-      await new Promise(resolve => _speak(agentText, ttsVoice, null, resolve));
+      await new Promise(resolve => _speak(agentText, ttsVoice, null, resolve, _speakCancel));
     }
+    _speakCancel.cancel = null;
     _setState(panel, 'your-turn');
   }
 }
