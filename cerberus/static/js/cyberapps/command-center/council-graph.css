@@ -14,69 +14,107 @@
 .ccg-toolbar {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 14px 8px;
+  flex-wrap: nowrap;
+  gap: 16px;
+  padding: 11px 16px 10px;
   border-bottom: 1px solid rgba(255,255,255,.045);
   flex-shrink: 0;
+  min-height: 44px;
 }
 
 /* ── Mode buttons ────────────────────────────────────────────────────────── */
 
-.ccg-mode-btns { display: flex; gap: 6px; }
+.ccg-mode-btns { display: flex; gap: 6px; flex-shrink: 0; }
 
-.ccg-mode-btn {
+.ccg-toolbar .ccg-mode-btn {
+  /* Strip browser-native button appearance first */
+  -webkit-appearance: none;
+  appearance: none;
+
   font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: 9px;
   font-weight: 600;
   letter-spacing: .14em;
   text-transform: uppercase;
-  color: rgba(197,201,208,.40);
-  background: transparent;
-  border: 1px solid rgba(255,255,255,.08);
+  color: rgba(197,201,208,.42);
+  background: rgba(0,0,0,0);
+  border: 1px solid rgba(255,255,255,.09);
   border-radius: 2px;
-  padding: 5px 11px;
+  padding: 5px 12px;
   cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
   transition: color .15s, border-color .15s, background .15s;
 }
-.ccg-mode-btn:hover {
-  color: rgba(197,201,208,.72);
-  border-color: rgba(255,255,255,.18);
+.ccg-toolbar .ccg-mode-btn:hover {
+  color: rgba(197,201,208,.78);
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.20);
 }
-.ccg-mode-btn.active {
+.ccg-toolbar .ccg-mode-btn.active {
   color: var(--cc-crimson, #c0392b);
-  border-color: rgba(192,57,43,.55);
-  background: rgba(192,57,43,.07);
+  border-color: rgba(192,57,43,.58);
+  background: rgba(192,57,43,.09);
+}
+.ccg-toolbar .ccg-mode-btn:focus-visible {
+  outline: 2px solid var(--cc-crimson, #c0392b);
+  outline-offset: 2px;
 }
 
 /* ── Room picker ─────────────────────────────────────────────────────────── */
 
 .ccg-room-pick {
-  display: none;
+  display: none;           /* JS sets display:flex when in replay mode */
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-left: 14px;
+  border-left: 1px solid rgba(255,255,255,.07);
 }
 .ccg-room-lbl {
   font-family: 'JetBrains Mono', monospace;
   font-size: 8px;
-  letter-spacing: .14em;
-  color: rgba(192,57,43,.55);
+  letter-spacing: .16em;
+  color: rgba(192,57,43,.58);
   white-space: nowrap;
+  flex-shrink: 0;
 }
-.ccg-room-sel {
-  font-family: 'JetBrains Mono', monospace;
+
+/* Custom-styled <select> — strips native OS chrome entirely */
+.ccg-toolbar .ccg-room-sel {
+  -webkit-appearance: none;
+  appearance: none;
+
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: 9px;
-  color: rgba(197,201,208,.78);
-  background: rgba(10,12,15,.95);
-  border: 1px solid rgba(255,255,255,.10);
+  font-weight: 500;
+  letter-spacing: .05em;
+  color: rgba(197,201,208,.80);
+  background-color: rgba(10,12,15,.96);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0L4 5L8 0' fill='none' stroke='%23c0392b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 8px 5px;
+  border: 1px solid rgba(255,255,255,.11);
   border-radius: 2px;
-  padding: 4px 8px;
+  padding: 5px 28px 5px 9px;
   cursor: pointer;
-  min-width: 160px;
-  max-width: 260px;
+  min-width: 170px;
+  max-width: 280px;
+  line-height: 1;
 }
-.ccg-room-sel:focus { outline: none; border-color: rgba(192,57,43,.45); }
-.ccg-room-sel option { background: #0f1215; color: rgba(197,201,208,.85); }
+.ccg-toolbar .ccg-room-sel:hover {
+  border-color: rgba(192,57,43,.38);
+}
+.ccg-toolbar .ccg-room-sel:focus {
+  outline: none;
+  border-color: rgba(192,57,43,.55);
+  box-shadow: 0 0 0 2px rgba(192,57,43,.12);
+}
+.ccg-toolbar .ccg-room-sel option {
+  background: #0d0f12;
+  color: rgba(197,201,208,.88);
+}
 
 /* ── Canvas (SVG container) ──────────────────────────────────────────────── */
 
@@ -266,5 +304,6 @@
   .ccg-node-halo {
     animation: none;
   }
-  .ccg-mode-btn { transition: none; }
+  .ccg-toolbar .ccg-mode-btn,
+  .ccg-toolbar .ccg-room-sel { transition: none; }
 }
