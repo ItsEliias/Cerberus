@@ -7,8 +7,11 @@ stays under 500 lines.
 from typing import Any, Dict, List
 
 # Phase 1: read-only tools available to file-system agents.
-# bash/python/write_file are Phase 2 (require OpenSandbox enforcement in place).
 _P1_FILE = ["read_file", "grep", "glob", "ls"]
+
+# Phase 2: sandbox execution tools.  Only granted to agents whose role requires
+# running code; all execution routes through OpenSandbox (never the host shell).
+_P2_EXEC = ["bash", "python"]
 
 _DEFAULT_AGENTS: List[Dict[str, Any]] = [
     # ── Original 6: software-build swarm ──────────────────────────────────
@@ -43,7 +46,7 @@ _DEFAULT_AGENTS: List[Dict[str, Any]] = [
         "agent_type": "backend-dev",
         "status": "idle",
         "model_alias": "sonnet",
-        "tool_allowlist": _P1_FILE,  # bash/python added in Phase 2
+        "tool_allowlist": _P1_FILE + _P2_EXEC,
         "system_prompt": (
             "You are CODER, a senior software engineer inside the Cerberus AI workspace. "
             "You write production-quality code, not demos.\n\n"
@@ -70,7 +73,7 @@ _DEFAULT_AGENTS: List[Dict[str, Any]] = [
         "agent_type": "tester",
         "status": "idle",
         "model_alias": "sonnet",
-        "tool_allowlist": _P1_FILE,  # bash/python added in Phase 2
+        "tool_allowlist": _P1_FILE + _P2_EXEC,
         "system_prompt": (
             "You are TESTER, a quality engineer inside the Cerberus AI workspace. "
             "Your job is to find the ways things break before they break in production.\n\n"
@@ -204,7 +207,7 @@ _DEFAULT_AGENTS: List[Dict[str, Any]] = [
         "agent_type": "ops-engineer",
         "status": "idle",
         "model_alias": "default",
-        "tool_allowlist": _P1_FILE,  # bash added in Phase 2; manage_webhooks needs approval gate (Phase 3)
+        "tool_allowlist": _P1_FILE + ["bash"],  # manage_webhooks needs approval gate (Phase 3)
         "system_prompt": (
             "You are DEVOPS, a senior SRE and platform engineer inside the Cerberus AI workspace. "
             "You keep the system running, observable, and recoverable.\n\n"
@@ -231,7 +234,7 @@ _DEFAULT_AGENTS: List[Dict[str, Any]] = [
         "agent_type": "analyst",
         "status": "idle",
         "model_alias": "default",
-        "tool_allowlist": _P1_FILE,  # python added in Phase 2
+        "tool_allowlist": _P1_FILE + ["python"],
         "system_prompt": (
             "You are DATA-ANALYST, a quantitative specialist inside the Cerberus AI workspace. "
             "You turn raw data into decisions.\n\n"
@@ -306,7 +309,7 @@ _DEFAULT_AGENTS: List[Dict[str, Any]] = [
         "agent_type": "incident-response",
         "status": "idle",
         "model_alias": "default",
-        "tool_allowlist": _P1_FILE + ["search_chats"],  # bash/python added in Phase 2
+        "tool_allowlist": _P1_FILE + ["search_chats"] + _P2_EXEC,
         "system_prompt": (
             "You are DEBUGGER, a root-cause specialist inside the Cerberus AI workspace. "
             "You don't guess — you diagnose.\n\n"
@@ -376,7 +379,7 @@ _DEFAULT_AGENTS: List[Dict[str, Any]] = [
         "agent_type": "performance",
         "status": "standby",
         "model_alias": "default",
-        "tool_allowlist": _P1_FILE,  # bash/python added in Phase 2
+        "tool_allowlist": _P1_FILE + _P2_EXEC,
         "system_prompt": (
             "You are OPTIMIZER, a performance and efficiency specialist inside the Cerberus AI workspace. "
             "You find waste and eliminate it.\n\n"
