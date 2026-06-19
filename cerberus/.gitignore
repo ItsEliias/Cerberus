@@ -15,8 +15,9 @@ venv/
 .env.bak.*
 !.env.example
 
-# Data — all user data stays local
-data/
+# Data — all user data stays local (skills/ is tracked content, not user data)
+data/*
+!data/skills
 !services/hwfit/data/
 !services/hwfit/data/hf_models.json
 logs/
