@@ -256,33 +256,51 @@ def test_bash_tool_sandbox_flag_true_by_default(monkeypatch):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_bash_tool_escape_attempt_does_not_reach_host():
+async def test_bash_tool_sandbox_unavailable_fails_closed():
     """
-    Conceptual escape test: when sandbox mode is active and the opensandbox
-    server is unavailable, BashTool returns a SandboxUnavailableError-triggered
-    fallback (host), not a silent success from within the sandbox.
-
-    A real escape test (verifying cat /etc/passwd is blocked) requires a live
-    sandbox server and is gated by SANDBOX_INTEGRATION_TESTS.
+    BashTool._execute_sandboxed must return an error dict when the sandbox is
+    unavailable — it must NOT fall back to host-side subprocess execution.
     """
     import importlib
     import src.agent_tools.subprocess_tools as st
 
-    # Enable sandbox mode but stub the backend to simulate unavailability
     with patch.dict(os.environ, {"CERBERUS_SANDBOX_ENABLED": "true"}):
         importlib.reload(st)
 
+        from src.agent_tools.sandbox_backend import SandboxUnavailableError
         with patch(
             "src.agent_tools.sandbox_backend.run_in_sandbox",
-            side_effect=__import__(
-                "src.agent_tools.sandbox_backend",
-                fromlist=["SandboxUnavailableError"]
-            ).SandboxUnavailableError("server down"),
+            side_effect=SandboxUnavailableError("server down"),
         ):
-            # Should fall back gracefully, not crash
             result = await st.BashTool().execute("echo safe", ctx={})
-            # Fallback to host runs fine
-            assert result.get("exit_code") == 0
+
+    assert result.get("exit_code") == 1
+    assert "Sandbox unavailable" in result.get("error", "")
+    # Must NOT have succeeded through host subprocess
+    assert "output" not in result or result.get("exit_code") != 0
+
+
+@pytest.mark.asyncio
+async def test_python_tool_sandbox_unavailable_fails_closed():
+    """
+    PythonTool._execute_sandboxed must return an error dict when the sandbox is
+    unavailable — it must NOT fall back to host-side subprocess execution.
+    """
+    import importlib
+    import src.agent_tools.subprocess_tools as st
+
+    with patch.dict(os.environ, {"CERBERUS_SANDBOX_ENABLED": "true"}):
+        importlib.reload(st)
+
+        from src.agent_tools.sandbox_backend import SandboxUnavailableError
+        with patch(
+            "src.agent_tools.sandbox_backend.run_python_in_sandbox",
+            side_effect=SandboxUnavailableError("server down"),
+        ):
+            result = await st.PythonTool().execute("print('x')", ctx={})
+
+    assert result.get("exit_code") == 1
+    assert "Sandbox unavailable" in result.get("error", "")
 
 
 # ---------------------------------------------------------------------------
