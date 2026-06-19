@@ -31,6 +31,10 @@ _SESSION_LOCKS_LOCK = asyncio.Lock()
 
 _MAX_RESPONSE_CHARS = 32_000
 
+# Cached default endpoint (endpoint_id + model) discovered from /api/models
+_DEFAULT_ENDPOINT: Optional[Dict] = None
+_DEFAULT_ENDPOINT_LOCK = asyncio.Lock()
+
 
 class CerberusClientError(RuntimeError):
     pass
@@ -66,6 +70,57 @@ def _clear_auth_cookie() -> None:
     _AUTH_COOKIE = None
 
 
+# ── Endpoint discovery ────────────────────────────────────────────────────────
+
+async def _get_default_endpoint(
+    cfg: CerberusConfig,
+    client: httpx.AsyncClient,
+    cookie: str,
+) -> Dict:
+    """Return {endpoint_id, model} for the first available LLM endpoint.
+
+    Uses cfg.endpoint_id when configured; otherwise auto-discovers from
+    GET /api/models. Result cached for the process lifetime.
+    """
+    global _DEFAULT_ENDPOINT
+    if _DEFAULT_ENDPOINT is not None:
+        return _DEFAULT_ENDPOINT
+    async with _DEFAULT_ENDPOINT_LOCK:
+        if _DEFAULT_ENDPOINT is not None:
+            return _DEFAULT_ENDPOINT
+        if cfg.endpoint_id:
+            _DEFAULT_ENDPOINT = {
+                "endpoint_id": cfg.endpoint_id,
+                "model": cfg.session_model or "",
+            }
+            logger.info("cerberus_client: using configured endpoint_id=%r", cfg.endpoint_id)
+            return _DEFAULT_ENDPOINT
+        # Auto-discover
+        try:
+            resp = await client.get(
+                f"{cfg.api_url}/api/models",
+                headers=_cookie_header(cookie),
+                timeout=15.0,
+            )
+            resp.raise_for_status()
+            items = resp.json().get("items", [])
+            for item in items:
+                if item.get("model_type", "llm") == "llm" and item.get("models"):
+                    _DEFAULT_ENDPOINT = {
+                        "endpoint_id": item["endpoint_id"],
+                        "model": item["models"][0],
+                    }
+                    logger.info(
+                        "cerberus_client: auto-discovered endpoint=%r model=%r",
+                        item.get("endpoint_name"), _DEFAULT_ENDPOINT["model"],
+                    )
+                    return _DEFAULT_ENDPOINT
+        except Exception as exc:
+            logger.warning("cerberus_client: could not discover endpoint: %s", exc)
+        _DEFAULT_ENDPOINT = {}
+        return _DEFAULT_ENDPOINT
+
+
 # ── Session management ────────────────────────────────────────────────────────
 
 async def _channel_lock(key: str) -> asyncio.Lock:
@@ -90,10 +145,16 @@ async def _get_or_create_session(
         if cache_key in _SESSION_CACHE:
             return _SESSION_CACHE[cache_key]
 
+        ep = await _get_default_endpoint(cfg, client, cookie)
         logger.info("cerberus_client: creating session name=%r", session_name)
         resp = await client.post(
-            f"{cfg.api_url}/session",
-            data={"name": session_name, "model": cfg.session_model},
+            f"{cfg.api_url}/api/session",
+            data={
+                "name": session_name,
+                "endpoint_id": ep.get("endpoint_id", ""),
+                "model": ep.get("model") or cfg.session_model or "",
+                "skip_validation": "true",
+            },
             headers=_cookie_header(cookie),
             timeout=15.0,
         )
