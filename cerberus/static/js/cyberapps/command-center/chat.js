@@ -75,6 +75,53 @@ async function _loadThread(agentId, messagesEl) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// TTS — fire-and-forget, same provider detection as voice.js
+// ---------------------------------------------------------------------------
+
+let _ttsChatProvider = null;
+
+async function _getTtsChatProvider() {
+  if (_ttsChatProvider) return _ttsChatProvider;
+  try {
+    const res = await fetch('/api/tts/stats');
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    _ttsChatProvider = data.provider || 'disabled';
+  } catch (_) { _ttsChatProvider = 'disabled'; }
+  return _ttsChatProvider;
+}
+
+async function _speakChatReply(text, ttsVoice) {
+  if (!text || !ttsVoice) return;
+  const provider = await _getTtsChatProvider();
+  if (provider === 'disabled') return;
+
+  if (provider === 'browser') {
+    const utt = new SpeechSynthesisUtterance(text);
+    const voices = speechSynthesis.getVoices();
+    const match = voices.find(v => v.name === ttsVoice || v.voiceURI === ttsVoice);
+    if (match) utt.voice = match;
+    speechSynthesis.speak(utt);
+    return;
+  }
+
+  // Server-side TTS
+  try {
+    const res = await fetch('/api/tts/synthesize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, format: 'base64', voice: ttsVoice }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const b64 = data.audio_base64 || data.audio || '';
+    if (!b64) return;
+    const audio = new Audio(`data:audio/wav;base64,${b64}`);
+    audio.play().catch(() => {});
+  } catch (_) {}
+}
+
 async function _streamSSE(body, contentEl) {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -110,7 +157,7 @@ async function _streamSSE(body, contentEl) {
   }
 }
 
-async function _sendMessage(agentId, input, messagesEl, sendBtn) {
+async function _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice = '') {
   const text = input?.value?.trim();
   if (!text) return;
 
@@ -130,6 +177,7 @@ async function _sendMessage(agentId, input, messagesEl, sendBtn) {
   messagesEl.appendChild(asstBubble);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 
+  let errored = false;
   try {
     const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/thread/send`, {
       method: 'POST',
@@ -140,6 +188,7 @@ async function _sendMessage(agentId, input, messagesEl, sendBtn) {
     await _streamSSE(res.body, contentEl);
     contentEl.classList.remove('cc-chat-streaming');
   } catch (e) {
+    errored = true;
     contentEl.textContent = `Error: ${e.message}`;
     contentEl.classList.remove('cc-chat-streaming');
     contentEl.classList.add('cc-chat-error');
@@ -147,6 +196,11 @@ async function _sendMessage(agentId, input, messagesEl, sendBtn) {
     sendBtn.disabled = false;
     sendBtn.textContent = 'Send';
     messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  // Speak the reply if a voice is configured and the response was not an error
+  if (!errored && ttsVoice && contentEl.textContent && !contentEl.classList.contains('cc-chat-error')) {
+    _speakChatReply(contentEl.textContent, ttsVoice);
   }
 }
 
@@ -186,11 +240,11 @@ export async function openAgentChat(container, agentId, agentName, agentAvatar, 
   });
 
   // Send
-  sendBtn?.addEventListener('click', () => _sendMessage(agentId, input, messagesEl, sendBtn));
+  sendBtn?.addEventListener('click', () => _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice));
   input?.addEventListener('keydown', e => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      _sendMessage(agentId, input, messagesEl, sendBtn);
+      _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice);
     }
   });
 
