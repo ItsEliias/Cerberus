@@ -146,21 +146,49 @@ class DiscordAdapter(BasePlatformAdapter):
             self._ready.set()
 
         @client.event
+        async def on_error(event: str, *args, **kwargs) -> None:
+            logger.exception("discord: unhandled exception in event '%s'", event)
+
+        @client.event
         async def on_message(message: discord.Message):
             # Ignore own messages
             if message.author == client.user:
                 return
 
+            location = (
+                f"guild={message.guild.id}" if message.guild else "DM"
+            )
+            logger.info(
+                "discord: on_message — author=%s %s channel=%s content_len=%d",
+                message.author, location, message.channel.id,
+                len(message.content or ""),
+            )
+
             # Guild access control
             if message.guild and not self._is_guild_allowed(message.guild.id):
+                logger.info(
+                    "discord: dropping — guild %s not in DISCORD_ALLOWED_GUILD_IDS",
+                    message.guild.id,
+                )
                 return
 
             # Channel access control (DMs have no channel ID in the guild sense)
             if message.guild and not self._is_channel_allowed(message.channel.id):
+                logger.info(
+                    "discord: dropping — channel %s not in DISCORD_ALLOWED_CHANNEL_IDS",
+                    message.channel.id,
+                )
                 return
 
             content = message.content.strip()
             if not content:
+                logger.warning(
+                    "discord: empty content from %s — guild messages require "
+                    "'Message Content Intent' to be toggled ON in Discord Developer "
+                    "Portal → Bot → Privileged Gateway Intents. DMs and @mentions "
+                    "do not need it.",
+                    message.author,
+                )
                 return
 
             # Prefix commands
