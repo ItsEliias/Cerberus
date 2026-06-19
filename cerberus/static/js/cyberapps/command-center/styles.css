@@ -1568,6 +1568,18 @@
 .cc-chat-send-btn:hover   { background: rgba(52,152,219,0.2); }
 .cc-chat-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
+/* Stop audio button — hidden by default, shown when .cc-chat--speaking is on the panel */
+.cc-agent-chat .cc-chat-stop-btn {
+  -webkit-appearance: none; appearance: none;
+  display: none; align-items: center; gap: 4px;
+  font-size: 9px; letter-spacing: 0.08em; padding: 6px 10px; align-self: flex-end;
+  border: 1px solid var(--cc-crimson); background: transparent;
+  color: var(--cc-crimson); border-radius: 3px; cursor: pointer; font-family: inherit;
+  transition: background 0.15s, opacity 0.15s; white-space: nowrap;
+}
+.cc-agent-chat .cc-chat-stop-btn:hover { background: var(--cc-crimson-glow); }
+.cc-agent-chat.cc-chat--speaking .cc-chat-stop-btn { display: inline-flex; }
+
 /* ---- CONFERENCE ROOMS tab (Phase 3) ---- */
 
 /* Room list cards */
