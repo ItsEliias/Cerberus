@@ -128,9 +128,8 @@ class BashTool:
                 timeout=DEFAULT_BASH_TIMEOUT,
             )
         except SandboxUnavailableError as exc:
-            logger.warning("sandbox unavailable, falling back to host: %s", exc)
-            from src.tool_execution import _AGENT_WORKDIR
-            return await self._execute_host(content, ctx, _AGENT_WORKDIR, _truncate)
+            logger.error("sandbox unavailable — bash blocked (no host fallback): %s", exc)
+            return {"error": f"Sandbox unavailable — bash blocked: {exc}", "exit_code": 1}
 
         if result["timed_out"]:
             return {
@@ -191,9 +190,8 @@ class PythonTool:
                 timeout=DEFAULT_PYTHON_TIMEOUT,
             )
         except SandboxUnavailableError as exc:
-            logger.warning("sandbox unavailable, falling back to host: %s", exc)
-            from src.tool_execution import _AGENT_WORKDIR
-            return await self._execute_host(content, ctx, _AGENT_WORKDIR, _truncate)
+            logger.error("sandbox unavailable — python blocked (no host fallback): %s", exc)
+            return {"error": f"Sandbox unavailable — python blocked: {exc}", "exit_code": 1}
 
         if result["timed_out"]:
             return {
