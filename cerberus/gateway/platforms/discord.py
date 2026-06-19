@@ -142,7 +142,12 @@ class DiscordAdapter(BasePlatformAdapter):
 
         @client.event
         async def on_ready():
-            logger.info("discord: on_ready fired, user=%s", client.user)
+            guild_names = [g.name for g in client.guilds]
+            logger.info(
+                "discord: on_ready fired, user=%s — in %d guild(s): %s",
+                client.user, len(client.guilds),
+                guild_names if guild_names else "(none — bot has not been added to any server)",
+            )
             self._ready.set()
 
         @client.event
