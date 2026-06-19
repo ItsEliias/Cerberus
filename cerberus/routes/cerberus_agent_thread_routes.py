@@ -243,6 +243,10 @@ def setup_agent_thread_routes() -> APIRouter:
             agent_allowlist=_agent_allowlist,
             last_user_message=text,
         )
+        # Execution agents (those with bash/python) get a per-turn tool budget so
+        # a runaway generation loop can't spin up unlimited sandbox containers.
+        _EXEC_TOOLS = {"bash", "python"}
+        _max_tool_calls = 20 if (_agent_allowlist and _EXEC_TOOLS & _agent_allowlist) else 0
 
         # Inject relevant agent memories into the system prompt as fenced data block
         memory_block = _build_memory_block(owner, agent_id, text)
@@ -275,6 +279,7 @@ def setup_agent_thread_routes() -> APIRouter:
                     tool_policy=_tool_policy,
                     relevant_tools=_agent_allowlist,
                     session_id=thread_id,
+                    max_tool_calls=_max_tool_calls,
                 ):
                     if chunk.startswith("event: error"):
                         errored = True

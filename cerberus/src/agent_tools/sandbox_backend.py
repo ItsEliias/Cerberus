@@ -27,11 +27,14 @@ Environment variables read at import time:
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import AsyncIterator, List, Optional
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -52,13 +55,89 @@ EGRESS_ALLOWLIST: List[str] = (
     if _EGRESS_ENV else []
 )
 
+_DEFAULT_API_KEY = "cerberus-local-dev"
+
+# Validated once at module load so misconfiguration is caught before the first
+# execution attempt, not silently deferred to runtime.
+_SANDBOX_URL_SAFE: bool = True  # set False by _validate_sandbox_config()
+
+
+def _is_safe_sandbox_host(hostname: str) -> bool:
+    """Return True if hostname is a loopback address or a bare compose-network name.
+
+    Allowed:
+      - "localhost"
+      - 127.x.x.x or ::1 (loopback IP)
+      - a simple identifier with no dots (docker-compose service name, e.g. "opensandbox")
+      - RFC-1918 addresses (10.x, 172.16-31.x, 192.168.x) — LAN / overlay network
+
+    Rejected: any hostname that looks like a public-internet FQDN or routable IP.
+    """
+    hostname = hostname.lower().split(":")[0]  # strip port if present
+    if hostname in ("localhost", "::1", ""):
+        return True
+    # bare label (no dots) — docker compose service name
+    if "." not in hostname:
+        return True
+    try:
+        addr = ipaddress.ip_address(hostname)
+        return addr.is_loopback or addr.is_private
+    except ValueError:
+        pass
+    # Multi-label hostname — treat as external FQDN
+    return False
+
+
+def _validate_sandbox_config() -> None:
+    """Validate SANDBOX_URL and warn on insecure SANDBOX_API_KEY.
+
+    Logs an ERROR and sets _SANDBOX_URL_SAFE=False if SANDBOX_URL resolves to
+    a potential external address, so run_in_sandbox() can fail fast.
+    Logs a WARNING if SANDBOX_API_KEY is still the default development value
+    while the sandbox is enabled for production use.
+    """
+    global _SANDBOX_URL_SAFE
+    try:
+        parsed = urlparse(SANDBOX_URL)
+        host = parsed.hostname or ""
+        if not _is_safe_sandbox_host(host):
+            logger.error(
+                "SECURITY: SANDBOX_URL %r hostname %r does not appear to be a "
+                "loopback or compose-network address. "
+                "Sandbox execution will be blocked until SANDBOX_URL is corrected.",
+                SANDBOX_URL, host,
+            )
+            _SANDBOX_URL_SAFE = False
+    except Exception as exc:
+        logger.error("SANDBOX_URL validation failed: %s", exc)
+        _SANDBOX_URL_SAFE = False
+
+    _sandbox_enabled = os.environ.get("CERBERUS_SANDBOX_ENABLED", "true").lower() != "false"
+    if _sandbox_enabled and SANDBOX_API_KEY == _DEFAULT_API_KEY:
+        logger.warning(
+            "SANDBOX_API_KEY is still the default development value %r. "
+            "Set SANDBOX_API_KEY to a strong secret before exposing the sandbox "
+            "to any non-local network.",
+            _DEFAULT_API_KEY,
+        )
+
 
 class SandboxUnavailableError(RuntimeError):
     """Raised when the OpenSandbox server cannot be reached."""
 
 
+# Run startup validation now that all helpers and constants are defined.
+_validate_sandbox_config()
+
+
 def _build_connection_config():
     """Return a ConnectionConfig for the local opensandbox server."""
+    if not _SANDBOX_URL_SAFE:
+        raise SandboxUnavailableError(
+            f"SANDBOX_URL {SANDBOX_URL!r} failed startup safety check — "
+            "must be a loopback or compose-network address. "
+            "Correct SANDBOX_URL and restart to enable sandbox execution."
+        )
     try:
         from opensandbox.config import ConnectionConfig
     except ImportError as exc:
