@@ -1,7 +1,7 @@
 """
 gateway/cerberus_client.py — HTTP client for the Cerberus chat REST API.
 
-Routes messages through /api/chat (the main session endpoint) so the gateway
+Routes messages through /api/chat_stream (SSE) with mode=agent so the gateway
 has full tool access — calendar, files, email, web search, etc.
 
 Auth: cookie-based login via POST /api/auth/login (cached for process lifetime).
@@ -12,6 +12,7 @@ Session: one Cerberus session per (platform, chat_id), created on first use
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import Dict, Optional
 
@@ -168,6 +169,45 @@ async def _get_or_create_session(
         return session_id
 
 
+# ── SSE consumer ─────────────────────────────────────────────────────────────
+
+async def _consume_stream(resp: httpx.Response) -> str:
+    """Consume an SSE stream from /api/chat_stream and return the full text."""
+    text = ""
+    buffer = ""
+    event_type = "message"
+    async for chunk in resp.aiter_text():
+        buffer += chunk
+        lines = buffer.split("\n")
+        buffer = lines.pop()
+        for line in lines:
+            if line.startswith("event:"):
+                event_type = line[6:].strip()
+                continue
+            if not line.startswith("data:"):
+                if not line.strip():
+                    event_type = "message"
+                continue
+            raw = line[5:].strip()
+            if raw == "[DONE]":
+                return text
+            if event_type == "error":
+                try:
+                    obj = json.loads(raw)
+                    raise CerberusClientError(f"Stream error: {obj.get('error', raw)}")
+                except (json.JSONDecodeError, KeyError):
+                    raise CerberusClientError(f"Stream error: {raw}")
+            try:
+                obj = json.loads(raw)
+                if obj.get("type") == "usage":
+                    continue
+                text += obj.get("delta") or obj.get("text") or obj.get("content") or ""
+            except json.JSONDecodeError:
+                text += raw
+            event_type = "message"
+    return text
+
+
 # ── Public interface ──────────────────────────────────────────────────────────
 
 async def send_message(
@@ -178,7 +218,7 @@ async def send_message(
     message: str,
     session_name_prefix: str = "gateway",
 ) -> str:
-    """Send a message through /api/chat and return the assistant response."""
+    """Send a message via /api/chat_stream (agent mode) and return the full reply."""
     if not message or not message.strip():
         raise CerberusClientError("Empty message")
     if len(message) > 50_000:
@@ -187,10 +227,10 @@ async def send_message(
     cache_key = f"{platform}:{chat_id}"
     session_name = f"{session_name_prefix}:{platform}:{chat_id}"
 
-    async with httpx.AsyncClient(follow_redirects=False) as client:
+    timeout = httpx.Timeout(connect=15.0, read=180.0, write=15.0, pool=5.0)
+    async with httpx.AsyncClient(follow_redirects=False, timeout=timeout) as client:
         cookie = await _get_auth_cookie(cfg, client)
 
-        # Ensure a Cerberus chat session exists for this channel
         try:
             session_id = await _get_or_create_session(
                 cfg, client, cookie, cache_key, session_name
@@ -199,42 +239,40 @@ async def send_message(
             raise CerberusClientError(f"Failed to get/create session: {exc}") from exc
 
         logger.debug(
-            "cerberus_client: POST /api/chat session=%r message_len=%d",
+            "cerberus_client: POST /api/chat_stream session=%r message_len=%d",
             session_id, len(message),
         )
 
+        form = {"message": message, "session": session_id, "mode": "agent"}
+        headers = {**_cookie_header(cookie), "Accept": "text/event-stream"}
+
         try:
-            resp = await client.post(
-                f"{cfg.api_url}/api/chat",
-                json={"message": message, "session": session_id},
-                headers=_cookie_header(cookie),
-                timeout=120.0,
-            )
+            async with client.stream("POST", f"{cfg.api_url}/api/chat_stream",
+                                     data=form, headers=headers) as resp:
+                if resp.status_code == 401:
+                    _clear_auth_cookie()
+                    cookie = await _get_auth_cookie(cfg, client)
+                    # consume and discard the 401 body, then retry
+                    await resp.aread()
 
-            if resp.status_code == 401:
-                # Cookie expired — clear, re-auth, retry once
-                _clear_auth_cookie()
-                cookie = await _get_auth_cookie(cfg, client)
-                resp = await client.post(
-                    f"{cfg.api_url}/api/chat",
-                    json={"message": message, "session": session_id},
-                    headers=_cookie_header(cookie),
-                    timeout=120.0,
-                )
+                if resp.status_code == 401:
+                    headers = {**_cookie_header(cookie), "Accept": "text/event-stream"}
+                    async with client.stream("POST", f"{cfg.api_url}/api/chat_stream",
+                                             data=form, headers=headers) as resp2:
+                        if resp2.status_code == 404:
+                            _SESSION_CACHE.pop(cache_key, None)
+                            raise CerberusClientError("Session not found — retry")
+                        resp2.raise_for_status()
+                        text = await _consume_stream(resp2)
+                        return text[:_MAX_RESPONSE_CHARS]
 
-            if resp.status_code == 404:
-                # Session was deleted server-side — evict and let next call recreate
-                _SESSION_CACHE.pop(cache_key, None)
-                raise CerberusClientError(
-                    "Chat session not found (deleted server-side) — retry"
-                )
+                if resp.status_code == 404:
+                    _SESSION_CACHE.pop(cache_key, None)
+                    raise CerberusClientError("Session not found — retry")
 
-            resp.raise_for_status()
-            data = resp.json()
-            response_text = data.get("response", "")
-            if not isinstance(response_text, str):
-                response_text = str(response_text)
-            return response_text[:_MAX_RESPONSE_CHARS]
+                resp.raise_for_status()
+                text = await _consume_stream(resp)
+                return text[:_MAX_RESPONSE_CHARS]
 
         except CerberusClientError:
             raise
