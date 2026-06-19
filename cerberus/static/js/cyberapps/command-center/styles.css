@@ -1413,9 +1413,42 @@
 /* Edit form (inside detail) */
 .cc-ag-edit-form { padding: 8px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
 .cc-ag-edit-form label, .cc-ag-create-form label { font-size: 8px; letter-spacing: 0.1em; opacity: 0.38; margin-top: 4px; display: block; }
-.cc-ag-edit-form input, .cc-ag-edit-form textarea,
+.cc-ag-edit-form input, .cc-ag-edit-form select, .cc-ag-edit-form textarea,
 .cc-ag-create-form input, .cc-ag-create-form textarea { width: 100%; box-sizing: border-box; padding: 4px 6px; font-size: 10px; background: rgba(0,0,0,0.25); border: 1px solid var(--cc-border, rgba(255,255,255,0.1)); color: var(--cc-fg, #e0e0e0); border-radius: 3px; font-family: inherit; }
 .cc-ag-edit-form textarea, .cc-ag-create-form textarea { resize: vertical; min-height: 52px; }
+/* Voice picker — strip OS chrome and add crimson caret */
+.cc-ag-edit-form .cc-ag-edit-tts-voice {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: rgba(0,0,0,0.25);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0L4 5L8 0' fill='none' stroke='%23c0392b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 8px 5px;
+  padding-right: 26px;
+  cursor: pointer;
+}
+.cc-ag-edit-form .cc-ag-edit-tts-voice:focus { outline: none; border-color: rgba(192,57,43,.5); }
+.cc-ag-edit-form .cc-ag-edit-tts-voice option { background: #0d0f12; color: rgba(197,201,208,.88); }
+/* Edit form Save / Cancel buttons */
+.cc-ag-edit-form .cc-ag-save-btn {
+  -webkit-appearance: none; appearance: none;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 9px; padding: 4px 12px; border-radius: 2px; cursor: pointer;
+  background: rgba(192,57,43,.12); border: 1px solid var(--cc-crimson, #c0392b);
+  color: var(--cc-crimson, #c0392b); letter-spacing: .08em;
+  transition: background .15s, color .15s;
+}
+.cc-ag-edit-form .cc-ag-save-btn:hover { background: rgba(192,57,43,.22); color: #f06b5a; }
+.cc-ag-edit-form .cc-ag-discard-btn {
+  -webkit-appearance: none; appearance: none;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 9px; padding: 4px 10px; border-radius: 2px; cursor: pointer;
+  background: transparent; border: 1px solid var(--cc-border, rgba(255,255,255,.1));
+  color: rgba(197,201,208,.5); letter-spacing: .08em;
+  transition: border-color .15s, color .15s;
+}
+.cc-ag-edit-form .cc-ag-discard-btn:hover { border-color: rgba(255,255,255,.25); color: rgba(197,201,208,.8); }
 .cc-ag-edit-msg, #cc-create-msg { font-size: 9px; color: var(--cc-brand-red, #c0392b); margin-top: 4px; min-height: 14px; }
 
 /* Memory panel (inside detail) */

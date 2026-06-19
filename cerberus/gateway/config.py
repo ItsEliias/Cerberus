@@ -60,6 +60,7 @@ class CerberusConfig:
     token: str
     username: str
     session_model: str
+    endpoint_id: str
 
     @classmethod
     def from_env(cls) -> "CerberusConfig":
@@ -68,6 +69,7 @@ class CerberusConfig:
             token=os.environ.get("CERBERUS_GATEWAY_TOKEN", ""),
             username=os.environ.get("CERBERUS_GATEWAY_USER", "gateway"),
             session_model=os.environ.get("CERBERUS_SESSION_MODEL", ""),
+            endpoint_id=os.environ.get("CERBERUS_GATEWAY_ENDPOINT_ID", ""),
         )
 
 
