@@ -1554,6 +1554,13 @@ _VERIFIER_EFFECTFUL_TOOLS = {
 }
 _VERIFIER_MAX_ROUNDS = 2  # cap re-verify cycles per turn — never loop forever
 
+# Tools whose output contains externally-sourced content that must be wrapped
+# with untrusted_context_message() before being fed back to the LLM.  Prevents
+# a malicious page / file from injecting instructions into the agent's context.
+_EXTERNALLY_SOURCED_TOOLS = frozenset({
+    "web_fetch", "web_search", "read_file", "grep",
+})
+
 
 def _build_actions_snapshot(tool_events: list, limit: int = 8000) -> str:
     """Compact record of what the agent actually did this turn, for the
@@ -2856,6 +2863,8 @@ async def stream_agent_loop(
                 _effectful_used = True
 
             formatted = format_tool_result(desc, result)
+            if block.tool_type in _EXTERNALLY_SOURCED_TOOLS:
+                formatted = untrusted_context_message(block.tool_type, formatted)["content"]
             tool_results.append(formatted)
             tool_result_texts.append(formatted)
 
