@@ -49,11 +49,11 @@ def test_all_required_fields_present():
         assert not missing, f"{agent.get('name')} missing: {missing}"
 
 
-def test_all_prompts_exceed_300_chars():
+def test_all_prompts_exceed_400_chars():
     for agent in _DEFAULT_AGENTS:
         length = len(agent["system_prompt"].strip())
-        assert length > 300, (
-            f"{agent['name']} prompt too short: {length} chars"
+        assert length > 400, (
+            f"{agent['name']} prompt too short: {length} chars (want > 400)"
         )
 
 
@@ -151,42 +151,55 @@ def test_migration_script_exists():
 
 
 # ---------------------------------------------------------------------------
-# Tests: skill files
+# Tests: skill files (8 skills across 3 categories)
 # ---------------------------------------------------------------------------
 
-SKILL_NAMES = [
-    "cerberus-security-invariants",
-    "cerberus-stack",
-    "nexus-hud-design-tokens",
-    "git-verification-protocol",
-    "adr-template",
-    "threat-model-template",
+_skills_root = Path(__file__).parent.parent / "data" / "skills"
+
+# (category, slug) pairs
+SKILLS = [
+    # cerberus category
+    ("cerberus", "cerberus-security-invariants"),
+    ("cerberus", "cerberus-stack"),
+    ("cerberus", "cerberus-known-gotchas"),
+    ("cerberus", "cerberus-api-surface"),
+    # engineering category
+    ("engineering", "git-verification-protocol"),
+    ("engineering", "adr-template"),
+    ("engineering", "threat-model-template"),
+    # design category
+    ("design", "nexus-hud-design-tokens"),
 ]
 
-_skills_root = Path(__file__).parent.parent / "data" / "skills" / "cerberus"
 
-
-def test_all_6_skill_files_exist():
-    missing = [s for s in SKILL_NAMES if not (_skills_root / s / "SKILL.md").exists()]
+def test_all_8_skill_files_exist():
+    missing = [
+        f"{cat}/{slug}/SKILL.md"
+        for cat, slug in SKILLS
+        if not (_skills_root / cat / slug / "SKILL.md").exists()
+    ]
     assert not missing, f"Missing skill files: {missing}"
 
 
 def test_skill_files_have_required_frontmatter():
     required_keys = ["name:", "description:", "version:", "category:", "tags:", "status:", "owner:", "created:"]
-    for skill_name in SKILL_NAMES:
-        content = (_skills_root / skill_name / "SKILL.md").read_text()
+    for cat, slug in SKILLS:
+        content = (_skills_root / cat / slug / "SKILL.md").read_text()
         for key in required_keys:
-            assert key in content, f"{skill_name}/SKILL.md missing frontmatter key: {key}"
+            assert key in content, f"{cat}/{slug}/SKILL.md missing frontmatter key: {key}"
 
 
 def test_skill_files_have_procedure_section():
-    for skill_name in SKILL_NAMES:
-        content = (_skills_root / skill_name / "SKILL.md").read_text()
-        assert "## Procedure" in content, f"{skill_name}/SKILL.md missing ## Procedure section"
-        assert "## When to Use" in content, f"{skill_name}/SKILL.md missing ## When to Use section"
+    for cat, slug in SKILLS:
+        content = (_skills_root / cat / slug / "SKILL.md").read_text()
+        assert "## Procedure" in content, f"{cat}/{slug}/SKILL.md missing ## Procedure section"
+        assert "## When to Use" in content, f"{cat}/{slug}/SKILL.md missing ## When to Use section"
 
 
-def test_skill_files_category_is_cerberus():
-    for skill_name in SKILL_NAMES:
-        content = (_skills_root / skill_name / "SKILL.md").read_text()
-        assert "category: cerberus" in content, f"{skill_name}/SKILL.md must have category: cerberus"
+def test_skill_files_category_matches_directory():
+    """The 'category:' frontmatter value must match the directory name."""
+    for cat, slug in SKILLS:
+        content = (_skills_root / cat / slug / "SKILL.md").read_text()
+        assert f"category: {cat}" in content, (
+            f"{cat}/{slug}/SKILL.md has wrong category — expected 'category: {cat}'"
+        )

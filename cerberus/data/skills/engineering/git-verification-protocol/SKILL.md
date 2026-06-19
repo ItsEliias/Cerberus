@@ -2,7 +2,7 @@
 name: git-verification-protocol
 description: How to verify work is done in Cerberus — committed and pushed to remote, never just local
 version: 1.0.0
-category: cerberus
+category: engineering
 tags: [git, verification, devops, protocol]
 status: published
 confidence: 1.0

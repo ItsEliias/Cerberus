@@ -2,7 +2,7 @@
 name: adr-template
 description: Architecture Decision Record template for Cerberus — captures context, options, and consequences
 version: 1.0.0
-category: cerberus
+category: engineering
 tags: [adr, architecture, documentation, decision]
 status: published
 confidence: 1.0

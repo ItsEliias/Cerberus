@@ -2,7 +2,7 @@
 name: threat-model-template
 description: Phase 0 threat model template for Cerberus features — STRIDE analysis before implementation
 version: 1.0.0
-category: cerberus
+category: engineering
 tags: [security, threat-model, stride, phase-0, planning]
 status: published
 confidence: 1.0
