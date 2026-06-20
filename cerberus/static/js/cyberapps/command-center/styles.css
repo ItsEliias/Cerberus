@@ -2535,3 +2535,36 @@
   .cc-shortcuts-overlay,
   .cc-quick-search-overlay { animation: none; }
 }
+
+/* ── Chat header: export-to-Markdown button ─────────────────
+ * HUD ghost button. The chat.js render is tracked separately
+ * (concurrent-session lock); class is shipped here so styling
+ * lands ahead of the markup. */
+.cc-chat-export-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 70%, transparent);
+  cursor: pointer;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  margin-left: 6px;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.cc-chat-export-btn:hover {
+  color: var(--cc-crimson, var(--red, #c0392b));
+  border-color: var(--cc-crimson, var(--red, #c0392b));
+  background: color-mix(in srgb, var(--cc-crimson, var(--red, #c0392b)) 8%, transparent);
+}
+.cc-chat-export-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.cc-chat-export-btn:focus-visible {
+  outline: 2px solid var(--cc-crimson, var(--red, #c0392b));
+  outline-offset: 2px;
+}

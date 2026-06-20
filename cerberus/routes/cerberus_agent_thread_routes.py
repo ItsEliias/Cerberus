@@ -2,6 +2,7 @@
 
 Endpoints:
   GET    /api/agents/{id}/thread               — get or create thread; returns message history
+  GET    /api/agents/{id}/thread/export        — download the full thread as a Markdown file
   POST   /api/agents/{id}/thread/send          — send a message, stream SSE reply, persist both sides
   DELETE /api/agents/{id}/thread               — clear all messages (keeps the thread row)
   GET    /api/agents/{id}/memories             — list per-agent memories for this owner
@@ -206,6 +207,68 @@ def _increment_invocation_count(agent_id: str) -> None:
                 pass
 
 
+def _export_filename(agent_name: str) -> str:
+    """Slugged, safely-quotable filename for the Markdown download.
+
+    Lowercases + collapses anything that isn't alphanumeric to a single hyphen
+    so the Content-Disposition value never needs escaping. Falls back to
+    "agent" when the slug would otherwise be empty (rare: all-symbol names)."""
+    import re
+    slug = re.sub(r"[^a-z0-9]+", "-", (agent_name or "").lower()).strip("-")
+    if not slug:
+        slug = "agent"
+    today = _utcnow().date().isoformat()
+    return f"cerberus-{slug}-{today}.md"
+
+
+def _render_thread_markdown(agent, messages, ctx_window: int) -> str:
+    """Build the Markdown body. messages = ordered list of AgentMessage rows.
+
+    Format mirrors the CC chat header — the agent's display name lives in the
+    title and per-assistant-turn heading; user turns are labelled **You**.
+    When `len(messages) > ctx_window`, an HTML comment is inserted above the
+    first message the agent's context actually saw (the trailing `ctx_window`
+    rows) noting how many earlier messages were dropped."""
+    name = (agent.name or "AGENT").strip()
+    name_upper = name.upper()
+    total = len(messages)
+    exported_at = _utcnow().date().isoformat()
+
+    lines: List[str] = [
+        f"# CERBERUS // {name_upper}",
+        f"*Exported {exported_at} — {total} message{'s' if total != 1 else ''}*",
+        "",
+        "---",
+        "",
+    ]
+
+    # Trim threshold: messages BEFORE this index were dropped from the agent's
+    # last-turn context. Computed once so the loop can flag the right row.
+    trim_at = total - ctx_window if total > ctx_window else -1
+
+    for i, msg in enumerate(messages):
+        if i == trim_at:
+            dropped = trim_at
+            lines.append(
+                f"<!-- {dropped} earlier message{'s' if dropped != 1 else ''} "
+                f"not included in agent context -->"
+            )
+            lines.append("")
+        role = (msg.role or "").lower()
+        header = "**You**" if role == "user" else f"**{name_upper}**"
+        ts = msg.timestamp.isoformat() if getattr(msg, "timestamp", None) else ""
+        meta = f"{header} · {ts}" if ts else header
+        content = (msg.content or "").rstrip()
+        lines.append(meta)
+        lines.append("")
+        lines.append(content)
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _save_assistant_message(thread_id: str, content: str) -> None:
     db = SessionLocal()
     try:
@@ -318,6 +381,49 @@ def setup_agent_thread_routes() -> APIRouter:
             return {"thread_id": thread.id, "messages": messages, "context_window": ctx_window}
         finally:
             db.close()
+
+    @router.get("/{agent_id}/thread/export")
+    def export_thread(agent_id: str, request: Request):
+        """Render the full thread as a Markdown file download.
+
+        Owner-scoped (same gate as GET /thread). Returns the entire history
+        — the context-window comment only annotates which messages the agent
+        itself actually saw on its most recent turn."""
+        from fastapi.responses import Response
+
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            agent = (
+                db.query(CerberusAgent)
+                .filter(CerberusAgent.id == agent_id, CerberusAgent.owner == owner)
+                .first()
+            )
+            if not agent:
+                raise HTTPException(404, "Agent not found")
+            thread = _get_or_create_thread(db, agent_id, owner)
+
+            from src.settings import get_setting
+            global_window = int(get_setting("agent_context_window", 20))
+            agent_window = getattr(agent, "context_window", None)
+            ctx_window = (
+                max(1, min(int(agent_window), 200)) if agent_window else global_window
+            )
+
+            messages = list(thread.messages)
+            body = _render_thread_markdown(agent, messages, ctx_window)
+
+        finally:
+            db.close()
+
+        filename = _export_filename(agent.name)
+        return Response(
+            content=body,
+            media_type="text/markdown; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+            },
+        )
 
     @router.post("/{agent_id}/thread/send")
     async def send_message(
