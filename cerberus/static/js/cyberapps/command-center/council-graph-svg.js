@@ -223,8 +223,11 @@ export function buildReplaySVG() {
 
 // Update replay edge states from agent turn sequence
 // turns: [{name: 'CODER', ...}, ...] ordered by timestamp; currentIdx = last item = active
-export function updateReplayEdges(svgEl, turns) {
+// opts.animate (default true): when false, the active edge skips the dashed-
+// stroke + ccg-edge-active pulse (used for prefers-reduced-motion clients).
+export function updateReplayEdges(svgEl, turns, opts = {}) {
   if (!svgEl) return;
+  const animate = opts.animate !== false;
   // Reset all edges to cold
   SPEC.forEach(name => {
     const e = svgEl.querySelector(`[data-redge="${CSS.escape(name)}"]`);
@@ -261,7 +264,17 @@ export function updateReplayEdges(svgEl, turns) {
   });
 
   const ae = svgEl.querySelector(`[data-redge="${CSS.escape(activeName)}"]`);
-  if (ae) { ae.style.stroke='rgba(192,57,43,.70)'; ae.style.strokeWidth='2'; ae.classList.add('ccg-edge-active'); ae.style.strokeDasharray='6 3'; }
+  if (ae) {
+    ae.style.stroke='rgba(192,57,43,.70)';
+    ae.style.strokeWidth='2';
+    if (animate) {
+      ae.classList.add('ccg-edge-active');
+      ae.style.strokeDasharray='6 3';
+    } else {
+      ae.classList.remove('ccg-edge-active');
+      ae.style.strokeDasharray='';
+    }
+  }
   const ag = svgEl.querySelector(`[data-rglow="${CSS.escape(activeName)}"]`);
   if (ag) ag.style.opacity='1';
   const an = svgEl.querySelector(`.ccg-rspec[data-spec="${CSS.escape(activeName)}"]`);

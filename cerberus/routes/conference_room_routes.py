@@ -12,8 +12,10 @@ Endpoints (all require auth):
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -22,7 +24,9 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from core.database import ConferenceRoom, RoomMessage, CerberusAgent, SessionLocal
+from core.database import (
+    CerberusAgent, ConferenceRoom, RoomMessage, RoutingEvent, SessionLocal,
+)
 from src.auth_helpers import require_user
 
 logger = logging.getLogger(__name__)
@@ -339,6 +343,63 @@ def setup_conference_room_routes() -> APIRouter:
 
         return StreamingResponse(_generate(), media_type="text/event-stream")
 
+    # ---- Routing-event SSE stream ----
+    @router.get("/{room_id}/events")
+    async def stream_routing_events(
+        room_id: str, request: Request,
+    ) -> StreamingResponse:
+        """Server-Sent Events stream of routing edges for the council graph.
+
+        Emits every existing RoutingEvent in seq order on connect (catch-up),
+        then polls every 500ms for new events. Sends a `: keepalive` comment
+        every 15s to keep idle proxies from closing the connection. Exits
+        cleanly on client disconnect (CancelledError / GeneratorExit)."""
+        owner = require_user(request)
+        # Validate ownership before opening the long-lived stream.
+        db = SessionLocal()
+        try:
+            _get_room_or_404(db, room_id, owner)
+        finally:
+            db.close()
+
+        async def _generate():
+            last_seq = -1
+            last_keepalive = time.monotonic()
+            try:
+                while True:
+                    db = SessionLocal()
+                    try:
+                        events = (
+                            db.query(RoutingEvent)
+                            .filter(
+                                RoutingEvent.room_id == room_id,
+                                RoutingEvent.seq > last_seq,
+                            )
+                            .order_by(RoutingEvent.seq.asc())
+                            .all()
+                        )
+                        for ev in events:
+                            payload = _routing_event_dict(ev)
+                            last_seq = ev.seq
+                            yield (
+                                "event: routing_event\n"
+                                f"data: {json.dumps(payload)}\n\n"
+                            )
+                    finally:
+                        db.close()
+
+                    now = time.monotonic()
+                    if now - last_keepalive >= 15:
+                        yield ": keepalive\n\n"
+                        last_keepalive = now
+
+                    await asyncio.sleep(0.5)
+            except (asyncio.CancelledError, GeneratorExit):
+                # Client closed the connection — exit cleanly without raising.
+                return
+
+        return StreamingResponse(_generate(), media_type="text/event-stream")
+
     return router
 
 
@@ -371,6 +432,17 @@ def _room_dict(room: ConferenceRoom) -> Dict[str, Any]:
         "round_cap": getattr(room, "round_cap", None) or 5,
         "total_input_tokens": getattr(room, "total_input_tokens", None) or 0,
         "total_output_tokens": getattr(room, "total_output_tokens", None) or 0,
+    }
+
+
+def _routing_event_dict(ev: RoutingEvent) -> Dict[str, Any]:
+    return {
+        "id": ev.id,
+        "room_id": ev.room_id,
+        "from_agent": ev.from_agent,
+        "to_agent": ev.to_agent,
+        "timestamp": ev.timestamp.isoformat() if ev.timestamp else None,
+        "seq": ev.seq,
     }
 
 
