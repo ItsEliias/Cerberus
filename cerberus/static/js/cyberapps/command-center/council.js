@@ -24,6 +24,19 @@ let _repTimer   = null;
 let _root       = null;
 let _visCb      = null;
 
+// Live SSE state for SESSION REPLAY mode. _evtSrc is the active EventSource;
+// _liveTurns is the ordered list of `to_agent` names rebuilt from routing
+// events so the graph can update without re-fetching the room transcript.
+let _evtSrc        = null;
+let _liveTurns     = [];
+let _liveConnected = false;
+// Reduced-motion preference: animations are skipped when set. We still update
+// data — only the per-edge transition frames are suppressed.
+let _reducedMotion = false;
+try {
+  _reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+} catch (_) { /* SSR / older browsers */ }
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 export function buildCouncilTab() {
@@ -31,7 +44,7 @@ export function buildCouncilTab() {
   <div class="ccg-toolbar">
     <div class="ccg-mode-btns">
       <button class="ccg-mode-btn active" data-mode="hierarchy">[ HIERARCHY ]</button>
-      <button class="ccg-mode-btn" data-mode="replay">[ SESSION REPLAY ]</button>
+      <button class="ccg-mode-btn" data-mode="replay" id="ccg-mode-replay-btn">[ SESSION REPLAY ]</button>
     </div>
     <div class="ccg-room-pick" id="ccg-room-pick">
       <span class="ccg-room-lbl">// ROOM</span>
@@ -93,6 +106,7 @@ export async function loadCouncil(root) {
 
 function _destroy() {
   _clearTimers();
+  _closeEventSource();
   if (_visCb) { document.removeEventListener('visibilitychange', _visCb); _visCb = null; }
   _agents   = [];
   _rooms    = [];
@@ -105,6 +119,22 @@ function _clearTimers() {
   if (_repTimer)   { clearInterval(_repTimer);   _repTimer   = null; }
 }
 
+function _closeEventSource() {
+  if (_evtSrc) {
+    try { _evtSrc.close(); } catch (_) {}
+    _evtSrc = null;
+  }
+  _liveConnected = false;
+  _liveTurns = [];
+}
+
+function _setReplayLabel(root, isLive) {
+  const btn = root?.querySelector('#ccg-mode-replay-btn');
+  if (!btn) return;
+  btn.textContent = isLive ? '[ LIVE ]' : '[ SESSION REPLAY ]';
+  btn.classList.toggle('ccg-mode-live', !!isLive);
+}
+
 async function _mountMode(root) {
   const thisMode = _mode;
   const rp = root.querySelector('#ccg-room-pick');
@@ -113,6 +143,8 @@ async function _mountMode(root) {
   if (thisMode === 'hierarchy') {
     if (rp) rp.style.display = 'none';
     if (tl) tl.style.display = 'none';
+    _closeEventSource();
+    _setReplayLabel(root, false);
     await _startHierarchyPoll(root);
   } else {
     if (rp) rp.style.display = 'flex';
@@ -197,9 +229,62 @@ function _populateRoomSelect(root) {
 
 async function _startReplayPoll(root) {
   _clearTimers();
+  _closeEventSource();
   if (!_selRoomId) { _showReplayEmpty(root); return; }
+  // One immediate replay fetch primes the graph with transcript history while
+  // the SSE stream is opening — the stream's catch-up emits the same routing
+  // edges and they coalesce in the rendered set.
   await _pollReplay(root);
-  _repTimer = setInterval(() => { if (!document.hidden) _pollReplay(root); }, 3000);
+  _startLiveStream(root);
+}
+
+function _startLiveStream(root) {
+  if (!_selRoomId || typeof EventSource === 'undefined') {
+    _fallbackToPolling(root);
+    return;
+  }
+  const roomId = _selRoomId;
+  try {
+    _evtSrc = new EventSource(
+      `${ROOMS_API}/${encodeURIComponent(roomId)}/events`,
+      { withCredentials: true },
+    );
+  } catch (_) {
+    _fallbackToPolling(root);
+    return;
+  }
+
+  _evtSrc.addEventListener('routing_event', (e) => {
+    if (_mode !== 'replay' || _selRoomId !== roomId || _root !== root) return;
+    if (!_liveConnected) {
+      _liveConnected = true;
+      _setReplayLabel(root, true);
+    }
+    let payload;
+    try { payload = JSON.parse(e.data); } catch (_) { return; }
+    const toAgent = (payload?.to_agent || '').toUpperCase();
+    if (!toAgent) return;
+    _liveTurns.push(toAgent);
+    _renderReplay(root, _liveTurns);
+  });
+
+  _evtSrc.onerror = () => {
+    // Browser will auto-retry the connection silently; but if it never came
+    // up (initial connect failed), fall through to polling so the graph
+    // still updates. Closing here prevents zombie retries.
+    if (!_liveConnected) {
+      _closeEventSource();
+      _fallbackToPolling(root);
+    }
+  };
+}
+
+function _fallbackToPolling(root) {
+  _setReplayLabel(root, false);
+  if (_repTimer) return; // already polling
+  _repTimer = setInterval(() => {
+    if (!document.hidden) _pollReplay(root);
+  }, 3000);
 }
 
 async function _pollReplay(root) {
@@ -227,7 +312,9 @@ function _renderReplay(root, turns) {
     _svgEl    = canvas.querySelector('svg');
     _svgBuilt = true;
   }
-  updateReplayEdges(_svgEl, turns);
+  // Reduced motion: skip per-edge transitions but still update the underlying
+  // graph state so the timeline + node visuals reflect the new turn.
+  updateReplayEdges(_svgEl, turns, { animate: !_reducedMotion });
   _renderTimeline(root, turns);
 }
 

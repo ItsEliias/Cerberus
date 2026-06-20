@@ -60,6 +60,13 @@
   outline: 2px solid var(--cc-crimson, #c0392b);
   outline-offset: 2px;
 }
+/* LIVE state: SSE-connected SESSION REPLAY button switches to a hot accent so
+   the user can tell at a glance that updates are real-time (vs polled). */
+.ccg-toolbar .ccg-mode-btn.ccg-mode-live {
+  color: var(--cc-crimson-hot, #ff6657);
+  border-color: var(--cc-crimson-hot, #ff6657);
+  background: var(--cc-crimson-glow, rgba(192,57,43,.18));
+}
 
 /* ── Room picker ─────────────────────────────────────────────────────────── */
 

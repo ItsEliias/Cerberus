@@ -2,6 +2,7 @@ import json
 import os
 import logging
 import sqlite3
+import uuid
 from datetime import datetime, timezone
 from sqlalchemy import event, create_engine, Column, String, Text, Boolean, DateTime, Integer, ForeignKey, JSON, Index, func, text
 from sqlalchemy.engine import Engine
@@ -811,6 +812,74 @@ class RoomMessage(Base):
     timestamp   = Column(DateTime, default=utcnow_naive)
 
     room = relationship("ConferenceRoom", back_populates="messages")
+
+
+class RoutingEvent(Base):
+    """Broadcast routing signal — emitted when an agent speaks in a room.
+    Consumed by the council graph SSE stream to animate edges in real time."""
+    __tablename__ = "routing_events"
+
+    id         = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    room_id    = Column(String, ForeignKey("conference_rooms.id", ondelete="CASCADE"),
+                        nullable=False, index=True)
+    from_agent = Column(String, nullable=True)   # sender_name; None = user prompt
+    to_agent   = Column(String, nullable=True)   # next routed agent; None = broadcast
+    timestamp  = Column(DateTime, default=utcnow_naive)
+    seq        = Column(Integer, nullable=False)  # monotonic per room, for ordering
+
+    __table_args__ = (
+        Index("ix_routing_events_room_seq", "room_id", "seq"),
+    )
+
+
+def _migrate_add_routing_events_table():
+    """Create the routing_events table if it doesn't yet exist.
+
+    Base.metadata.create_all() in init_db() already covers the fresh-DB case;
+    this helper is defensive cover for paths that bypass create_all (some test
+    setups, partial restores) and to make the schema migration discoverable
+    alongside the other _migrate_* helpers. Idempotent."""
+    import sqlite3
+    db_path = DATABASE_URL.replace("sqlite:///", "")
+    if not os.path.exists(db_path):
+        return
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='routing_events'"
+        )
+        if cursor.fetchone():
+            return
+        conn.execute(
+            """
+            CREATE TABLE routing_events (
+                id         TEXT PRIMARY KEY,
+                room_id    TEXT NOT NULL REFERENCES conference_rooms(id) ON DELETE CASCADE,
+                from_agent TEXT,
+                to_agent   TEXT,
+                timestamp  DATETIME,
+                seq        INTEGER NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS ix_routing_events_room_id "
+            "ON routing_events(room_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS ix_routing_events_room_seq "
+            "ON routing_events(room_id, seq)"
+        )
+        conn.commit()
+        logging.getLogger(__name__).info("Migrated: created 'routing_events' table")
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"routing_events migration failed: {e}")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 
 def _migrate_add_last_message_at_column():
@@ -1931,6 +2000,7 @@ def init_db():
     _migrate_add_owner_column()
     _migrate_add_document_archived_column()
     _migrate_add_last_message_at_column()
+    _migrate_add_routing_events_table()
     _migrate_add_folder_column()
     _migrate_add_token_columns()
     _migrate_add_mode_column()

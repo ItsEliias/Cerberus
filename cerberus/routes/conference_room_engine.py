@@ -149,6 +149,65 @@ def _persist_turn(
         logger.warning("_persist_turn failed: %s", exc)
     finally:
         db.close()
+    # Routing event write runs AFTER the main commit and in its own session so
+    # the room-send path never fails because of routing-graph bookkeeping.
+    _record_routing_event(db_factory, room_id, agent_name)
+
+
+def _record_routing_event(db_factory, room_id: str, to_agent: str) -> None:
+    """Append a RoutingEvent row for the council graph SSE stream.
+
+    Best-effort: any failure (schema mismatch, DB locked, missing room) is
+    swallowed at WARNING and never propagates to the caller. The current
+    turn's RoomMessage is already committed before this is called, so the
+    user-visible send path stays intact.
+
+    `from_agent` is derived from the message immediately prior to the one we
+    just persisted: None when the prior is a user prompt, else its
+    `sender_name`. `seq` is monotonic per room and starts at 0 — the next
+    seq is `(last_seq_for_room + 1)` or `0` when there are no prior events."""
+    db = None
+    try:
+        db = db_factory()
+        from core.database import RoomMessage, RoutingEvent
+
+        # Skip the most recent message (the one we just inserted) and look at
+        # the one before it to decide where this routing edge starts.
+        prior = (
+            db.query(RoomMessage)
+            .filter(RoomMessage.room_id == room_id)
+            .order_by(RoomMessage.timestamp.desc())
+            .offset(1)
+            .first()
+        )
+        from_agent = None
+        if prior is not None and prior.role == "agent":
+            from_agent = prior.sender_name
+
+        last_event = (
+            db.query(RoutingEvent)
+            .filter(RoutingEvent.room_id == room_id)
+            .order_by(RoutingEvent.seq.desc())
+            .first()
+        )
+        next_seq = (last_event.seq + 1) if last_event is not None else 0
+
+        db.add(RoutingEvent(
+            id=str(uuid.uuid4()),
+            room_id=room_id,
+            from_agent=from_agent,
+            to_agent=to_agent,
+            seq=next_seq,
+        ))
+        db.commit()
+    except Exception as exc:
+        logger.warning("_record_routing_event failed: %s", exc)
+    finally:
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                pass
 
 
 async def _agent_stream(
