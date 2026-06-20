@@ -1734,6 +1734,7 @@ async def stream_agent_loop(
     approved_plan: Optional[str] = None,
     tool_policy: Optional[ToolPolicy] = None,
     _is_teacher_run: bool = False,
+    agent_id: Optional[str] = None,
 ) -> AsyncGenerator[str, None]:
     """Streaming agent loop generator.
 
@@ -2628,6 +2629,26 @@ async def stream_agent_loop(
                     "blocked": True,
                 }
                 logger.info("Tool blocked before start by policy: %s", block.tool_type)
+            elif (
+                tool_policy
+                and tool_policy.approval_gated_tools
+                and block.tool_type in tool_policy.approval_gated_tools
+            ):
+                from src import agent_approval as _aa
+                _preview = block.content.strip()[:2000]
+                _req_id = _aa.store_pending(
+                    agent_id=agent_id or "",
+                    thread_id=session_id or "",
+                    tool_name=block.tool_type,
+                    tool_args={"content": block.content},
+                    preview=_preview,
+                )
+                logger.info("Approval gate: %s request_id=%s", block.tool_type, _req_id)
+                yield (
+                    f'data: {json.dumps({"type": "tool_approval_request", "request_id": _req_id, "tool": block.tool_type, "preview": _preview})}\n\n'
+                )
+                _awaiting_user = True
+                continue
             else:
                 yield (
                     f'data: {json.dumps({"type": "tool_start", "tool": block.tool_type, "command": cmd_display, "round": round_num})}\n\n'
