@@ -59,17 +59,22 @@ export function buildGatewayTab() {
       <span class="cc-gw-status-state">—</span>
     </div>
 
-    <div class="cc-gw-status-row cc-gw-status-pending" id="gw-status-pending" title="View pending approvals">
+    <div class="cc-gw-status-row cc-gw-status-pending" id="gw-status-pending" title="Jump to pending approvals">
       <span class="cc-gw-status-name">PENDING APPROVALS</span>
       <span class="cc-gw-status-badge" id="gw-status-pending-badge">0</span>
     </div>
-
-    <div class="cc-gw-status-pending-list" id="gw-status-pending-list" hidden></div>
 
     <div class="cc-gw-status-activity-label">RECENT ACTIVITY</div>
     <div class="cc-gw-status-activity" id="gw-status-activity">
       <div class="cc-gw-status-empty">No recent activity.</div>
     </div>
+  </div>
+
+  <!-- PENDING APPROVALS — owner-actionable cards.
+       Hidden when /api/gateway/approvals returns an empty list. -->
+  <div class="cc-gw-section cc-gw-approvals-section" id="gw-approvals-section" hidden>
+    <div class="cc-section-label">PENDING APPROVALS</div>
+    <div class="cc-gw-approvals-list" id="gw-approvals-list"></div>
   </div>
 
   <div class="cc-gw-section">
@@ -137,19 +142,32 @@ const _STATUS_POLL_KEY = '__gwStatusPollId';
 
 export function loadGateway(root) {
   _loadGatewayStatus(root);
+  _loadApprovals(root);
   _loadPlatforms(root);
   _loadJobs(root);
 
-  // Replace any previous interval owned by an earlier tab build.
+  // Replace any previous interval owned by an earlier tab build. The single
+  // 30s tick refreshes BOTH the status snapshot and the approvals list so
+  // there's only one wake-up per cycle.
   const prev = root && root[_STATUS_POLL_KEY];
   if (prev) clearInterval(prev);
   if (root) {
-    root[_STATUS_POLL_KEY] = setInterval(() => _loadGatewayStatus(root), _STATUS_POLL_MS);
+    root[_STATUS_POLL_KEY] = setInterval(() => {
+      _loadGatewayStatus(root);
+      _loadApprovals(root);
+    }, _STATUS_POLL_MS);
   }
 
-  // Click on PENDING APPROVALS row reveals the in-section list (and toggles).
+  // PENDING APPROVALS status row jumps focus to the approvals section.
   const pendRow = root.querySelector('#gw-status-pending');
-  if (pendRow) pendRow.addEventListener('click', () => _togglePendingList(root));
+  if (pendRow) pendRow.addEventListener('click', () => {
+    const section = root.querySelector('#gw-approvals-section');
+    if (section && !section.hidden) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  // Event delegation for dynamically-rendered approve/reject buttons.
+  const approvals = root.querySelector('#gw-approvals-list');
+  if (approvals) approvals.addEventListener('click', (e) => _onApprovalClick(root, e));
 
   const addBtn    = root.querySelector('#gw-add-btn');
   const cancelBtn = root.querySelector('#gw-cancel-btn');
@@ -237,36 +255,115 @@ function _renderRecentActivity(root, items) {
   `).join('');
 }
 
-function _togglePendingList(root) {
-  // Minimal in-section disclosure: list the tool names of currently-pending
-  // approvals. The dashboard endpoint only reports a count, so re-query it
-  // and surface whatever the activity feed shows + raw pending count text.
-  const list = root.querySelector('#gw-status-pending-list');
-  if (!list) return;
-  if (!list.hidden) {
-    list.hidden = true;
+// ---- Approval cards (backed by /api/gateway/approvals) -------------------
+
+async function _loadApprovals(root) {
+  if (!root || !root.querySelector) return;
+  const section = root.querySelector('#gw-approvals-section');
+  const list = root.querySelector('#gw-approvals-list');
+  if (!section || !list) return;
+  try {
+    const r = await fetch(`${BASE}/api/gateway/approvals`, { credentials: 'same-origin' });
+    if (!r.ok) {
+      section.hidden = true;
+      return;
+    }
+    const data = await r.json();
+    const items = Array.isArray(data.pending) ? data.pending : [];
+    _renderApprovals(root, items);
+  } catch (_) {
+    // Network drop — keep last-known cards visible rather than wiping them.
+  }
+}
+
+function _renderApprovals(root, items) {
+  const section = root.querySelector('#gw-approvals-section');
+  const list = root.querySelector('#gw-approvals-list');
+  if (!section || !list) return;
+  if (!items.length) {
+    section.hidden = true;
+    list.innerHTML = '';
     return;
   }
-  list.hidden = false;
-  list.innerHTML = '<div class="cc-gw-status-empty">Loading…</div>';
-  fetch(`${BASE}/api/gateway/status`, { credentials: 'same-origin' })
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(data => {
-      const n = Number(data.pending_approvals || 0);
-      if (n === 0) {
-        list.innerHTML = '<div class="cc-gw-status-empty">No pending approvals.</div>';
-        return;
-      }
-      // The status endpoint intentionally does not leak per-request details;
-      // surface the count + the most-recent activity so the owner can find
-      // the live approval queue (Discord channel, agent thread, etc.).
-      list.innerHTML = `
-        <div class="cc-gw-status-empty">${n} pending — see the source channel to approve or reject.</div>
-      `;
-    })
-    .catch(() => {
-      list.innerHTML = '<div class="cc-gw-status-empty">Failed to load.</div>';
-    });
+  section.hidden = false;
+  list.innerHTML = items.map(it => _buildApprovalCard(it)).join('');
+}
+
+function _buildApprovalCard(it) {
+  const rid = String(it.request_id || '');
+  const tool = String(it.tool || '');
+  const preview = String(it.preview || '');
+  return `
+    <div class="cc-gw-approval-card" data-id="${_esc(rid)}">
+      <div class="cc-gw-approval-tool">// ${_esc(tool)}</div>
+      <div class="cc-gw-approval-preview">${_esc(preview)}</div>
+      <div class="cc-gw-approval-actions">
+        <button class="cc-gw-approve-btn" data-id="${_esc(rid)}" data-action="approve">✓ APPROVE</button>
+        <button class="cc-gw-reject-btn"  data-id="${_esc(rid)}" data-action="reject">✕ REJECT</button>
+      </div>
+      <div class="cc-gw-approval-state" hidden></div>
+    </div>
+  `.trim();
+}
+
+function _onApprovalClick(root, e) {
+  const btn = e.target && e.target.closest && e.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+  if (!id || (action !== 'approve' && action !== 'reject')) return;
+  _decideApproval(root, id, action);
+}
+
+async function _decideApproval(root, id, action) {
+  const card = root.querySelector(`.cc-gw-approval-card[data-id="${CSS && CSS.escape ? CSS.escape(id) : id}"]`);
+  if (!card) return;
+  const buttons = card.querySelectorAll('button[data-action]');
+  const stateEl = card.querySelector('.cc-gw-approval-state');
+  // Disable BOTH buttons during the in-flight request to prevent double-submit.
+  buttons.forEach(b => { b.disabled = true; });
+  if (stateEl) { stateEl.hidden = false; stateEl.textContent = '// WAITING…'; stateEl.className = 'cc-gw-approval-state'; }
+
+  const method = action === 'approve' ? 'PATCH' : 'DELETE';
+  const url = `${BASE}/api/gateway/approve/${encodeURIComponent(id)}`;
+
+  try {
+    const r = await fetch(url, { method, credentials: 'same-origin' });
+    if (!r.ok) {
+      const detail = await _readErrorDetail(r);
+      _markCardFailure(card, buttons, stateEl, detail || `// FAILED (${r.status})`);
+      return;
+    }
+    // Success: brief in-card toast, then remove and refresh counts.
+    if (stateEl) {
+      stateEl.textContent = action === 'approve' ? '// APPROVED' : '// REJECTED';
+      stateEl.classList.add('cc-gw-approval-state--ok');
+    }
+    setTimeout(() => {
+      card.remove();
+      _loadGatewayStatus(root);    // refresh badge + recent activity
+      _loadApprovals(root);        // ensure section hides if list is now empty
+    }, 600);
+  } catch (_) {
+    _markCardFailure(card, buttons, stateEl, '// NETWORK ERROR');
+  }
+}
+
+async function _readErrorDetail(resp) {
+  try {
+    const j = await resp.json();
+    if (j && (j.detail || j.message)) return `// ${j.detail || j.message}`;
+  } catch (_) {}
+  return '';
+}
+
+function _markCardFailure(card, buttons, stateEl, message) {
+  buttons.forEach(b => { b.disabled = false; });
+  if (stateEl) {
+    stateEl.hidden = false;
+    stateEl.textContent = message;
+    stateEl.className = 'cc-gw-approval-state cc-gw-approval-state--err';
+  }
 }
 
 // ---- Platform status ----
