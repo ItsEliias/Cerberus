@@ -797,6 +797,10 @@ app.include_router(setup_gateway_approval_routes())
 from routes.gateway_status_routes import setup_gateway_status_routes
 app.include_router(setup_gateway_status_routes())
 
+# Mobile-optimised endpoints for the CerberusAndroid client.
+from routes.mobile_routes import setup_mobile_routes
+app.include_router(setup_mobile_routes())
+
 # Room templates must register BEFORE the generic conference_room_routes — the
 # `/api/rooms/{room_id}` matcher would otherwise eat `/api/rooms/templates`.
 from routes.room_template_routes import setup_room_template_routes
