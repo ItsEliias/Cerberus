@@ -174,6 +174,7 @@ function _agentRow(agent) {
   <span class="cc-row-role">${_esc(agent.role || agent.agent_type || '—')}</span>
   <span class="cc-row-model">${_esc(agent.model_alias || '—')}</span>
   <span class="cc-row-score">${score}</span>
+  <span class="cc-ag-invoke-count" title="Total invocations">↑ ${_esc(agent.invocation_count || 0)}</span>
   <span class="cc-row-actions">
     <button class="cc-row-btn cc-row-btn-chat">Chat</button>
     <button class="cc-row-btn cc-row-btn-invoke">Run</button>
