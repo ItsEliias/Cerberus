@@ -16,6 +16,7 @@ import { buildGatewayTab, loadGateway } from './gateway.js';
 import { buildAgentsTab, loadAgents } from './agents.js';
 import { buildRoomsTab, loadRooms } from './rooms.js';
 import { buildObservabilityTab, loadObservability } from './observability.js';
+import { initShortcuts, destroyShortcuts } from './shortcuts.js';
 import * as Poll from './poll.js';
 
 // Inject CC stylesheet once — version param busts browser/SW cache on updates
@@ -60,6 +61,7 @@ export function init(container, _ctx) {
 export function destroy() {
   Poll.destroy();
   destroyAssistant();
+  destroyShortcuts();
   if (_clockTimer) { clearInterval(_clockTimer); _clockTimer = null; }
   _container = _orbWrap = null;
 }
@@ -117,6 +119,7 @@ function _render() {
   _mountTab('command', shell);
   Poll.start(_pollCallbacks(shell));
   _startGatewayBadgePoll(shell);
+  initShortcuts(shell, TABS);
 }
 
 // ---- GATEWAY tab pending-approval badge ----

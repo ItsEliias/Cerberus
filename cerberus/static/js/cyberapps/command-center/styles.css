@@ -2363,3 +2363,175 @@
   font-size: 10px; letter-spacing: 0.06em;
   color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 45%, transparent);
 }
+
+/* ── Keyboard shortcuts: help overlay + quick-search overlay ──────────── */
+/* Both overlays share the same backdrop pattern. Token colours only —
+ * --cc-void, --cc-border, --cc-crimson, --cc-fg. Reduced motion drops the
+ * fade animation per the prefers-reduced-motion block at the bottom. */
+
+.cc-shortcuts-overlay,
+.cc-quick-search-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 12vh;
+  background: color-mix(in srgb, var(--cc-void, #060708) 88%, transparent);
+  backdrop-filter: blur(4px);
+  animation: cc-shortcut-fade-in 160ms ease-out both;
+}
+.cc-shortcuts-overlay { padding-top: 18vh; }
+
+@keyframes cc-shortcut-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Help overlay — small centered panel, two-column table */
+
+.cc-shortcuts-panel {
+  width: min(420px, 92vw);
+  background: var(--cc-void-mid, #0d0f12);
+  border: 1px solid var(--cc-border, #3a2a2a);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cc-crimson, #c0392b) 18%, transparent),
+              0 20px 60px rgba(0,0,0,0.55);
+  padding: 14px 16px 16px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.cc-shortcuts-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.cc-shortcuts-title {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.18em;
+  color: var(--cc-crimson, #c0392b);
+}
+
+.cc-shortcuts-close {
+  background: transparent;
+  border: 1px solid var(--cc-border, #3a2a2a);
+  color: color-mix(in srgb, var(--cc-fg, #c5c9d0) 70%, transparent);
+  font-size: 14px; line-height: 1;
+  padding: 1px 7px 3px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cc-shortcuts-close:hover {
+  border-color: var(--cc-crimson, #c0392b);
+  color: var(--cc-crimson, #c0392b);
+}
+.cc-shortcuts-close:focus-visible {
+  outline: 2px solid var(--cc-crimson, #c0392b); outline-offset: 2px;
+}
+
+.cc-shortcuts-table {
+  width: 100%; border-collapse: collapse;
+}
+.cc-shortcuts-table tr + tr td { border-top: 1px solid color-mix(in srgb, var(--cc-border, #3a2a2a) 60%, transparent); }
+.cc-shortcuts-table td { padding: 7px 6px; vertical-align: middle; }
+
+.cc-sc-key {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px; letter-spacing: 0.04em;
+  color: var(--cc-fg, #c5c9d0);
+  width: 32%; white-space: nowrap;
+}
+
+.cc-sc-desc {
+  font-size: 10.5px; letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--cc-fg, #c5c9d0) 55%, transparent);
+}
+
+/* Quick-search overlay — full-width input + result list */
+
+.cc-quick-search-panel {
+  width: min(560px, 92vw);
+  background: var(--cc-void-mid, #0d0f12);
+  border: 1px solid var(--cc-border, #3a2a2a);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cc-crimson, #c0392b) 18%, transparent),
+              0 22px 60px rgba(0,0,0,0.55);
+  overflow: hidden;
+}
+
+.cc-quick-search-input {
+  display: block; width: 100%; box-sizing: border-box;
+  padding: 12px 14px;
+  background: var(--cc-void, #060708);
+  border: none;
+  border-bottom: 1px solid var(--cc-border, #3a2a2a);
+  color: var(--cc-fg, #c5c9d0);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px; letter-spacing: 0.04em;
+  outline: none;
+}
+.cc-quick-search-input::placeholder {
+  color: color-mix(in srgb, var(--cc-fg, #c5c9d0) 35%, transparent);
+}
+.cc-quick-search-input:focus-visible {
+  outline: 2px solid var(--cc-crimson, #c0392b); outline-offset: -2px;
+}
+
+.cc-quick-search-results {
+  list-style: none; margin: 0; padding: 4px 0;
+  max-height: 50vh; overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--cc-crimson, #c0392b) 28%, transparent) transparent;
+}
+
+.cc-quick-search-item {
+  display: grid; grid-template-columns: 30px 1fr auto;
+  gap: 10px; align-items: baseline;
+  padding: 7px 14px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+.cc-quick-search-item:hover {
+  background: color-mix(in srgb, var(--cc-crimson, #c0392b) 8%, transparent);
+}
+.cc-quick-search-item.selected {
+  border-left-color: var(--cc-crimson, #c0392b);
+  background: color-mix(in srgb, var(--cc-crimson, #c0392b) 14%, transparent);
+}
+
+.cc-sr-tag {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 8px; letter-spacing: 0.14em;
+  padding: 2px 5px;
+  border: 1px solid var(--cc-border, #3a2a2a);
+  border-radius: 2px;
+  color: color-mix(in srgb, var(--cc-fg, #c5c9d0) 55%, transparent);
+  text-align: center;
+}
+.cc-sr-tag--agent { color: var(--cc-crimson, #c0392b); border-color: color-mix(in srgb, var(--cc-crimson, #c0392b) 55%, transparent); }
+.cc-sr-tag--room  { color: var(--cc-ok, #27ae60);     border-color: color-mix(in srgb, var(--cc-ok, #27ae60)     55%, transparent); }
+
+.cc-sr-name {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 11.5px; letter-spacing: 0.06em;
+  color: var(--cc-fg, #c5c9d0);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cc-quick-search-item.selected .cc-sr-name { color: var(--cc-crimson, #c0392b); }
+
+.cc-sr-sub {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px; letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--cc-fg, #c5c9d0) 45%, transparent);
+}
+
+.cc-quick-search-empty {
+  list-style: none;
+  padding: 16px 14px;
+  text-align: center;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px; letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--cc-fg, #c5c9d0) 40%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-shortcuts-overlay,
+  .cc-quick-search-overlay { animation: none; }
+}
