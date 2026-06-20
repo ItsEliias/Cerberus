@@ -26,6 +26,43 @@ SRC += '\nthis.__t = __testables;';
 
 // ── Minimal DOM ─────────────────────────────────────────────────────────
 
+function* _walkChildren(node) {
+  for (const c of node._children || []) {
+    yield c;
+    yield* _walkChildren(c);
+  }
+}
+
+// Tiny compiler for `#id`, `.cls`, `.cls.cls2`, and the trivial
+// `.cls[attr="val"]` form. Returns a predicate node ⇒ boolean.
+function _compileSelector(sel) {
+  const parts = sel.trim().split(/\s+/);
+  const last  = parts[parts.length - 1];
+  // Pull off an optional [attr="val"] tail
+  const attrM = /\[([\w-]+)="?([^"\]]*)"?\]$/.exec(last);
+  const baseStr = attrM ? last.slice(0, -attrM[0].length) : last;
+  const attrName = attrM ? attrM[1] : null;
+  const attrVal  = attrM ? attrM[2] : null;
+  const ids     = [];
+  const classes = [];
+  baseStr.split(/(?=[#.])/).forEach(tok => {
+    if (tok.startsWith('#')) ids.push(tok.slice(1));
+    else if (tok.startsWith('.')) classes.push(tok.slice(1));
+  });
+  return (node) => {
+    for (const id of ids)  if (node._attrs?.id !== id) return false;
+    for (const c  of classes) if (!node._classes?.has(c)) return false;
+    if (attrName) {
+      const key = attrName.startsWith('data-')
+        ? attrName.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())
+        : null;
+      const got = key ? node.dataset?.[key] : node._attrs?.[attrName];
+      if (got !== attrVal) return false;
+    }
+    return true;
+  };
+}
+
 function makeElement(tag = 'div') {
   const el = {
     tagName: tag.toUpperCase(),
@@ -104,14 +141,19 @@ function makeElement(tag = 'div') {
     removeEventListener() {},
     querySelector(sel) {
       if (!sel) return null;
-      if (sel.startsWith('#')) return this._idIndex.get(sel.slice(1)) || null;
-      if (sel.startsWith('.')) {
-        const list = this._classIndex.get(sel.slice(1));
-        return list && list[0] || null;
-      }
+      // Walk descendants directly so tests can build trees by push() too,
+      // not only via innerHTML — and so compound class selectors work.
+      const match = _compileSelector(sel);
+      for (const c of _walkChildren(this)) if (match(c)) return c;
       return null;
     },
-    querySelectorAll() { return []; },
+    querySelectorAll(sel) {
+      if (!sel) return [];
+      const match = _compileSelector(sel);
+      const out = [];
+      for (const c of _walkChildren(this)) if (match(c)) out.push(c);
+      return out;
+    },
     closest() { return null; },
     focus() { _DOC.activeElement = this; },
     blur() { _DOC.activeElement = _DOC.body; },
@@ -178,10 +220,20 @@ function makeSandbox() {
     return r;
   };
 
+  // dispatchEvent + CustomEvent — needed by the `p` shortcut test which
+  // dispatches `cerberus:open-profile`. The existing _docListeners list
+  // is the same one _fireKey iterates, so we just reuse it.
+  _DOC.dispatchEvent = (event) => {
+    const name = event && event.type;
+    if (!name) return true;
+    (_DOC._docListeners[name] || []).forEach(cb => cb(event));
+    return true;
+  };
   const sandbox = {
     document: _DOC,
     window: {},
     CSS: { escape: (s) => String(s).replace(/[^a-zA-Z0-9_-]/g, '\\$&') },
+    CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init?.detail; } },
     setTimeout: (fn) => { try { fn(); } catch (_) {} return 0; },
     clearTimeout: () => {},
     Math, Date, String, Number, Array, Object, Set, Map, JSON, Promise, console,
@@ -278,4 +330,90 @@ test('Cmd+K opens search even while typing in an input', () => {
   sb.__t.onKeyDown(ev);
   assert.equal(sb.__t.STATE.searchOpen, true, 'Cmd+K should bypass typing-target suppression');
   assert.equal(ev._prevented, true, 'Cmd+K should preventDefault');
+});
+
+// ── Expansion (this PR) ───────────────────────────────────────────────
+
+test('Cmd+/ toggles help from anywhere (works while typing)', () => {
+  const sb = makeSandbox();
+  sb.__t.STATE.inited = true;
+
+  // From a focused input: still works (always-on combo)
+  const input = makeElement('input');
+  let ev = _DOC._fireKey({ key: '/', metaKey: true, target: input });
+  sb.__t.onKeyDown(ev);
+  assert.equal(sb.__t.STATE.helpOpen, true, 'Cmd+/ opens help from inside an input');
+  assert.equal(ev._prevented, true, 'Cmd+/ preventDefault');
+
+  // Pressing again closes it
+  ev = _DOC._fireKey({ key: '/', metaKey: true, target: input });
+  sb.__t.onKeyDown(ev);
+  assert.equal(sb.__t.STATE.helpOpen, false, 'Cmd+/ closes help on second press');
+});
+
+test('Cmd+Enter fires the submit hook for the active tab', () => {
+  const sb = makeSandbox();
+  sb.__t.STATE.inited = true;
+
+  // Mock a shell with #cc-tab-content + a "compare" active-tab pill +
+  // a .cc-compare-run-btn for the submit selector to find.
+  const shell = makeElement('div');
+  const activeTabBtn = makeElement('button');
+  activeTabBtn._classes.add('cc-tab-btn');
+  activeTabBtn._classes.add('active');
+  activeTabBtn.dataset = { tab: 'compare' };
+  shell._children.push(activeTabBtn);
+
+  const content = makeElement('div');
+  content._attrs.id = 'cc-tab-content';
+  const runBtn = makeElement('button');
+  runBtn._classes.add('cc-compare-run-btn');
+  let clicked = 0;
+  runBtn.click = () => { clicked++; };
+  content._children.push(runBtn);
+  shell._children.push(content);
+
+  sb.__t.STATE.shell = shell;
+
+  // Focus is on a textarea — Cmd+Enter still fires (always-on combo).
+  const ta = makeElement('textarea');
+  const ev = _DOC._fireKey({ key: 'Enter', metaKey: true, target: ta });
+  sb.__t.onKeyDown(ev);
+  assert.equal(clicked, 1, 'Cmd+Enter clicked the COMPARE RUN button');
+  assert.equal(ev._prevented, true, 'Cmd+Enter preventDefault when submit fired');
+});
+
+test('p dispatches the cerberus:open-profile custom event', () => {
+  const sb = makeSandbox();
+  sb.__t.STATE.inited = true;
+
+  let received = 0;
+  _DOC.addEventListener('cerberus:open-profile', () => { received++; });
+
+  // From the body (no typing target)
+  const ev = _DOC._fireKey({ key: 'p', target: _DOC.body });
+  sb.__t.onKeyDown(ev);
+  assert.equal(received, 1, 'event dispatched on p');
+
+  // p is suppressed when typing
+  const input = makeElement('input');
+  const ev2 = _DOC._fireKey({ key: 'p', target: input });
+  sb.__t.onKeyDown(ev2);
+  assert.equal(received, 1, 'p suppressed when target is INPUT');
+});
+
+test('quick-search overlay renders the hint bar (↑↓ navigate · ↵ select · Esc close)', () => {
+  const sb = makeSandbox();
+  sb.__t.STATE.inited = true;
+
+  sb.__t.openSearch();
+  const overlay = _DOC.getElementById('cc-quick-search');
+  assert.ok(overlay, 'overlay mounted');
+  // The mock stores the template verbatim in _innerHTML; assert on the
+  // chunks that prove the hint bar was emitted.
+  const html = overlay._innerHTML;
+  assert.match(html, /cc-quick-search-hint/, 'hint bar present');
+  assert.match(html, /<kbd>↑↓<\/kbd>/, 'navigate hint');
+  assert.match(html, /<kbd>↵<\/kbd>/,    'select hint');
+  assert.match(html, /<kbd>Esc<\/kbd>/,   'close hint');
 });
