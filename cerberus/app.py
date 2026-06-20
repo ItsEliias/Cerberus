@@ -801,6 +801,12 @@ app.include_router(setup_gateway_status_routes())
 from routes.mobile_routes import setup_mobile_routes
 app.include_router(setup_mobile_routes())
 
+# CC email composer — owner-only allowlisted send. Separate from the main
+# /api/email/send so the GATEWAY_EMAIL_ALLOWLIST guard doesn't leak into
+# other email flows (drafts, replies, signed mail, scheduled mail, etc.).
+from routes.email_compose_routes import setup_email_compose_routes
+app.include_router(setup_email_compose_routes())
+
 # Room templates must register BEFORE the generic conference_room_routes — the
 # `/api/rooms/{room_id}` matcher would otherwise eat `/api/rooms/templates`.
 from routes.room_template_routes import setup_room_template_routes
