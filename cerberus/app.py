@@ -774,6 +774,9 @@ app.include_router(setup_agent_thread_routes())
 # V4 Phase 4a — gateway approve/reject endpoints for tool calls raised from
 # inbound gateway (Discord/Telegram/Slack) sessions.
 app.include_router(setup_gateway_approval_routes())
+# Gateway dashboard — GET /api/gateway/status snapshot for the CC HUD.
+from routes.gateway_status_routes import setup_gateway_status_routes
+app.include_router(setup_gateway_status_routes())
 
 # Room templates must register BEFORE the generic conference_room_routes — the
 # `/api/rooms/{room_id}` matcher would otherwise eat `/api/rooms/templates`.

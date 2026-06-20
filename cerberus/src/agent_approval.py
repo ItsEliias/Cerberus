@@ -146,3 +146,30 @@ def count_executed_today(agent_id: str, thread_id: str, tool_name: str) -> int:
             and e["status"] == "executed"
             and e["created_at"] >= cutoff
         )
+
+
+def count_pending() -> int:
+    """Total non-expired pending approvals across all sessions/agents.
+
+    Used by the gateway status endpoint for the dashboard badge."""
+    now = time.time()
+    with _lock:
+        return sum(
+            1
+            for e in _store.values()
+            if e["status"] == "pending"
+            and now - e["created_at"] <= _TTL_SECONDS
+        )
+
+
+def list_recent_executed(limit: int = 5) -> list:
+    """Return up to `limit` recently-executed approvals, newest first.
+
+    Each entry is a shallow copy of the stored dict — caller may safely
+    mutate or serialize without affecting the live store."""
+    with _lock:
+        executed = [
+            dict(e) for e in _store.values() if e["status"] == "executed"
+        ]
+    executed.sort(key=lambda e: e["created_at"], reverse=True)
+    return executed[: max(0, int(limit))]

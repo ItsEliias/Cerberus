@@ -116,6 +116,48 @@ function _render() {
   _startClock(shell);
   _mountTab('command', shell);
   Poll.start(_pollCallbacks(shell));
+  _startGatewayBadgePoll(shell);
+}
+
+// ---- GATEWAY tab pending-approval badge ----
+// Polls /api/gateway/status from the CC shell so the GATEWAY tab pill shows
+// the pending-approval count even when the user is on another tab. Visible
+// only when count > 0; styled crimson via tokens (see styles.css).
+const _GW_BADGE_POLL_MS = 60_000;
+const _GW_BADGE_TIMER_KEY = '__gwBadgeTimer';
+
+function _startGatewayBadgePoll(shell) {
+  if (!shell) return;
+  const prev = shell[_GW_BADGE_TIMER_KEY];
+  if (prev) clearInterval(prev);
+  _refreshGatewayBadge(shell);
+  shell[_GW_BADGE_TIMER_KEY] = setInterval(() => _refreshGatewayBadge(shell), _GW_BADGE_POLL_MS);
+}
+
+async function _refreshGatewayBadge(shell) {
+  if (!shell || !shell.querySelector) return;
+  try {
+    const r = await fetch('/api/gateway/status', { credentials: 'same-origin' });
+    if (!r.ok) return _setGatewayBadge(shell, 0);
+    const data = await r.json();
+    _setGatewayBadge(shell, Number(data.pending_approvals || 0));
+  } catch (_) {
+    _setGatewayBadge(shell, 0);
+  }
+}
+
+function _setGatewayBadge(shell, count) {
+  const btn = shell.querySelector('.cc-tab-btn[data-tab="gateway"]');
+  if (!btn) return;
+  let badge = btn.querySelector('.cc-tab-badge');
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.className = 'cc-tab-badge';
+    btn.appendChild(badge);
+  }
+  badge.textContent = String(count);
+  if (count > 0) badge.removeAttribute('hidden');
+  else badge.setAttribute('hidden', '');
 }
 
 // ---- Tab switching ----
