@@ -228,38 +228,6 @@ function _jxAnimateNum(el, toVal, suffix, key) {
   }
 }
 
-// ---- Phase C: mock ops data (FLAG 2 & 3 — replace with live endpoints) ----
-
-function _mockTasksHTML() {
-  const TASKS = [
-    { id: 'T-001', title: 'Context summarisation', status: 'running',  agent: 'summarizer', elapsed: '2m 14s' },
-    { id: 'T-002', title: 'Memory consolidation',  status: 'queued',   agent: 'memory',     elapsed: '—' },
-    { id: 'T-003', title: 'File index refresh',    status: 'running',  agent: 'indexer',    elapsed: '48s' },
-  ];
-  return TASKS.map(t => {
-    const dotClass = t.status === 'running' ? 'running' : 'standby';
-    return `<div class="cc-task-row">
-      <span class="cc-dot ${dotClass}"></span>
-      <span class="cc-task-id">${t.id}</span>
-      <span class="cc-task-title">${t.title}</span>
-      <span class="cc-task-agent">${t.agent}</span>
-      <span class="cc-task-elapsed">${t.elapsed}</span>
-    </div>`;
-  }).join('');
-}
-
-function _mockModelHTML() {
-  return `
-    <div class="cc-model-row"><span class="cc-model-lbl">MODEL</span><span class="cc-model-val" id="cc-model-name">claude-sonnet-4-6</span></div>
-    <div class="cc-model-row"><span class="cc-model-lbl">CTX USED</span>
-      <div class="cc-model-bar-wrap"><div class="cc-model-bar" style="width:34%"></div></div>
-      <span class="cc-model-val cc-model-pct">34%</span>
-    </div>
-    <div class="cc-model-row"><span class="cc-model-lbl">CTX LIMIT</span><span class="cc-model-val">200K</span></div>
-    <div class="cc-model-row"><span class="cc-model-lbl">STATUS</span><span class="cc-model-val cc-model-ok">READY</span></div>
-  `.trim();
-}
-
 // ---- Build HTML ----
 
 export function buildCommandTab() {
@@ -328,7 +296,7 @@ export function buildCommandTab() {
     </div>
     <div class="cc-card cc-card-model">
       <div class="cc-card-title">Model Status</div>
-      <div class="cc-model-panel" id="cc-model-panel">${_mockModelHTML()}</div>
+      <div class="cc-model-panel" id="cc-model-panel"><div class="cc-empty">Loading…</div></div>
     </div>
   </div>
   <div class="cc-hero-globe">
@@ -431,30 +399,48 @@ export function applyGateway(root, gw) {
   }
 }
 
-// Live model status — /api/model/status (FLAG 3)
+// Live model status — /api/model/status.
+//
+// The backend route returns {model, ctx_used, ctx_limit}. ctx_used is not
+// tracked server-side (per-session client state) so it's always 0 — when
+// usage data isn't actually available we suppress the CTX USED row entirely
+// rather than rendering a fake 0% bar, per the design brief.
 export function applyModelStatus(root, status) {
   const panel = root.querySelector('#cc-model-panel');
   if (!panel || !status) return;
   const used  = status.ctx_used  ?? 0;
   const limit = status.ctx_limit ?? 0;
-  const pct   = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
-  const limitLabel = limit >= 1000 ? Math.round(limit / 1000) + 'K' : limit || '—';
-  panel.innerHTML = `
-    <div class="cc-model-row"><span class="cc-model-lbl">MODEL</span><span class="cc-model-val">${_esc(status.model || '—')}</span></div>
-    <div class="cc-model-row"><span class="cc-model-lbl">CTX USED</span>
+  const haveUsage = used > 0 && limit > 0;
+  const pct   = haveUsage ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const limitLabel = limit >= 1000 ? Math.round(limit / 1000) + 'K' : (limit || '—');
+  const provider = status.provider || status.endpoint || status.endpoint_name || '';
+  const ready = status.status ? String(status.status).toUpperCase() : 'READY';
+  // .cc-model-ok already styles the OK / READY chip; the error states reuse
+  // it but we'll inline a colour override via the `ready` text so we don't
+  // need to ship a new selector while styles.css is locked elsewhere.
+  const readyClass = 'cc-model-ok';
+  const rows = [
+    `<div class="cc-model-row"><span class="cc-model-lbl">MODEL</span><span class="cc-model-val">${_esc(status.model || '—')}</span></div>`,
+  ];
+  if (provider) {
+    rows.push(`<div class="cc-model-row"><span class="cc-model-lbl">PROVIDER</span><span class="cc-model-val">${_esc(provider)}</span></div>`);
+  }
+  if (haveUsage) {
+    rows.push(`<div class="cc-model-row"><span class="cc-model-lbl">CTX USED</span>
       <div class="cc-model-bar-wrap"><div class="cc-model-bar" style="width:${pct}%"></div></div>
       <span class="cc-model-val cc-model-pct">${pct}%</span>
-    </div>
-    <div class="cc-model-row"><span class="cc-model-lbl">CTX LIMIT</span><span class="cc-model-val">${_esc(limitLabel)}</span></div>
-    <div class="cc-model-row"><span class="cc-model-lbl">STATUS</span><span class="cc-model-val cc-model-ok">READY</span></div>
-  `.trim();
+    </div>`);
+  }
+  rows.push(`<div class="cc-model-row"><span class="cc-model-lbl">CTX LIMIT</span><span class="cc-model-val">${_esc(limitLabel)}</span></div>`);
+  rows.push(`<div class="cc-model-row"><span class="cc-model-lbl">STATUS</span><span class="cc-model-val ${readyClass}">${_esc(ready)}</span></div>`);
+  panel.innerHTML = rows.join('');
 }
 
-// Live tasks — replace mock once /api/tasks/active exists (FLAG 2)
+// Live tasks — GET /api/tasks/active returns {tasks: [{id, title, status, agent, started_at}]}.
 export function applyTasks(root, tasks) {
   const feed = root.querySelector('#cc-tasks-feed');
   if (!feed || !Array.isArray(tasks)) return;
-  if (!tasks.length) { feed.innerHTML = '<div class="cc-empty">No running tasks</div>'; return; }
+  if (!tasks.length) { feed.innerHTML = '<div class="cc-empty">// NO ACTIVE TASKS</div>'; return; }
   feed.innerHTML = tasks.map(t => {
     const dotClass = t.status === 'running' ? 'running' : t.status === 'active' ? 'active' : 'standby';
     const elapsed = t.started_at ? _gwRelative(t.started_at).replace(' ago', '') : '—';
@@ -466,4 +452,58 @@ export function applyTasks(root, tasks) {
       <span class="cc-task-elapsed">${elapsed}</span>
     </div>`;
   }).join('');
+}
+
+// ─── Live data loaders (initial paint on tab mount) ────────────────────────
+//
+// Poll.js drives the periodic updates via the existing on{Tasks,ModelStatus}
+// callbacks. These two helpers run a single fetch on tab mount so the first
+// paint doesn't rely on the ~8s poll cadence and surface error states the
+// poll layer would silently swallow.
+
+export async function _loadActiveTasks(root) {
+  const feed = root?.querySelector('#cc-tasks-feed');
+  if (!feed) return;
+  try {
+    const res = await fetch('/api/tasks/active', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const tasks = Array.isArray(data) ? data : (data.tasks || []);
+    applyTasks(root, tasks);
+  } catch (_) {
+    feed.innerHTML = '<div class="cc-empty">// TASK FEED UNAVAILABLE</div>';
+  }
+}
+
+export async function _loadModelInfo(root) {
+  const panel = root?.querySelector('#cc-model-panel');
+  if (!panel) return;
+  try {
+    const res = await fetch('/api/model/status', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    applyModelStatus(root, await res.json());
+  } catch (_) {
+    panel.innerHTML = '<div class="cc-empty">// MODEL STATUS UNAVAILABLE</div>';
+  }
+}
+
+// Tab-lifecycle entrypoint — mirrors loadFinance/loadRooms/etc in shape so
+// the index.js shell can call it after `content.innerHTML = buildCommandTab()`.
+// Polls /api/tasks/active every 10s while the tab is visible; cleans up on
+// tab leave via the returned destructor (also auto-cleared on next mount).
+let _cmdTaskPollTimer = null;
+
+export async function loadCommandTab(root) {
+  destroyCommandTab();
+  await Promise.all([_loadActiveTasks(root), _loadModelInfo(root)]);
+  _cmdTaskPollTimer = setInterval(() => {
+    if (!document.hidden) _loadActiveTasks(root);
+  }, 10_000);
+}
+
+export function destroyCommandTab() {
+  if (_cmdTaskPollTimer) {
+    clearInterval(_cmdTaskPollTimer);
+    _cmdTaskPollTimer = null;
+  }
 }

@@ -7,7 +7,7 @@
  * Self-registers with window.CYBER_APPS_REGISTRY using unshift() (priority: first).
  */
 
-import { buildCommandTab, applyVitals, applyTimeseries, applySwarm, applyAgents, applyGateway, applyTasks, applyModelStatus } from './command.js';
+import { buildCommandTab, applyVitals, applyTimeseries, applySwarm, applyAgents, applyGateway, applyTasks, applyModelStatus, loadCommandTab, destroyCommandTab } from './command.js';
 import { buildCouncilTab, initCouncil, loadCouncil } from './council.js';
 import { buildWorkspaceTab, loadWorkspace } from './workspace.js';
 import { buildFinanceTab, loadFinance }     from './finance.js';
@@ -170,6 +170,9 @@ function _switchTab(id, shell) {
 
   // Tear down ASSISTANT streaming on tab switch
   if (_activeTab === 'assistant') destroyAssistant();
+  // Tear down COMMAND's task-feed poller — Poll.js handles its own lifecycle
+  // separately, but the 10s active-tasks loop needs an explicit stop.
+  if (_activeTab === 'command') destroyCommandTab();
 
   _activeTab = id;
 
@@ -191,6 +194,9 @@ function _mountTab(id, shell) {
     // Immediately populate if we have cached data
     Poll.destroy();
     Poll.start(_pollCallbacks(shell));
+    // First paint for the task feed + model panel — Poll.js handles the
+    // periodic refresh, but we want both panels populated before the next tick.
+    loadCommandTab(content).catch(() => { /* loader paints its own error state */ });
   } else if (id === 'council') {
     content.innerHTML = buildCouncilTab();
     initCouncil(content);
