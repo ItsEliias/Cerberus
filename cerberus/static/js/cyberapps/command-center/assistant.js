@@ -11,6 +11,7 @@
  */
 
 import { startRecording, stopRecording, getIsRecording, init as initVoice } from '../../voiceRecorder.js';
+import { buildNotesPanel, loadNotes } from './cc-notes.js';
 
 const SYSTEM_PROMPT = 'You are the Cerberus operations assistant. Answer concisely about the Cerberus system state, tasks, agents, and operations. Be direct and informative.';
 const API = '/api/chat_stream';
@@ -77,6 +78,7 @@ export function buildAssistantTab() {
         <div class="cc-empty">Loading profile…</div>
       </div>
     </section>
+    ${buildNotesPanel()}
     <div class="cc-chat-history" id="cc-chat-history">
       <div class="cc-empty" style="margin-top:32px;">
         Cerberus Operations Assistant ready. Ask about tasks, agents, or system state.
@@ -121,6 +123,8 @@ export function initAssistant(root) {
 
   // OPERATOR PROFILE — load + wire edit toggle.
   _loadOpProfile(root);
+  // NOTES — wire search / pin / preview / editor / word count.
+  loadNotes(root);
   // Re-render when the onboarding wizard reports a successful save so the
   // panel reflects the latest state immediately.
   const _profileBus = () => _loadOpProfile(root);
