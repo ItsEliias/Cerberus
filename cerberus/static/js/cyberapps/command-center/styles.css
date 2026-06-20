@@ -3502,3 +3502,347 @@
   .cc-compare-run-btn,
   .cc-compare-reset-btn { transition: none; }
 }
+/* ── WEBHOOKS section (workspace.js) ──────────────────────────────────── */
+.cc-webhook-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--cc-void-mid);
+  border: 1px solid var(--cc-border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.cc-webhook-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cc-webhook-new-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--cc-crimson);
+  background: transparent;
+  color: var(--cc-crimson-hot);
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.cc-webhook-new-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red, #c0392b) 12%, transparent);
+  box-shadow: 0 0 8px var(--cc-crimson-glow);
+}
+.cc-webhook-new-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.cc-webhook-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cc-webhook-empty {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  opacity: 0.45;
+  padding: 6px 4px;
+}
+
+.cc-webhook-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: color-mix(in srgb, var(--cc-void) 50%, var(--cc-surface));
+  border: 1px solid color-mix(in srgb, var(--cc-border) 70%, transparent);
+  border-radius: 4px;
+  padding: 8px 12px;
+  transition: border-color 0.2s;
+}
+.cc-webhook-row:hover {
+  border-color: color-mix(in srgb, var(--cc-crimson) 30%, var(--cc-border));
+}
+.cc-webhook-row[data-active="0"] { opacity: 0.7; }
+
+.cc-webhook-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cc-webhook-row-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--cc-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-webhook-row-url {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  color: color-mix(in srgb, var(--cc-fg) 60%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-webhook-row-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.cc-webhook-chip {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--cc-crimson) 40%, transparent);
+  color: var(--cc-crimson-hot);
+  background: color-mix(in srgb, var(--red, #c0392b) 8%, transparent);
+}
+.cc-webhook-chip--muted {
+  color: color-mix(in srgb, var(--cc-fg) 45%, transparent);
+  background: transparent;
+  border-color: color-mix(in srgb, var(--cc-fg) 25%, transparent);
+}
+
+.cc-webhook-row-side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cc-webhook-row-status {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  padding: 2px 7px;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--cc-fg) 25%, transparent);
+  color: color-mix(in srgb, var(--cc-fg) 65%, transparent);
+  white-space: nowrap;
+}
+.cc-webhook-row-status--on {
+  color: var(--cc-crimson-hot);
+  border-color: var(--cc-crimson);
+  box-shadow: 0 0 6px var(--cc-crimson-glow);
+}
+.cc-webhook-row-status--off {
+  color: color-mix(in srgb, var(--cc-fg) 50%, transparent);
+}
+
+/* Row buttons — HUD ghost. Test/Toggle/Delete share the same baseline. */
+.cc-webhook-test-btn,
+.cc-webhook-toggle-btn,
+.cc-webhook-delete-btn,
+.cc-webhook-confirm-btn,
+.cc-webhook-confirm-cancel-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: transparent;
+  color: color-mix(in srgb, var(--cc-fg) 80%, transparent);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cc-webhook-test-btn,
+.cc-webhook-toggle-btn { border: 1px solid var(--cc-border); }
+.cc-webhook-test-btn:hover:not(:disabled),
+.cc-webhook-toggle-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--cc-fg) 8%, transparent);
+  color: var(--cc-fg);
+}
+.cc-webhook-delete-btn { border: 1px solid var(--cc-border); }
+.cc-webhook-delete-btn:hover:not(:disabled) {
+  border-color: var(--cc-crimson);
+  color: var(--cc-crimson-hot);
+}
+.cc-webhook-confirm-label {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--cc-crimson-hot);
+  text-shadow: 0 0 6px var(--cc-crimson-glow);
+}
+.cc-webhook-confirm-btn { border: 1px solid var(--cc-crimson); color: var(--cc-crimson-hot); }
+.cc-webhook-confirm-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red, #c0392b) 18%, transparent);
+}
+.cc-webhook-confirm-cancel-btn { border: 1px solid var(--cc-border); }
+.cc-webhook-confirm-cancel-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--cc-fg) 8%, transparent);
+}
+
+.cc-webhook-test-btn:disabled,
+.cc-webhook-toggle-btn:disabled,
+.cc-webhook-delete-btn:disabled,
+.cc-webhook-confirm-btn:disabled,
+.cc-webhook-confirm-cancel-btn:disabled,
+.cc-webhook-submit-btn:disabled,
+.cc-webhook-cancel-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Create form ------------------------------------------------------------ */
+.cc-webhook-form[hidden] { display: none; }
+.cc-webhook-form {
+  background: color-mix(in srgb, var(--cc-void) 55%, var(--cc-surface));
+  border: 1px solid var(--cc-border);
+  border-radius: 4px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+.cc-webhook-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+@media (max-width: 720px) {
+  .cc-webhook-form-grid { grid-template-columns: 1fr; }
+}
+.cc-webhook-form-wide { grid-column: 1 / -1; }
+.cc-webhook-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--cc-fg) 65%, transparent);
+}
+.cc-webhook-form-grid legend {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--cc-fg) 65%, transparent);
+  padding: 0 4px;
+}
+
+.cc-webhook-events-fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
+  border-radius: 3px;
+  padding: 6px 10px 8px;
+}
+.cc-webhook-event-check {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px !important;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace !important;
+  font-size: 10px !important;
+  letter-spacing: 0.04em !important;
+  text-transform: none !important;
+  color: var(--cc-fg) !important;
+  cursor: pointer;
+}
+.cc-webhook-event-check input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border: 1px solid color-mix(in srgb, var(--cc-fg) 40%, transparent);
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  display: inline-block;
+  vertical-align: middle;
+}
+.cc-webhook-event-check input[type="checkbox"]:checked {
+  background: var(--cc-crimson);
+  border-color: var(--cc-crimson);
+  box-shadow: 0 0 4px var(--cc-crimson-glow);
+}
+
+.cc-webhook-input {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--cc-border);
+  background: color-mix(in srgb, var(--cc-void) 70%, transparent);
+  color: var(--cc-fg);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.cc-webhook-input:focus {
+  border-color: var(--cc-crimson);
+  box-shadow: 0 0 6px var(--cc-crimson-glow);
+}
+
+.cc-webhook-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.cc-webhook-cancel-btn,
+.cc-webhook-submit-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 6px 14px;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.cc-webhook-cancel-btn {
+  border: 1px solid var(--cc-border);
+  color: color-mix(in srgb, var(--cc-fg) 75%, transparent);
+}
+.cc-webhook-cancel-btn:hover { background: color-mix(in srgb, var(--cc-fg) 8%, transparent); color: var(--cc-fg); }
+.cc-webhook-submit-btn {
+  border: 1px solid var(--cc-crimson);
+  color: var(--cc-crimson-hot);
+}
+.cc-webhook-submit-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red, #c0392b) 12%, transparent);
+  box-shadow: 0 0 8px var(--cc-crimson-glow);
+}
+
+.cc-webhook-form-error {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  color: var(--cc-crit);
+  padding: 4px 0 0;
+}
+.cc-webhook-form-error[hidden] { display: none; }
+
+.cc-webhook-toast {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--red, #c0392b) 14%, transparent);
+  color: var(--cc-crimson-hot);
+  border: 1px solid var(--cc-crimson);
+  box-shadow: 0 0 8px var(--cc-crimson-glow);
+  align-self: flex-start;
+  transition: opacity 0.2s;
+}
+.cc-webhook-toast[hidden] { display: none; }
