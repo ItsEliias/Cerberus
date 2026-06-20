@@ -1989,6 +1989,52 @@
 .cc-obs-no-data { font-size: 9px; opacity: 0.35; }
 .cc-obs-empty-note { font-size: 10px; opacity: 0.45; padding: 8px; border: 1px solid rgba(255,255,255,0.06); border-radius: 3px; }
 
+/* OBSERVE — per-agent / per-model breakdown rows + sessions chip.
+ * Token mapping: spec asked for --surface-raise / --text-muted / --text-dim;
+ * this codebase ships --cc-* / --cc-fg / --border instead, so the rules
+ * below substitute the closest existing tokens (token-only — no
+ * hardcoded hex). */
+.cc-obs-counters { grid-template-columns: repeat(3, 1fr); }
+.cc-obs-breakdown { display: flex; flex-direction: column; gap: 4px; padding-top: 2px; }
+.cc-obs-agent-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.cc-obs-agent-name {
+  flex: 0 0 auto; min-width: 120px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px; letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 55%, transparent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cc-obs-agent-bar-wrap {
+  flex: 1; height: 6px;
+  background: var(--cc-void-mid, var(--bg, #1a1d23));
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  border-radius: 1px; overflow: hidden;
+  position: relative;
+}
+.cc-obs-agent-bar-fill {
+  display: block; height: 100%; width: 0%;
+  background: var(--cc-crimson, var(--red, #c0392b));
+  transition: width 0.4s ease;
+}
+.cc-obs-agent-val {
+  flex: 0 0 auto;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px; letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 40%, transparent);
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.cc-obs-empty-row {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px; letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 35%, transparent);
+  padding: 6px 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-obs-agent-bar-fill { transition: none; }
+}
+
 /* ---- VOICE CALL panel (Phase 4a) ---- */
 .cc-voice-panel {
   display: flex; flex-direction: column; height: 100%; overflow: hidden;
