@@ -499,4 +499,113 @@ body.reduce-hud .dash-hud-chips     { display: none; }
   .dash-agent-dot--active,
   .dash-agent-dot--running,
   .dash-agent-dot--busy { animation: none; }
+  .dash-stat-chip,
+  .dash-security-item { animation: none; }
 }
+
+/* ── Lifetime stats strip + Security posture strip ────────────────────────── */
+
+.dash-stats-strip,
+.dash-security-strip {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--bg, #0d0d0f) 92%, black);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.dash-stats-title {
+  font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--jx2-hud-brand-red, #c0392b);
+  text-shadow: 0 0 12px rgba(192,57,43,0.4);
+}
+.dash-stats-title::before { content: '// '; }
+
+.dash-stat-chips {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+
+.dash-stat-chip {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.025);
+  border-radius: 2px;
+  opacity: 0;
+  animation: dash-stat-chip-in 360ms ease-out forwards;
+}
+.dash-stat-chip:nth-child(1) { animation-delay: 60ms; }
+.dash-stat-chip:nth-child(2) { animation-delay: 120ms; }
+.dash-stat-chip:nth-child(3) { animation-delay: 180ms; }
+
+@keyframes dash-stat-chip-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.dash-stat-chip-lbl {
+  font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--fg, #c5c9d0) 50%, transparent);
+}
+
+.dash-stat-chip-val {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+  color: var(--jx2-hud-fg-neutral, #e8e8ec);
+}
+
+/* Security posture strip — same chassis, tone-coloured pill per field */
+
+.dash-security-items {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  min-height: 18px;
+}
+
+.dash-security-item {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.025);
+  border-radius: 2px;
+}
+.dash-security-item[data-tone="ok"]  { border-color: color-mix(in srgb, #22c55e 55%, transparent); }
+.dash-security-item[data-tone="bad"] { border-color: color-mix(in srgb, var(--red, #c0392b) 55%, transparent); }
+
+.dash-security-lbl {
+  font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--fg, #c5c9d0) 50%, transparent);
+}
+
+.dash-security-val {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px; font-variant-numeric: tabular-nums; letter-spacing: 0.1em;
+  color: var(--jx2-hud-fg-neutral, #e8e8ec);
+}
+.dash-security-item[data-tone="ok"]  .dash-security-val { color: #22c55e; }
+.dash-security-item[data-tone="bad"] .dash-security-val { color: var(--red, #c0392b); }
+
+/* ── Session search ───────────────────────────────────────────────────────── */
+
+.dash-activity-head {
+  display: flex; align-items: center; gap: 10px;
+  justify-content: space-between;
+}
+
+.dash-session-search {
+  flex: 0 1 160px;
+  padding: 3px 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px; letter-spacing: 0.04em;
+  color: var(--jx2-hud-fg-neutral, #e8e8ec);
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 2px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.dash-session-search::placeholder {
+  color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent);
+}
+.dash-session-search:focus { border-color: var(--red, #c0392b); }
+.dash-session-search:focus-visible { outline: 2px solid var(--red, #c0392b); outline-offset: 1px; }
+
+.dash-activity-item--hidden { display: none; }

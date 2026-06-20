@@ -66,6 +66,33 @@ function _buildPanel() {
 
       <div class="dash-body">
 
+        <!-- ── Lifetime stats strip (chips: sessions / messages / tokens) ── -->
+        <div class="dash-stats-strip" aria-label="Lifetime stats">
+          <span class="dash-stats-title">LIFETIME STATS</span>
+          <div class="dash-stat-chips">
+            <div class="dash-stat-chip">
+              <span class="dash-stat-chip-lbl">// SESSIONS</span>
+              <span class="dash-stat-chip-val" id="dash-life-sessions">—</span>
+            </div>
+            <div class="dash-stat-chip">
+              <span class="dash-stat-chip-lbl">// MESSAGES</span>
+              <span class="dash-stat-chip-val" id="dash-life-messages">—</span>
+            </div>
+            <div class="dash-stat-chip">
+              <span class="dash-stat-chip-lbl">// TOKENS</span>
+              <span class="dash-stat-chip-val" id="dash-life-tokens">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Security posture strip (rendered from /api/health) ───────── -->
+        <div class="dash-security-strip" aria-label="Security posture">
+          <span class="dash-stats-title">SECURITY POSTURE</span>
+          <div class="dash-security-items" id="dash-security-items">
+            <span class="dash-empty">—</span>
+          </div>
+        </div>
+
         <!-- ── Hero counters ─────────────────────────────────── -->
         <div class="dash-hero-row">
           <div class="dash-hero-stat" data-hero="sessions">
@@ -110,7 +137,12 @@ function _buildPanel() {
         <div class="dash-lower">
 
           <div class="dash-lower-activity">
-            <div class="dash-section-title">RECENT ACTIVITY</div>
+            <div class="dash-activity-head">
+              <div class="dash-section-title">RECENT ACTIVITY</div>
+              <input type="search" id="dash-session-search" class="dash-session-search"
+                     placeholder="Filter…" aria-label="Filter sessions by title"
+                     autocomplete="off" spellcheck="false" />
+            </div>
             <div id="dash-sessions-list" class="dash-activity-list">
               <div class="dash-empty">Loading…</div>
             </div>
@@ -308,7 +340,8 @@ function _startBgAnimation() {
 // ── Data loading ─────────────────────────────────────────────────────────────
 
 async function _loadData() {
-  await Promise.all([_loadSessions(), _loadVitals(), _loadAgents(), _loadTokenUsage()]);
+  _wireSessionSearch();
+  await Promise.all([_loadSessions(), _loadVitals(), _loadAgents(), _loadTokenUsage(), _loadSecurity()]);
   _vitalsTimer = setInterval(_loadVitals, 8000);
   _agentsTimer = setInterval(_loadAgents, 12000);
 }
@@ -324,6 +357,16 @@ async function _loadSessions() {
 
     // Hero counter — total count with dramatic tick-up
     _heroCountUp('dash-cnt-sessions', sessions.length);
+
+    // Lifetime stats strip — sessions + messages (sum from per-session message_count)
+    const lifeSessionsEl = document.getElementById('dash-life-sessions');
+    if (lifeSessionsEl) lifeSessionsEl.textContent = _fmtSI(sessions.length);
+    const lifeMessagesEl = document.getElementById('dash-life-messages');
+    if (lifeMessagesEl) {
+      // TODO: switch to a dedicated /api/stats endpoint when one exists.
+      const totalMessages = sessions.reduce((sum, s) => sum + (s.message_count || 0), 0);
+      lifeMessagesEl.textContent = totalMessages > 0 ? _fmtSI(totalMessages) : '—';
+    }
 
     // Today delta — sessions created or updated today
     const todayStart = new Date(); todayStart.setHours(0,0,0,0);
@@ -349,13 +392,15 @@ async function _loadSessions() {
       const title = s.title || s.name || 'Untitled Session';
       const time  = s.updated_at || s.created_at || '';
       const rel   = time ? _relTime(time) : '';
-      return `<button class="dash-activity-item" data-id="${s.id || ''}" title="${_esc(title)}"
+      return `<button class="dash-activity-item" data-id="${s.id || ''}" data-title="${_esc(title).toLowerCase()}" title="${_esc(title)}"
                       style="animation-delay:${i * 55}ms">
         <span class="dash-activity-dot"></span>
         <span class="dash-activity-title">${_esc(title)}</span>
         ${rel ? `<span class="dash-activity-time">${rel}</span>` : ''}
       </button>`;
     }).join('');
+    // Reapply active filter (if user typed before sessions finished loading)
+    _applySessionSearch();
 
     el.querySelectorAll('.dash-activity-item').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -440,6 +485,10 @@ async function _loadTokenUsage() {
     // Hero token counter — full number with comma formatting
     if (totalEl) _heroCountUp('dash-usage-total', total);
 
+    // Lifetime stats strip — compact total
+    const lifeTokensEl = document.getElementById('dash-life-tokens');
+    if (lifeTokensEl) lifeTokensEl.textContent = total > 0 ? _fmtSI(total) : '—';
+
     // Cost sub-line
     const costEl = document.getElementById('dash-token-cost');
     if (costEl) costEl.textContent = cost > 0 ? `$${cost.toFixed(4)} COST` : 'LOCAL ENDPOINTS';
@@ -466,8 +515,97 @@ async function _loadTokenUsage() {
     if (canvas) _drawTokenFlowGraph(canvas, byDay);
   } catch (_) {
     if (totalEl) totalEl.textContent = '—';
+    const lifeTokensEl = document.getElementById('dash-life-tokens');
+    if (lifeTokensEl) lifeTokensEl.textContent = '—';
     const canvas2 = document.getElementById('dash-usage-canvas');
     if (canvas2) _drawTokenFlowGraph(canvas2, []); // graceful: fallback sine wave
+  }
+}
+
+// ── Security posture strip ───────────────────────────────────────────────────
+// Renders ONLY fields actually present in the /api/health response so the strip
+// stays honest if the backend payload is later extended. Currently /api/health
+// returns { status, timestamp } — additional keys (auth, sandbox, gateway) are
+// picked up automatically once exposed.
+
+const SECURITY_FIELD_LABELS = {
+  status:    'STATUS',
+  auth:      'AUTH',
+  sandbox:   'SANDBOX',
+  gateway:   'GATEWAY',
+};
+
+function _securityTone(val) {
+  const s = String(val ?? '').toLowerCase();
+  if (['healthy', 'ok', 'on', 'ready', 'connected', 'active', 'true'].includes(s)) return 'ok';
+  if (['off', 'down', 'offline', 'unavailable', 'disconnected', 'error', 'false'].includes(s)) return 'bad';
+  return 'unk';
+}
+
+function _renderSecurityItems(host, fields) {
+  const entries = Object.entries(fields).filter(([k]) => k !== 'timestamp');
+  if (!entries.length) { host.innerHTML = '<span class="dash-empty">—</span>'; return; }
+  host.innerHTML = entries.map(([k, v]) => {
+    const label = SECURITY_FIELD_LABELS[k] || k.toUpperCase();
+    const tone  = _securityTone(v);
+    const txt   = String(v ?? '—').toUpperCase();
+    return `<span class="dash-security-item" data-tone="${tone}">
+      <span class="dash-security-lbl">${_esc(label)}</span>
+      <span class="dash-security-val">${_esc(txt)}</span>
+    </span>`;
+  }).join('');
+}
+
+async function _loadSecurity() {
+  const host = document.getElementById('dash-security-items');
+  if (!host) return;
+  try {
+    const res = await fetch('/api/health', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    if (!data || typeof data !== 'object') {
+      _renderSecurityItems(host, { status: 'unknown' });
+      return;
+    }
+    _renderSecurityItems(host, data);
+  } catch (_) {
+    _renderSecurityItems(host, { status: 'offline' });
+  }
+}
+
+// ── Session search ──────────────────────────────────────────────────────────
+// Client-side filter over the already-loaded session list. Empty input restores
+// every row; no new API calls.
+
+function _wireSessionSearch() {
+  const input = document.getElementById('dash-session-search');
+  if (!input || input.dataset.wired === '1') return;
+  input.dataset.wired = '1';
+  input.addEventListener('input', _applySessionSearch);
+}
+
+function _applySessionSearch() {
+  const input = document.getElementById('dash-session-search');
+  const list  = document.getElementById('dash-sessions-list');
+  if (!input || !list) return;
+  const q = (input.value || '').trim().toLowerCase();
+  let hidden = 0, shown = 0;
+  list.querySelectorAll('.dash-activity-item').forEach(btn => {
+    const t = btn.dataset.title || btn.textContent.toLowerCase();
+    const match = !q || t.includes(q);
+    btn.classList.toggle('dash-activity-item--hidden', !match);
+    if (match) shown++; else hidden++;
+  });
+  let emptyHint = list.querySelector('.dash-search-empty');
+  if (q && shown === 0 && hidden > 0) {
+    if (!emptyHint) {
+      emptyHint = document.createElement('div');
+      emptyHint.className = 'dash-empty dash-search-empty';
+      emptyHint.textContent = 'No sessions match.';
+      list.appendChild(emptyHint);
+    }
+  } else if (emptyHint) {
+    emptyHint.remove();
   }
 }
 
