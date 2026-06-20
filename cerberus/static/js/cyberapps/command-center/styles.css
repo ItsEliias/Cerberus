@@ -2717,6 +2717,297 @@
   outline-offset: 2px;
 }
 
+/* ── SCHEDULED TASKS section (workspace.js) ───────────────────────────── */
+.cc-sched-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--cc-void-mid);
+  border: 1px solid var(--cc-border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.cc-sched-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cc-sched-new-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--cc-crimson);
+  background: transparent;
+  color: var(--cc-crimson-hot);
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.cc-sched-new-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red, #c0392b) 12%, transparent);
+  box-shadow: 0 0 8px var(--cc-crimson-glow);
+}
+.cc-sched-new-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.cc-sched-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cc-sched-empty {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  opacity: 0.45;
+  padding: 6px 4px;
+}
+
+.cc-sched-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: color-mix(in srgb, var(--cc-void) 50%, var(--cc-surface));
+  border: 1px solid color-mix(in srgb, var(--cc-border) 70%, transparent);
+  border-radius: 4px;
+  padding: 8px 12px;
+  transition: border-color 0.2s;
+}
+.cc-sched-row:hover {
+  border-color: color-mix(in srgb, var(--cc-crimson) 30%, var(--cc-border));
+}
+.cc-sched-row[data-status="paused"] { opacity: 0.7; }
+.cc-sched-row[data-status="completed"] { opacity: 0.55; }
+
+.cc-sched-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cc-sched-row-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--cc-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-sched-row-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  /* No --text-dim token in this codebase; mix --cc-fg with transparent
+     to get the dim-mono look the spec calls for. */
+  color: color-mix(in srgb, var(--cc-fg) 55%, transparent);
+  letter-spacing: 0.04em;
+}
+.cc-sched-row-sep { opacity: 0.4; }
+
+.cc-sched-row-side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cc-sched-row-status {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  padding: 2px 7px;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--cc-fg) 25%, transparent);
+  color: color-mix(in srgb, var(--cc-fg) 65%, transparent);
+}
+.cc-sched-row-status--active {
+  color: var(--cc-crimson-hot);
+  border-color: var(--cc-crimson);
+  box-shadow: 0 0 6px var(--cc-crimson-glow);
+}
+.cc-sched-row-status--paused {
+  color: color-mix(in srgb, var(--cc-fg) 50%, transparent);
+}
+.cc-sched-row-status--completed {
+  color: color-mix(in srgb, var(--cc-fg) 40%, transparent);
+}
+
+/* Row buttons — HUD ghost, neutral baseline, role-specific border. */
+.cc-sched-toggle-btn,
+.cc-sched-delete-btn,
+.cc-sched-confirm-btn,
+.cc-sched-confirm-cancel-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: transparent;
+  color: color-mix(in srgb, var(--cc-fg) 80%, transparent);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cc-sched-toggle-btn { border: 1px solid var(--cc-border); }
+.cc-sched-toggle-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--cc-fg) 8%, transparent);
+  color: var(--cc-fg);
+}
+.cc-sched-delete-btn { border: 1px solid var(--cc-border); }
+.cc-sched-delete-btn:hover:not(:disabled) {
+  border-color: var(--cc-crimson);
+  color: var(--cc-crimson-hot);
+}
+
+/* Inline delete confirm. */
+.cc-sched-confirm-label {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--cc-crimson-hot);
+  text-shadow: 0 0 6px var(--cc-crimson-glow);
+}
+.cc-sched-confirm-btn { border: 1px solid var(--cc-crimson); color: var(--cc-crimson-hot); }
+.cc-sched-confirm-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red, #c0392b) 18%, transparent);
+}
+.cc-sched-confirm-cancel-btn { border: 1px solid var(--cc-border); }
+.cc-sched-confirm-cancel-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--cc-fg) 8%, transparent);
+}
+
+.cc-sched-toggle-btn:disabled,
+.cc-sched-delete-btn:disabled,
+.cc-sched-confirm-btn:disabled,
+.cc-sched-confirm-cancel-btn:disabled,
+.cc-sched-submit-btn:disabled,
+.cc-sched-cancel-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Create form ------------------------------------------------------------- */
+.cc-sched-form[hidden] { display: none; }
+.cc-sched-form {
+  background: color-mix(in srgb, var(--cc-void) 55%, var(--cc-surface));
+  border: 1px solid var(--cc-border);
+  border-radius: 4px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+.cc-sched-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+@media (max-width: 720px) {
+  .cc-sched-form-grid { grid-template-columns: 1fr; }
+}
+.cc-sched-form-wide { grid-column: 1 / -1; }
+.cc-sched-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--cc-fg) 65%, transparent);
+}
+
+/* Inputs — both colour AND form-control appearance reset. */
+.cc-sched-input {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--cc-border);
+  background: color-mix(in srgb, var(--cc-void) 70%, transparent);
+  color: var(--cc-fg);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.cc-sched-input:focus {
+  border-color: var(--cc-crimson);
+  box-shadow: 0 0 6px var(--cc-crimson-glow);
+}
+.cc-sched-textarea {
+  resize: vertical;
+  min-height: 60px;
+  max-height: 200px;
+}
+
+.cc-sched-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.cc-sched-cancel-btn,
+.cc-sched-submit-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 6px 14px;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.cc-sched-cancel-btn {
+  border: 1px solid var(--cc-border);
+  color: color-mix(in srgb, var(--cc-fg) 75%, transparent);
+}
+.cc-sched-cancel-btn:hover { background: color-mix(in srgb, var(--cc-fg) 8%, transparent); color: var(--cc-fg); }
+.cc-sched-submit-btn {
+  border: 1px solid var(--cc-crimson);
+  color: var(--cc-crimson-hot);
+}
+.cc-sched-submit-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red, #c0392b) 12%, transparent);
+  box-shadow: 0 0 8px var(--cc-crimson-glow);
+}
+
+.cc-sched-form-error {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  color: var(--cc-crit);
+  padding: 4px 0 0;
+}
+.cc-sched-form-error[hidden] { display: none; }
+
+/* Toast — small confirm pill in the section header. */
+.cc-sched-toast {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--red, #c0392b) 14%, transparent);
+  color: var(--cc-crimson-hot);
+  border: 1px solid var(--cc-crimson);
+  box-shadow: 0 0 8px var(--cc-crimson-glow);
+  align-self: flex-start;
+  transition: opacity 0.2s;
+}
+.cc-sched-toast[hidden] { display: none; }
+
 /* ── Assistant tab: operator profile section ───────────────── */
 .cc-op-profile {
   margin: 8px 12px 4px;
