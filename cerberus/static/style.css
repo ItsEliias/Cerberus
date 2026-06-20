@@ -36666,3 +36666,194 @@ body.theme-frosted .modal {
    the input beside it (.confirm-btn won't stretch on its own). */
 .ask-user-other-send { flex-shrink: 0; white-space: nowrap; min-height: 39px; }
 .ask-user-other-send:disabled { opacity: 0.5; cursor: default; }
+
+/* ─── Onboarding wizard (static/js/onboarding.js) ──────────────────────────
+ * Token-only colours. Spec asked for --void-deep / --surface-raise /
+ * --text-muted / --text-primary; this codebase ships --bg / --panel /
+ * --border / --fg, so the closest existing tokens are substituted. */
+
+.ob-overlay {
+  position: fixed; inset: 0; z-index: 100000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--fg);
+}
+.ob-bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at center, color-mix(in srgb, var(--red) 8%, transparent), transparent 70%),
+    color-mix(in srgb, var(--bg) 78%, black);
+}
+.ob-card-wrap {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  width: 100%; max-width: 480px;
+}
+.ob-card {
+  width: 100%; box-sizing: border-box;
+  background: color-mix(in srgb, var(--panel) 92%, black);
+  border: 1px solid var(--border);
+  padding: 40px;
+  display: flex; flex-direction: column; gap: 18px;
+  animation: ob-fade 220ms ease-out both;
+}
+@keyframes ob-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ob-card { animation: none; }
+}
+
+.ob-wordmark {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 22px; font-weight: 700; letter-spacing: 0.18em;
+  color: color-mix(in srgb, var(--fg) 90%, transparent);
+  text-align: center;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--red) 35%, transparent);
+}
+.ob-bracket { color: color-mix(in srgb, var(--red) 65%, transparent); }
+.ob-lead    { color: var(--red); }
+
+.ob-tag {
+  font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--red);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--red) 30%, transparent);
+}
+
+.ob-lead-copy {
+  margin: 0;
+  font-size: 12px; line-height: 1.5;
+  color: color-mix(in srgb, var(--fg) 55%, transparent);
+}
+
+.ob-field { display: flex; flex-direction: column; gap: 6px; }
+.ob-label {
+  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--fg) 50%, transparent);
+}
+.ob-input {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; box-sizing: border-box;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px; letter-spacing: 0.02em;
+  padding: 9px 11px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.ob-input::placeholder {
+  color: color-mix(in srgb, var(--fg) 35%, transparent);
+}
+.ob-input:focus { border-color: var(--red); }
+
+.ob-actions {
+  display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;
+}
+.ob-btn {
+  -webkit-appearance: none; appearance: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: color-mix(in srgb, var(--fg) 75%, transparent);
+  cursor: pointer;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  padding: 8px 14px;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.ob-btn:hover {
+  border-color: var(--red); color: var(--red);
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+}
+.ob-btn:disabled { opacity: 0.5; cursor: wait; }
+.ob-btn--primary {
+  border-color: var(--red);
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+}
+.ob-btn--primary:hover {
+  background: color-mix(in srgb, var(--red) 18%, transparent);
+}
+.ob-btn--ghost { /* default ghost ramp inherited from .ob-btn */ }
+.ob-btn:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+.ob-chip-row { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+.ob-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 9px;
+  font-size: 10px; letter-spacing: 0.06em;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  color: var(--fg);
+}
+.ob-chip-x {
+  background: transparent; border: none; color: inherit;
+  cursor: pointer; padding: 0; font-size: 13px; line-height: 1;
+}
+.ob-sugg-row {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  padding-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.ob-sugg {
+  -webkit-appearance: none; appearance: none;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  color: color-mix(in srgb, var(--fg) 55%, transparent);
+  font-family: inherit;
+  font-size: 9px; letter-spacing: 0.06em;
+  padding: 3px 8px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.ob-sugg:hover { color: var(--red); border-color: var(--red); }
+
+.ob-avatar-preview {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  border: 2px solid var(--red);
+  margin: 4px auto 8px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  background: var(--bg);
+}
+.ob-avatar-preview img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.ob-avatar-emoji { font-size: 34px; line-height: 1; }
+
+.ob-emoji-row {
+  display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+}
+.ob-emoji {
+  -webkit-appearance: none; appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 18px; line-height: 1;
+  padding: 6px 8px; cursor: pointer;
+  color: var(--fg);
+}
+.ob-emoji:hover { border-color: var(--red); }
+.ob-emoji--active { border-color: var(--red); background: color-mix(in srgb, var(--red) 12%, transparent); }
+
+.ob-error {
+  font-size: 10px; color: var(--color-error, var(--red));
+  letter-spacing: 0.04em;
+}
+
+.ob-dots {
+  display: flex; gap: 7px;
+}
+.ob-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ob-dot--active {
+  background: var(--red);
+  border-color: var(--red);
+}
+

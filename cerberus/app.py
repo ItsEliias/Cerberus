@@ -416,6 +416,13 @@ class _RevalidatingStatic(StaticFiles):
         return resp
 
 
+# Per-user avatar uploads live OUTSIDE the static/ tree (under DATA_DIR/avatars)
+# so they survive a static-asset rebuild and don't bleed into the JS/CSS no-cache
+# revalidation policy. Mount BEFORE /static so the more-specific prefix wins.
+from routes.profile_routes import AVATARS_DIR as _AVATARS_DIR
+os.makedirs(_AVATARS_DIR, exist_ok=True)
+app.mount("/static/avatars", StaticFiles(directory=_AVATARS_DIR), name="avatars")
+
 app.mount("/static", _RevalidatingStatic(directory="static"), name="static")
 
 # ========= GENERATED IMAGES =========
@@ -696,6 +703,10 @@ app.include_router(setup_compare_routes(session_manager))
 # User Preferences
 from routes.prefs_routes import setup_prefs_routes
 app.include_router(setup_prefs_routes())
+
+# Operator profile + onboarding wizard (lives over user_prefs.json).
+from routes.profile_routes import setup_profile_routes
+app.include_router(setup_profile_routes())
 
 # Backup (export/import user data)
 from routes.backup_routes import setup_backup_routes

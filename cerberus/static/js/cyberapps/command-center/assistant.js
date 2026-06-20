@@ -68,6 +68,15 @@ function _animateWave(root, active) {
 
 export function buildAssistantTab() {
   return `<div class="cc-assistant-tab">
+    <section class="cc-op-profile" id="cc-op-profile" aria-label="Operator profile">
+      <header class="cc-op-profile-head">
+        <span class="cc-op-profile-title">// OPERATOR PROFILE</span>
+        <button class="cc-op-profile-edit" id="cc-op-profile-edit" type="button">EDIT</button>
+      </header>
+      <div class="cc-op-profile-body" id="cc-op-profile-body">
+        <div class="cc-empty">Loading profile…</div>
+      </div>
+    </section>
     <div class="cc-chat-history" id="cc-chat-history">
       <div class="cc-empty" style="margin-top:32px;">
         Cerberus Operations Assistant ready. Ask about tasks, agents, or system state.
@@ -109,6 +118,16 @@ export function initAssistant(root) {
 
   // Apply persisted TTS state
   _applySpeakState(speakBtn);
+
+  // OPERATOR PROFILE — load + wire edit toggle.
+  _loadOpProfile(root);
+  // Re-render when the onboarding wizard reports a successful save so the
+  // panel reflects the latest state immediately.
+  const _profileBus = () => _loadOpProfile(root);
+  document.addEventListener('cerberus:onboarded', _profileBus);
+  root.addEventListener('DOMNodeRemoved', () => {
+    document.removeEventListener('cerberus:onboarded', _profileBus);
+  }, { once: true });
 
   // SEND
   const send = () => {
@@ -298,4 +317,226 @@ function _esc(s) {
   const d = document.createElement('div');
   d.textContent = String(s || '');
   return d.innerHTML;
+}
+
+// ─── Operator profile panel ────────────────────────────────────────────────
+//
+// Renders /api/profile inside the ASSISTANT tab. EDIT toggles an inline form
+// (display_name, role, bio with 280-char counter, location, interest chips,
+// avatar upload). Save is optimistic: the read-only view repaints immediately
+// from local state and the PATCH error reverts on failure.
+
+const _opProfileState = {
+  loaded: false,
+  editing: false,
+  data: {
+    display_name: '', role: '', bio: '', location: '',
+    interests: [], avatar_url: '', onboarded: false,
+  },
+};
+
+async function _loadOpProfile(root) {
+  try {
+    const res = await fetch('/api/profile', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    _opProfileState.data = { ..._opProfileState.data, ...(await res.json()) };
+    _opProfileState.loaded = true;
+  } catch (_) {
+    _opProfileState.loaded = true; // render the placeholder once
+  }
+  _renderOpProfile(root);
+}
+
+function _renderOpProfile(root) {
+  const body = root.querySelector('#cc-op-profile-body');
+  const editBtn = root.querySelector('#cc-op-profile-edit');
+  if (!body) return;
+  if (_opProfileState.editing) {
+    editBtn?.setAttribute('hidden', '');
+    body.innerHTML = _opProfileEditHTML();
+    _wireOpProfileEdit(root);
+  } else {
+    editBtn?.removeAttribute('hidden');
+    body.innerHTML = _opProfileViewHTML();
+    editBtn?.addEventListener('click', () => {
+      _opProfileState.editing = true;
+      _renderOpProfile(root);
+    }, { once: true });
+  }
+}
+
+function _opProfileViewHTML() {
+  const p = _opProfileState.data;
+  if (!p.display_name && !p.role && !p.bio) {
+    return `<div class="cc-empty">No profile yet. Click EDIT to add one.</div>`;
+  }
+  const avatar = p.avatar_url
+    ? `<img class="cc-op-avatar" src="${_esc(p.avatar_url)}" alt="" />`
+    : `<span class="cc-op-avatar cc-op-avatar--placeholder">${_esc((p.display_name || '?')[0])}</span>`;
+  const chips = (p.interests || []).map(i =>
+    `<span class="cc-op-chip">${_esc(i)}</span>`
+  ).join('');
+  return `
+    <div class="cc-op-row">
+      ${avatar}
+      <div class="cc-op-meta">
+        <div class="cc-op-name">${_esc(p.display_name || '—')}</div>
+        <div class="cc-op-role">${_esc(p.role || '')}</div>
+        <div class="cc-op-loc">${_esc(p.location || '')}</div>
+      </div>
+    </div>
+    ${p.bio ? `<div class="cc-op-bio">${_esc(p.bio)}</div>` : ''}
+    ${chips ? `<div class="cc-op-chips">${chips}</div>` : ''}
+  `.trim();
+}
+
+function _opProfileEditHTML() {
+  const p = _opProfileState.data;
+  const chips = (p.interests || []).map(i => `
+    <span class="cc-op-chip-editable" data-interest="${_esc(i)}">
+      ${_esc(i)}
+      <button class="cc-op-chip-x" data-action="rm" data-interest="${_esc(i)}" type="button">×</button>
+    </span>
+  `).join('');
+  return `
+    <div class="cc-op-edit">
+      <div class="cc-op-edit-row">
+        <input class="cc-op-input" id="cc-op-name" placeholder="Display name"
+               value="${_esc(p.display_name || '')}" maxlength="128" />
+        <input class="cc-op-input" id="cc-op-role" placeholder="Role"
+               value="${_esc(p.role || '')}" maxlength="128" />
+      </div>
+      <div class="cc-op-edit-row">
+        <input class="cc-op-input" id="cc-op-loc" placeholder="Location"
+               value="${_esc(p.location || '')}" maxlength="128" />
+      </div>
+      <textarea class="cc-op-textarea" id="cc-op-bio" placeholder="Short bio"
+                maxlength="280" rows="2">${_esc(p.bio || '')}</textarea>
+      <div class="cc-op-bio-count" id="cc-op-bio-count">${(p.bio || '').length}/280</div>
+      <div class="cc-op-chips-edit" id="cc-op-chips-edit">${chips}</div>
+      <input class="cc-op-input" id="cc-op-interest" placeholder="Add interest (Enter)" maxlength="50" />
+      <div class="cc-op-edit-row">
+        <label class="cc-op-btn cc-op-btn--ghost" for="cc-op-file">Upload avatar</label>
+        <input id="cc-op-file" type="file" accept="image/*" hidden />
+      </div>
+      <div class="cc-op-edit-actions">
+        <button class="cc-op-btn cc-op-btn--ghost" id="cc-op-cancel" type="button">CANCEL</button>
+        <button class="cc-op-btn cc-op-btn--primary" id="cc-op-save" type="button">SAVE</button>
+      </div>
+      <div class="cc-op-err" id="cc-op-err" hidden></div>
+    </div>
+  `.trim();
+}
+
+function _wireOpProfileEdit(root) {
+  const bioEl  = root.querySelector('#cc-op-bio');
+  const cnt    = root.querySelector('#cc-op-bio-count');
+  bioEl?.addEventListener('input', () => {
+    cnt.textContent = `${bioEl.value.length}/280`;
+  });
+
+  const interestEl = root.querySelector('#cc-op-interest');
+  const chipsEl    = root.querySelector('#cc-op-chips-edit');
+  interestEl?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const v = (interestEl.value || '').trim();
+    if (!v) return;
+    const current = _readChips(chipsEl);
+    if (current.includes(v) || current.length >= 20) return;
+    current.push(v);
+    chipsEl.innerHTML = current.map(i => `
+      <span class="cc-op-chip-editable" data-interest="${_esc(i)}">
+        ${_esc(i)}
+        <button class="cc-op-chip-x" data-action="rm" data-interest="${_esc(i)}" type="button">×</button>
+      </span>
+    `).join('');
+    interestEl.value = '';
+  });
+  chipsEl?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="rm"]');
+    if (!btn) return;
+    const v = btn.dataset.interest;
+    const next = _readChips(chipsEl).filter(i => i !== v);
+    chipsEl.innerHTML = next.map(i => `
+      <span class="cc-op-chip-editable" data-interest="${_esc(i)}">
+        ${_esc(i)}
+        <button class="cc-op-chip-x" data-action="rm" data-interest="${_esc(i)}" type="button">×</button>
+      </span>
+    `).join('');
+  });
+
+  let pendingAvatar = null;
+  root.querySelector('#cc-op-file')?.addEventListener('change', (e) => {
+    pendingAvatar = e.target.files?.[0] || null;
+  });
+
+  root.querySelector('#cc-op-cancel')?.addEventListener('click', () => {
+    _opProfileState.editing = false;
+    _renderOpProfile(root);
+  });
+
+  root.querySelector('#cc-op-save')?.addEventListener('click', async () => {
+    const errEl = root.querySelector('#cc-op-err');
+    const saveBtn = root.querySelector('#cc-op-save');
+    if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
+    const previous = { ..._opProfileState.data };
+    // Optimistic update: paint the new values immediately.
+    _opProfileState.data = {
+      ..._opProfileState.data,
+      display_name: root.querySelector('#cc-op-name').value.trim(),
+      role:         root.querySelector('#cc-op-role').value.trim(),
+      location:     root.querySelector('#cc-op-loc').value.trim(),
+      bio:          root.querySelector('#cc-op-bio').value.trim(),
+      interests:    _readChips(root.querySelector('#cc-op-chips-edit')),
+    };
+    _opProfileState.editing = false;
+    _renderOpProfile(root);
+
+    try {
+      if (pendingAvatar) {
+        const form = new FormData();
+        form.append('file', pendingAvatar);
+        const r = await fetch('/api/profile/avatar', {
+          method: 'POST', body: form, credentials: 'same-origin',
+        });
+        if (!r.ok) throw new Error(`avatar HTTP ${r.status}`);
+        const d = await r.json();
+        _opProfileState.data.avatar_url = d?.avatar_url || '';
+      }
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          display_name: _opProfileState.data.display_name,
+          role:         _opProfileState.data.role,
+          location:     _opProfileState.data.location,
+          bio:          _opProfileState.data.bio,
+          interests:    _opProfileState.data.interests,
+        }),
+      });
+      if (!res.ok) throw new Error(`profile HTTP ${res.status}`);
+      _opProfileState.data = { ..._opProfileState.data, ...(await res.json()) };
+      _renderOpProfile(root);
+    } catch (e) {
+      // Revert on error.
+      _opProfileState.data = previous;
+      _opProfileState.editing = true;
+      _renderOpProfile(root);
+      const err = root.querySelector('#cc-op-err');
+      if (err) {
+        err.textContent = `Save failed — ${e.message}`;
+        err.hidden = false;
+      }
+      if (saveBtn) saveBtn.disabled = false;
+    }
+  });
+}
+
+function _readChips(chipsEl) {
+  if (!chipsEl) return [];
+  return [...chipsEl.querySelectorAll('[data-interest]')]
+    .map(el => el.dataset.interest)
+    .filter((v, i, a) => v && a.indexOf(v) === i);
 }
