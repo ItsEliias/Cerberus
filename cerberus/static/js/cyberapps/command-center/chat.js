@@ -6,6 +6,8 @@
  * the roster via buildAgentsTab / loadAgents.
  */
 
+import { notifyCCComplete, requestNotifyPermission } from './cc-notify.js';
+
 function _esc(s) {
   const d = document.createElement('div');
   d.textContent = String(s ?? '');
@@ -137,7 +139,7 @@ async function _streamSSE(body, contentEl) {
   }
 }
 
-async function _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice = '', speakFn = null) {
+async function _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice = '', speakFn = null, agentName = '') {
   const text = input?.value?.trim();
   if (!text) return;
 
@@ -167,6 +169,11 @@ async function _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice = '', 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     await _streamSSE(res.body, contentEl);
     contentEl.classList.remove('cc-chat-streaming');
+    notifyCCComplete({
+      title: '[C]ERBERUS',
+      body:  `${agentName || 'Agent'} replied`,
+      tag:   `cc-agent-${agentId}`,
+    });
   } catch (e) {
     errored = true;
     contentEl.textContent = `Error: ${e.message}`;
@@ -187,6 +194,11 @@ async function _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice = '', 
 // ---- Public API ----
 
 export async function openAgentChat(container, agentId, agentName, agentAvatar, accentColor, ttsVoice = '') {
+  // Lazy permission prompt — only fires on first user-initiated chat open,
+  // matching the spec's "request permission on CC init" intent without
+  // touching index.js.
+  requestNotifyPermission();
+
   container.innerHTML = _buildChatPanel(agentName, agentAvatar, accentColor || 'rgba(197,201,208,0.5)', ttsVoice);
 
   const messagesEl  = container.querySelector('#cc-chat-messages');
@@ -281,11 +293,11 @@ export async function openAgentChat(container, agentId, agentName, agentAvatar, 
   });
 
   // Send
-  sendBtn?.addEventListener('click', () => _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice, _speakChatReply));
+  sendBtn?.addEventListener('click', () => _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice, _speakChatReply, agentName));
   input?.addEventListener('keydown', e => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice, _speakChatReply);
+      _sendMessage(agentId, input, messagesEl, sendBtn, ttsVoice, _speakChatReply, agentName);
     }
   });
 
