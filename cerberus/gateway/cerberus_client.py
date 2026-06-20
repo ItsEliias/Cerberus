@@ -155,6 +155,11 @@ async def _get_or_create_session(
                 "endpoint_id": ep.get("endpoint_id", ""),
                 "model": ep.get("model") or cfg.session_model or "",
                 "skip_validation": "true",
+                # V4 Phase 4a: marks this as a gateway-originated session so
+                # chat_routes applies the gateway tool allowlist (read-only
+                # Tier A + approval-gated Tier B). Without this flag the
+                # session would have the full admin tool surface.
+                "is_gateway": "true",
             },
             headers=_cookie_header(cookie),
             timeout=15.0,

@@ -6,6 +6,10 @@ Endpoints:
   DELETE /api/agents/{id}/thread               — clear all messages (keeps the thread row)
   GET    /api/agents/{id}/memories             — list per-agent memories for this owner
   DELETE /api/agents/{id}/memories/{memory_id} — delete one per-agent memory
+
+V4 Phase 4a — gateway approval endpoints (same file, separate router):
+  PATCH  /api/gateway/approve/{request_id}     — approve + execute a gateway-origin tool call
+  DELETE /api/gateway/approve/{request_id}     — reject a gateway-origin tool call
 """
 
 from __future__ import annotations
@@ -13,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import types
 import uuid
 from datetime import datetime, timezone
@@ -22,7 +27,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from core.database import AgentThread, AgentMessage, CerberusAgent, SessionLocal
+from core.database import AgentThread, AgentMessage, CerberusAgent, Session as DbSession, SessionLocal
 from src.auth_helpers import require_user
 
 logger = logging.getLogger(__name__)
@@ -59,6 +64,104 @@ class SendMessageBody(BaseModel):
 
 def _utcnow():
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+# ── V4 Phase 4a: shared approval-flow helpers ─────────────────────────────────
+
+# Tool names that trigger the email recipient allowlist check inside the
+# approve handler. The MCP namespace prefix `mcp__email__send_email` is the
+# canonical wire name; the bare `send_email` form is included so the same
+# guard fires if a native (non-MCP) email tool is ever wired in.
+_EMAIL_SEND_TOOL_NAMES = frozenset({"mcp__email__send_email", "send_email"})
+
+
+def _gateway_email_allowlist() -> set:
+    """Return the configured `GATEWAY_EMAIL_ALLOWLIST` as a lowercase set.
+
+    Empty set (the default — env var unset or blank) means email sending is
+    blocked. Splits on comma, ignores whitespace and empty entries."""
+    raw = os.environ.get("GATEWAY_EMAIL_ALLOWLIST", "").strip()
+    if not raw:
+        return set()
+    return {a.strip().lower() for a in raw.split(",") if a.strip()}
+
+
+# Per-session, per-tool 24-hour caps for gateway-approved actions. Keyed by
+# the stored (original) tool name — calendar writes are the only manage_calendar
+# entries that ever land in the approval store (reads are Tier A pass-through),
+# so counting by literal name effectively counts writes only. The triple
+# (agent_id="" for gateway, thread_id=session_id, tool_name) scopes the cap to
+# one Discord channel / one cap. Server restart clears the in-process store
+# and resets the windows (intentional — `!reset` already invalidates the
+# upstream session cache for the same channel).
+_GATEWAY_RATE_LIMITS: Dict[str, int] = {
+    "mcp__email__send_email": 3,
+    "send_email": 3,
+    "manage_calendar": 10,
+}
+
+
+def _enforce_gateway_rate_limit(entry: dict) -> None:
+    """Raise 429 if this gateway session has hit the daily cap for this tool."""
+    tool_name = entry.get("tool_name") or ""
+    limit = _GATEWAY_RATE_LIMITS.get(tool_name)
+    if not limit:
+        return
+    import src.agent_approval as _aa
+    used = _aa.count_executed_today(
+        entry.get("agent_id") or "",
+        entry.get("thread_id") or "",
+        tool_name,
+    )
+    if used >= limit:
+        raise HTTPException(
+            429,
+            f"Gateway rate limit reached: {tool_name} ({used}/{limit} per 24h)",
+        )
+
+
+def _enforce_email_recipient_allowlist(entry: dict) -> None:
+    """For an approved `mcp__email__send_email` request, refuse if any
+    recipient is outside `GATEWAY_EMAIL_ALLOWLIST`. Raises HTTPException
+    on violation; returns None on pass-through (non-email or all-allowed).
+
+    Checks the union of `to`, `cc`, `bcc` (each may be a comma-separated
+    string or a list). Splitting matches the recipient parsing in
+    `mcp_servers/email_server.py:_send_email`."""
+    if entry.get("tool_name") not in _EMAIL_SEND_TOOL_NAMES:
+        return
+    allowlist = _gateway_email_allowlist()
+    if not allowlist:
+        raise HTTPException(
+            403,
+            "Email via gateway is blocked: GATEWAY_EMAIL_ALLOWLIST is empty",
+        )
+    raw = (entry.get("tool_args") or {}).get("content") or ""
+    try:
+        args = json.loads(raw) if isinstance(raw, str) else (raw or {})
+    except (json.JSONDecodeError, TypeError):
+        raise HTTPException(400, "Email approval has unparseable tool args")
+    if not isinstance(args, dict):
+        raise HTTPException(400, "Email approval has invalid tool args")
+
+    def _normalize(field) -> list:
+        if not field:
+            return []
+        if isinstance(field, list):
+            parts = field
+        else:
+            parts = str(field).split(",")
+        return [str(p).strip().lower() for p in parts if str(p).strip()]
+
+    recipients = _normalize(args.get("to")) + _normalize(args.get("cc")) + _normalize(args.get("bcc"))
+    if not recipients:
+        raise HTTPException(400, "Email approval has no recipients")
+    bad = [r for r in recipients if r not in allowlist]
+    if bad:
+        raise HTTPException(
+            403,
+            f"Recipient(s) not in GATEWAY_EMAIL_ALLOWLIST: {', '.join(sorted(set(bad)))}",
+        )
 
 
 def _get_or_create_thread(db, agent_id: str, owner: str) -> AgentThread:
@@ -355,6 +458,12 @@ def setup_agent_thread_routes() -> APIRouter:
             raise HTTPException(404, "Approval request not found or already decided")
         if pending["agent_id"] != agent_id:
             raise HTTPException(403, "Approval request does not belong to this agent")
+        # V4 Phase 4a: defense-in-depth — even if a thread agent ever holds
+        # `mcp__email__send_email` in its allowlist, the recipient must be in
+        # GATEWAY_EMAIL_ALLOWLIST. Check the pending request BEFORE flipping
+        # status so a rejected check leaves the request still 'pending' and
+        # re-submittable after a config fix.
+        _enforce_email_recipient_allowlist(pending)
         entry = _aa.approve(request_id)
         if not entry:
             raise HTTPException(404, "Approval request not found or already decided")
@@ -508,3 +617,103 @@ def _fire_extraction(
             asyncio.run(_run())
     except Exception as exc:
         logger.debug("agent memory extraction skipped: %s", exc)
+
+
+# ── V4 Phase 4a: gateway approval router ──────────────────────────────────────
+
+def setup_gateway_approval_routes() -> APIRouter:
+    """Approve/reject endpoints for gateway-origin pending tool calls.
+
+    Mounted under `/api/gateway` (no `{agent_id}` path component) because
+    gateway-origin pending requests are stored with `agent_id=""` in the
+    in-process approval store — the thread approval endpoint at
+    `/api/agents/{agent_id}/thread/approve/...` requires a real agent row
+    and can't route them.
+
+    The owner authenticates with the normal session cookie (same
+    `require_user`); the endpoint additionally verifies that the pending
+    request originated from a session OWNED by the caller AND was marked
+    `is_gateway=True` at creation time, so an admin can't approve a
+    request raised on a different user's session.
+
+    Email recipient and rate-limit checks live here (and in the existing
+    thread endpoint, defense-in-depth).
+    """
+
+    router = APIRouter(prefix="/api/gateway", tags=["gateway-approval"])
+
+    def _verify_gateway_pending(pending: dict, owner: str) -> None:
+        """Pending must originate from a gateway session owned by the caller."""
+        if pending.get("agent_id"):
+            raise HTTPException(
+                403,
+                "Not a gateway-origin approval; use the agent thread endpoint",
+            )
+        session_id = pending.get("thread_id") or ""
+        if not session_id:
+            raise HTTPException(400, "Pending approval has no session reference")
+        db = SessionLocal()
+        try:
+            sess_row = db.query(DbSession).filter(DbSession.id == session_id).first()
+        finally:
+            db.close()
+        if sess_row is None:
+            raise HTTPException(404, "Approval's source session no longer exists")
+        if not bool(getattr(sess_row, "is_gateway", False)):
+            raise HTTPException(403, "Approval's source session is not a gateway session")
+        if sess_row.owner and owner and sess_row.owner != owner:
+            raise HTTPException(
+                403,
+                "Approval belongs to a session owned by a different user",
+            )
+
+    @router.patch("/approve/{request_id}")
+    async def approve_gateway_tool(
+        request_id: str, request: Request,
+    ) -> Dict[str, Any]:
+        owner = require_user(request)
+        import src.agent_approval as _aa
+        pending = _aa.get_pending(request_id)
+        if not pending:
+            raise HTTPException(404, "Approval request not found or already decided")
+        _verify_gateway_pending(pending, owner)
+        # Recipient allowlist BEFORE flipping status — a rejected check keeps
+        # the request 'pending' so the owner can fix the env var and re-submit.
+        _enforce_email_recipient_allowlist(pending)
+        # Same for the rate limit — cap-exhausted requests stay pending so the
+        # caller sees a clean 429 and can wait for the window to clear.
+        _enforce_gateway_rate_limit(pending)
+
+        entry = _aa.approve(request_id)
+        if not entry:
+            raise HTTPException(404, "Approval request not found or already decided")
+
+        from src.agent_tools import execute_tool_block, ToolBlock
+        block = ToolBlock(entry["tool_name"], entry["tool_args"].get("content", ""))
+        try:
+            desc, result = await execute_tool_block(
+                block,
+                session_id=entry["thread_id"],
+                owner=owner,
+            )
+            _aa.set_result(request_id, {"desc": desc, "result": result})
+            return {"approved": True, "request_id": request_id, "result": result}
+        except Exception as exc:
+            _aa.set_result(request_id, {"error": str(exc)})
+            raise HTTPException(500, f"Tool execution failed: {exc}")
+
+    @router.delete("/approve/{request_id}")
+    def reject_gateway_tool(
+        request_id: str, request: Request,
+    ) -> Dict[str, Any]:
+        owner = require_user(request)
+        import src.agent_approval as _aa
+        pending = _aa.get_pending(request_id)
+        if not pending:
+            raise HTTPException(404, "Approval request not found or already decided")
+        _verify_gateway_pending(pending, owner)
+        if not _aa.reject(request_id):
+            raise HTTPException(404, "Approval request not found or already decided")
+        return {"rejected": True, "request_id": request_id}
+
+    return router

@@ -326,6 +326,12 @@ def setup_session_routes(session_manager: SessionManager, config: dict, webhook_
         skip_validation: str = Form(None),
         api_key: str = Form(""),
         endpoint_id: str = Form(""),
+        # V4 Phase 4a: gateway service account sets is_gateway=true so
+        # chat_routes can apply the gateway tool allowlist. Informational —
+        # the flag strictly RESTRICTS (never expands) the tool surface so
+        # accepting it from any authenticated caller is safe. Browser UI does
+        # not send this field, so existing sessions remain unaffected.
+        is_gateway: str = Form(None),
     ):
         skip_val = str(skip_validation).lower() == "true"
         user = get_current_user(request)
@@ -421,6 +427,7 @@ def setup_session_routes(session_manager: SessionManager, config: dict, webhook_
             model=model_to_use,
             rag=str(rag).lower() == "true" if rag else False,
             owner=user,
+            is_gateway=str(is_gateway).lower() == "true" if is_gateway else False,
         )
         # Set auth headers for custom API-key endpoints
         resolved_key = request_api_key

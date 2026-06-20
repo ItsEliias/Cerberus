@@ -74,6 +74,10 @@ class Session:
     owner: Optional[str] = None
     is_important: bool = False
     message_count: int = 0
+    # V4 Phase 4a: mirrors the persisted `sessions.is_gateway` column so
+    # chat_routes can apply the gateway tool allowlist without re-querying
+    # the DB on every turn.
+    is_gateway: bool = False
 
     def __post_init__(self):
         if self.headers is None:

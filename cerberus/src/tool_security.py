@@ -51,6 +51,108 @@ NON_ADMIN_BLOCKED_TOOLS = {
 }
 
 
+# ── V4 Phase 4a: gateway tool policy ──────────────────────────────────────────
+# Flat policy across Discord/Telegram/Slack — same tier for every gateway
+# platform (owner decision; see docs/V4_PHASE4_GATEWAY_THREATMODEL.md §7 Q4).
+#
+# The agent-loop tool gate is a DENYLIST. `build_effective_tool_policy` accepts
+# an `agent_allowlist` parameter that it inverts into the equivalent denylist —
+# so Tier A ∪ Tier B IS the entire set of tool names a gateway session is
+# permitted to invoke. Everything else (bash, python, write_file,
+# manage_webhooks, vault_*, the full NON_ADMIN_BLOCKED_TOOLS set, every other
+# MCP tool, …) is automatically Tier C = blocked. This is the central
+# enforcement decision for Phase 4a.
+
+# Tier A — always allowed (read-only / reversible). For tools that mix read
+# and write through an `action` parameter (manage_calendar, manage_memory,
+# manage_notes), per-action gating happens at agent_loop level — the
+# dispatcher-side allowlist gates the tool *name* only.
+GATEWAY_TIER_A_TOOLS = frozenset({
+    "web_search",
+    "web_fetch",
+    "search_chats",
+    "manage_memory",
+    "manage_notes",
+    "manage_calendar",
+})
+
+# Tier B — allowed only behind the approval gate. `manage_calendar_write` is a
+# sentinel name: agent_loop substitutes it for `manage_calendar` when the
+# parsed action is create_event/update_event/delete_event, so the single
+# `manage_calendar` tool covers both the Tier A read path and the Tier B
+# write-with-approval path.
+GATEWAY_TIER_B_TOOLS = frozenset({
+    "mcp__email__send_email",
+    "manage_calendar_write",
+})
+
+# Passed as `agent_allowlist=` to `build_effective_tool_policy` for gateway
+# sessions. Anything outside this set is automatically blocked by inversion.
+GATEWAY_TOOL_ALLOWLIST = GATEWAY_TIER_A_TOOLS | GATEWAY_TIER_B_TOOLS
+
+# Passed as `approval_gated_tools=`. The agent-loop intercept already exists
+# from Phase 3 (write_file/edit_file on thread agents); we reuse it here.
+GATEWAY_APPROVAL_GATED_TOOLS = frozenset({
+    "mcp__email__send_email",
+    "manage_calendar_write",
+})
+
+# Calendar action names that count as writes. agent_loop checks the parsed
+# `action` in the tool block and swaps `manage_calendar` for the sentinel
+# `manage_calendar_write` when one of these matches, so the approval-gate
+# check fires. Keep in lock-step with the action set in calendar tools.
+GATEWAY_CALENDAR_WRITE_ACTIONS = frozenset({
+    "create_event",
+    "update_event",
+    "delete_event",
+})
+
+
+def effective_approval_tool_name(tool_type: str, content: str) -> str:
+    """Resolve the tool name used for approval-gate matching.
+
+    Most tools approval-gate by their literal name (`mcp__email__send_email`,
+    `write_file`). `manage_calendar` is special: only the write actions
+    (create_event/update_event/delete_event) need approval; list/get pass
+    through as Tier A. agent_loop calls this with the raw block tool_type and
+    content; if the action parses as a write, this returns the sentinel
+    `manage_calendar_write` (which the gateway allowlist + approval set use).
+    Otherwise returns ``tool_type`` unchanged.
+
+    The approve/reject endpoint must run the SAME logic against the stored
+    tool_args to classify a request — that's why this lives in tool_security,
+    not inline at the call sites.
+    """
+    if tool_type != "manage_calendar":
+        return tool_type
+    # Try JSON parse first (MCP-style argument blob)
+    action = None
+    if isinstance(content, str) and content.strip():
+        try:
+            import json as _json
+            parsed = _json.loads(content)
+            if isinstance(parsed, dict):
+                action = str(parsed.get("action") or "").strip().lower()
+        except Exception:
+            action = None
+    if action and action in GATEWAY_CALENDAR_WRITE_ACTIONS:
+        return "manage_calendar_write"
+    return tool_type
+
+
+def is_gateway_session(sess) -> bool:
+    """True when this session originated from the inbound gateway.
+
+    Reads the persisted `is_gateway` flag (DB column added by
+    `_migrate_add_is_gateway_column`, mirrored on the in-memory Session
+    dataclass). Falls back to False for any object that doesn't carry the
+    attribute — keeps non-gateway callers (tests, ad-hoc tooling) safe.
+    """
+    if sess is None:
+        return False
+    return bool(getattr(sess, "is_gateway", False))
+
+
 # Plan mode: the agent may investigate but must not mutate anything. Only these
 # read-only/inspection tools stay enabled; everything else (writes, sends,
 # manage_*, model serving, MCP, etc.) is blocked. Allowlist rather than blocklist
