@@ -41,6 +41,11 @@ from routes.chat_helpers import (
 )
 from src.action_intents import classify_tool_intent as _classify_tool_intent
 from src.tool_policy import build_effective_tool_policy
+from src.tool_security import (
+    GATEWAY_APPROVAL_GATED_TOOLS,
+    GATEWAY_TOOL_ALLOWLIST,
+    is_gateway_session,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -351,7 +356,17 @@ def setup_chat_routes(
         # non-streaming path can't be used to bypass).
         _enforce_chat_privileges(request, sess)
 
-        tool_policy = build_effective_tool_policy(last_user_message=message)
+        # V4 Phase 4a: gateway-originated sessions get the same restrictive
+        # allowlist on this path as on chat_stream — otherwise a gateway-
+        # authenticated POST to /api/chat would bypass Phase 4a.
+        _is_gateway = is_gateway_session(sess)
+        _agent_allowlist = GATEWAY_TOOL_ALLOWLIST if _is_gateway else None
+        _approval_gated = GATEWAY_APPROVAL_GATED_TOOLS if _is_gateway else None
+        tool_policy = build_effective_tool_policy(
+            last_user_message=message,
+            agent_allowlist=_agent_allowlist,
+            approval_gated_tools=_approval_gated,
+        )
         allow_tool_preprocessing = not tool_policy.block_all_tool_calls
 
         # Inline memory command
@@ -733,9 +748,18 @@ def setup_chat_routes(
             from src.tool_security import plan_mode_disabled_tools
             disabled_tools.update(plan_mode_disabled_tools())
 
+        # V4 Phase 4a: gateway-originated sessions get a restrictive allowlist
+        # (Tier A read-only + Tier B approval-gated). Everything else is
+        # blocked by inversion in build_effective_tool_policy. Non-gateway
+        # sessions are unaffected — agent_allowlist stays None.
+        _is_gateway = is_gateway_session(sess)
+        _agent_allowlist = GATEWAY_TOOL_ALLOWLIST if _is_gateway else None
+        _approval_gated = GATEWAY_APPROVAL_GATED_TOOLS if _is_gateway else None
         tool_policy = build_effective_tool_policy(
             disabled_tools=disabled_tools,
             last_user_message=message,
+            agent_allowlist=_agent_allowlist,
+            approval_gated_tools=_approval_gated,
         )
         disabled_tools = tool_policy.all_disabled_names()
         research_blocked_by_policy = bool(

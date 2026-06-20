@@ -27,7 +27,13 @@ def test_research_fast_path_respects_tool_policy():
 def test_non_streaming_chat_path_uses_tool_policy_before_context_and_research():
     src = _source()
     chat_endpoint = src[src.index("async def chat_endpoint"):src.index("# ------------------------------------------------------------------ #", src.index("async def chat_endpoint"))]
-    assert "tool_policy = build_effective_tool_policy(last_user_message=message)" in chat_endpoint
+    # V4 Phase 4a: this call also accepts agent_allowlist/approval_gated_tools
+    # for gateway sessions, so the kwargs aren't a single inline pair anymore.
+    # The contract we still want to assert: the non-streaming /api/chat path
+    # builds a tool_policy from `message` BEFORE context/research, and gates
+    # research + background extraction off the resulting policy.
+    assert "tool_policy = build_effective_tool_policy(" in chat_endpoint
+    assert "last_user_message=message" in chat_endpoint
     assert "allow_tool_preprocessing = not tool_policy.block_all_tool_calls" in chat_endpoint
     assert 'if not tool_policy.blocks("manage_memory"):' in chat_endpoint
     assert "allow_tool_preprocessing=allow_tool_preprocessing" in chat_endpoint

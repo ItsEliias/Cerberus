@@ -130,6 +130,11 @@ class Session(TimestampMixin, Base):
     total_output_tokens = Column(Integer, default=0)
     mode = Column(String, nullable=True)  # 'agent', 'chat', or 'research'
     crew_member_id = Column(String, nullable=True)  # links to crew_members.id
+    # V4 Phase 4a: True when this session was created by the inbound gateway
+    # (Discord/Telegram/Slack). chat_routes reads this to apply the gateway
+    # tool allowlist + approval gate. Not user-settable through any UI; only
+    # the POST /api/session call from the gateway service account sets it.
+    is_gateway = Column(Boolean, default=False, nullable=False, server_default="0")
 
     # Relationship to chat messages
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
@@ -158,6 +163,7 @@ class Session(TimestampMixin, Base):
             'total_input_tokens': self.total_input_tokens or 0,
             'total_output_tokens': self.total_output_tokens or 0,
             'crew_member_id': self.crew_member_id,
+            'is_gateway': bool(self.is_gateway),
         }
 
 class ChatMessage(Base):
@@ -1201,6 +1207,41 @@ def _migrate_add_mode_column():
         except Exception:
             pass
 
+
+def _migrate_add_is_gateway_column():
+    """V4 Phase 4a: add is_gateway column to sessions if missing.
+
+    Existing rows backfill to 0 (False) via the column DEFAULT — only sessions
+    created after this migration through the gateway service account get the
+    flag set, so legacy browser sessions are unaffected by the gateway tool
+    policy. Idempotent."""
+    import sqlite3
+    db_path = DATABASE_URL.replace("sqlite:///", "")
+    if not os.path.exists(db_path):
+        return
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.execute("PRAGMA table_info(sessions)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if "is_gateway" not in columns:
+            conn.execute(
+                "ALTER TABLE sessions ADD COLUMN is_gateway BOOLEAN DEFAULT 0 NOT NULL"
+            )
+            conn.commit()
+            logging.getLogger(__name__).info(
+                "Migrated: added 'is_gateway' column to sessions"
+            )
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            f"Migration check for is_gateway failed: {e}"
+        )
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
 def _migrate_add_folder_column():
     """Add folder column to sessions table if it doesn't exist."""
     import sqlite3
@@ -1893,6 +1934,7 @@ def init_db():
     _migrate_add_folder_column()
     _migrate_add_token_columns()
     _migrate_add_mode_column()
+    _migrate_add_is_gateway_column()
     _migrate_add_multiuser_owner_columns()
     _migrate_add_api_token_scopes_column()
     _migrate_backfill_document_owner_from_session()

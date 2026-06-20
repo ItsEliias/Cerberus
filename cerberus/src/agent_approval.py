@@ -121,3 +121,28 @@ def _cleanup_expired() -> None:
         ]
         for rid in expired:
             del _store[rid]
+
+
+# ── V4 Phase 4a: per-session rate limiting for gateway-approved tool calls ──
+
+def count_executed_today(agent_id: str, thread_id: str, tool_name: str) -> int:
+    """Count `executed` approvals for this (agent_id, thread_id, tool_name)
+    triple in the trailing 24 hours.
+
+    Used by the gateway approval endpoint to cap side-effecting actions per
+    session (e.g. 3 emails or 10 calendar writes per Discord channel per day).
+    The store is in-process and cleared on restart, so a restart effectively
+    resets the per-session window — that's intentional (the per-channel
+    `!reset` already invalidates the upstream session cache and any rate
+    cap with it)."""
+    cutoff = time.time() - 86400.0
+    with _lock:
+        return sum(
+            1
+            for e in _store.values()
+            if e["agent_id"] == agent_id
+            and e["thread_id"] == thread_id
+            and e["tool_name"] == tool_name
+            and e["status"] == "executed"
+            and e["created_at"] >= cutoff
+        )

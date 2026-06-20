@@ -769,8 +769,11 @@ app.include_router(setup_companion_routes())
 from routes.cerberus_agent_routes import setup_cerberus_agent_routes
 app.include_router(setup_cerberus_agent_routes())
 
-from routes.cerberus_agent_thread_routes import setup_agent_thread_routes
+from routes.cerberus_agent_thread_routes import setup_agent_thread_routes, setup_gateway_approval_routes
 app.include_router(setup_agent_thread_routes())
+# V4 Phase 4a — gateway approve/reject endpoints for tool calls raised from
+# inbound gateway (Discord/Telegram/Slack) sessions.
+app.include_router(setup_gateway_approval_routes())
 
 from routes.conference_room_routes import setup_conference_room_routes
 app.include_router(setup_conference_room_routes())

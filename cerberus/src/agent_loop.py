@@ -19,7 +19,11 @@ from src.llm_core import stream_llm, stream_llm_with_fallback, _is_ollama_native
 from src.model_context import estimate_tokens
 from src.settings import get_setting
 from src.prompt_security import untrusted_context_message
-from src.tool_security import blocked_tools_for_owner, plan_mode_disabled_tools
+from src.tool_security import (
+    blocked_tools_for_owner,
+    effective_approval_tool_name as _effective_approval_name,
+    plan_mode_disabled_tools,
+)
 from src.tool_policy import GUIDE_ONLY_DIRECTIVE, ToolPolicy
 from src.tool_utils import get_mcp_manager
 from src.agent_tools import (
@@ -2632,10 +2636,19 @@ async def stream_agent_loop(
             elif (
                 tool_policy
                 and tool_policy.approval_gated_tools
-                and block.tool_type in tool_policy.approval_gated_tools
+                and (
+                    block.tool_type in tool_policy.approval_gated_tools
+                    or _effective_approval_name(block.tool_type, block.content)
+                    in tool_policy.approval_gated_tools
+                )
             ):
                 from src import agent_approval as _aa
                 _preview = block.content.strip()[:2000]
+                # V4 Phase 4a: store with the ORIGINAL tool name so the
+                # approve endpoint can dispatch the real tool. The approve
+                # endpoint re-runs `_effective_approval_name` against the
+                # stored args to classify writes (e.g. manage_calendar →
+                # manage_calendar_write) for rate-limit accounting.
                 _req_id = _aa.store_pending(
                     agent_id=agent_id or "",
                     thread_id=session_id or "",
