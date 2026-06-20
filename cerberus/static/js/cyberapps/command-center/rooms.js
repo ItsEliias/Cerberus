@@ -13,6 +13,56 @@ function _esc(s) {
 // Agent list cache — populated once per tab mount
 let _agentCache = [];
 
+// ---- Pin storage (localStorage) ----
+//
+// Pinned room IDs persist in localStorage under `cerberus.rooms.pinned` as a
+// JSON array. All access is wrapped in try/catch so a quota error in private
+// browsing never crashes the room list. Pinned rooms sort to the top of the
+// list; the pin toggle re-sorts the cards in place without re-fetching.
+const PINNED_KEY = 'cerberus.rooms.pinned';
+
+function _readPinned() {
+  try {
+    const raw = localStorage.getItem(PINNED_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.filter(x => typeof x === 'string') : []);
+  } catch (_) { return new Set(); }
+}
+
+function _writePinned(set) {
+  try { localStorage.setItem(PINNED_KEY, JSON.stringify([...set])); } catch (_) {}
+}
+
+function _isPinned(roomId) { return _readPinned().has(roomId); }
+
+function _togglePinned(roomId) {
+  const set = _readPinned();
+  if (set.has(roomId)) set.delete(roomId); else set.add(roomId);
+  _writePinned(set);
+  return set.has(roomId);
+}
+
+// Pinned IDs sort to index 0; remaining rooms keep newest-first (last_message_at
+// desc). Pure — no DOM, no localStorage access — so the test runner can
+// exercise it directly.
+function _sortRoomsForDisplay(rooms, pinned) {
+  return [...rooms].sort((a, b) => {
+    const ap = pinned.has(a.id) ? 0 : 1;
+    const bp = pinned.has(b.id) ? 0 : 1;
+    if (ap !== bp) return ap - bp;
+    return String(b.last_message_at || '').localeCompare(String(a.last_message_at || ''));
+  });
+}
+
+// Resolve participant_ids → display names via _agentCache. Falls back to the
+// raw ID when an agent row hasn't loaded (or was deleted) so the card never
+// renders an empty list.
+function _participantNames(room) {
+  const ids = Array.isArray(room?.participant_ids) ? room.participant_ids : [];
+  return ids.map(id => _agentById(id)?.name || id);
+}
+
 async function _ensureAgents() {
   if (_agentCache.length) return;
   try {
@@ -30,21 +80,29 @@ function _agentById(id) {
 
 // ---- Room card in list view ----
 
-function _roomCard(room) {
+function _roomCard(room, pinned = _readPinned()) {
   const count = room.participant_ids?.length || 0;
   const lastAt = room.last_message_at
     ? new Date(room.last_message_at + 'Z').toLocaleString() : '—';
   const modeBadge = room.mode === 'open'
     ? '<span class="cc-room-mode-badge cc-room-mode-open">OPEN</span>'
     : '<span class="cc-room-mode-badge cc-room-mode-routed">ROUTED</span>';
+  const isPinned = pinned.has(room.id);
+  const pinTitle = isPinned ? 'Unpin room' : 'Pin room';
+  const participantNames = _participantNames(room);
+  const participantsLine = participantNames.length
+    ? `<div class="cc-room-participants">${_esc(participantNames.join(' · '))}</div>`
+    : '';
   return `
-<div class="cc-room-card" data-room-id="${_esc(room.id)}" data-room-name="${_esc(room.name)}">
+<div class="cc-room-card${isPinned ? ' cc-room-card--pinned' : ''}" data-room-id="${_esc(room.id)}" data-room-name="${_esc(room.name)}">
   <div class="cc-room-card-header">
     <span class="cc-room-name">${_esc(room.name)}</span>
     <span class="cc-room-count">${count} agent${count !== 1 ? 's' : ''}</span>
     ${modeBadge}
+    <button class="cc-room-pin-btn${isPinned ? ' cc-room-pin-btn--active' : ''}" data-room-id="${_esc(room.id)}" title="${pinTitle}" aria-pressed="${isPinned}">📌</button>
   </div>
   <div class="cc-room-last">${_esc(lastAt)}</div>
+  ${participantsLine}
   <div class="cc-room-card-actions">
     <button class="cc-room-open-btn" data-room-id="${_esc(room.id)}">Open</button>
     <button class="cc-room-delete-btn" data-room-id="${_esc(room.id)}">Delete</button>
@@ -370,6 +428,33 @@ async function _openRoom(container, room) {
 
 // ---- Room list view ----
 
+// Cached room list for in-place re-sort (pin toggle) and filter without a
+// network round-trip. Reset on every `_loadRoomList` call.
+let _lastLoadedRooms = [];
+
+function _renderRoomGrid(grid, container, rooms) {
+  const pinned = _readPinned();
+  const sorted = _sortRoomsForDisplay(rooms, pinned);
+  grid.innerHTML = sorted.map(r => _roomCard(r, pinned)).join('');
+  sorted.forEach(room => {
+    const openBtn   = grid.querySelector(`.cc-room-open-btn[data-room-id="${room.id}"]`);
+    const deleteBtn = grid.querySelector(`.cc-room-delete-btn[data-room-id="${room.id}"]`);
+    const pinBtn    = grid.querySelector(`.cc-room-pin-btn[data-room-id="${room.id}"]`);
+    openBtn?.addEventListener('click', () => _openRoom(container, room));
+    deleteBtn?.addEventListener('click', async () => {
+      if (!confirm(`Delete room "${room.name}"?`)) return;
+      await fetch(`/api/rooms/${encodeURIComponent(room.id)}`, { method: 'DELETE' });
+      await _loadRoomList(container);
+    });
+    pinBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _togglePinned(room.id);
+      _renderRoomGrid(grid, container, _lastLoadedRooms);
+      _applyRoomFilter(container);
+    });
+  });
+}
+
 async function _loadRoomList(container) {
   const grid    = container.querySelector('#cc-rooms-grid');
   const countEl = container.querySelector('#cc-rooms-count');
@@ -380,24 +465,41 @@ async function _loadRoomList(container) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const { rooms = [] } = await res.json();
     if (countEl) countEl.textContent = rooms.length;
+    _lastLoadedRooms = rooms;
     if (!rooms.length) {
       grid.innerHTML = '<div class="cc-empty">No rooms yet — create one above.</div>';
       return;
     }
-    grid.innerHTML = rooms.map(_roomCard).join('');
-    rooms.forEach(room => {
-      const openBtn   = grid.querySelector(`.cc-room-open-btn[data-room-id="${room.id}"]`);
-      const deleteBtn = grid.querySelector(`.cc-room-delete-btn[data-room-id="${room.id}"]`);
-      openBtn?.addEventListener('click', () => _openRoom(container, room));
-      deleteBtn?.addEventListener('click', async () => {
-        if (!confirm(`Delete room "${room.name}"?`)) return;
-        await fetch(`/api/rooms/${encodeURIComponent(room.id)}`, { method: 'DELETE' });
-        await _loadRoomList(container);
-      });
-    });
+    _renderRoomGrid(grid, container, rooms);
+    _applyRoomFilter(container);
   } catch (e) {
     grid.innerHTML = `<div class="cc-empty">Could not load rooms — ${_esc(e.message)}</div>`;
   }
+}
+
+// ---- Room search filter ----
+//
+// Pure client-side filter on the rendered card list — case-insensitive
+// substring match on room name. Empty input restores all cards. Operates by
+// flipping inline `display` on `.cc-room-card` nodes so no re-render is needed.
+function _applyRoomFilter(container) {
+  const input = container.querySelector('#cc-rooms-filter');
+  const q = (input?.value || '').trim().toLowerCase();
+  const cards = container.querySelectorAll('#cc-rooms-grid .cc-room-card');
+  cards.forEach(card => {
+    if (!q) {
+      card.style.display = '';
+      return;
+    }
+    const name = (card.dataset.roomName || '').toLowerCase();
+    card.style.display = name.includes(q) ? '' : 'none';
+  });
+}
+
+function _wireRoomFilter(container) {
+  const input = container.querySelector('#cc-rooms-filter');
+  if (!input) return;
+  input.addEventListener('input', () => _applyRoomFilter(container));
 }
 
 // ---- Preset templates ----
@@ -497,6 +599,10 @@ export function buildRoomsTab() {
   </div>
   <div id="cc-room-templates-mount"></div>
   <div id="cc-room-new-form-mount"></div>
+  <div class="cc-rooms-filter-row">
+    <input id="cc-rooms-filter" class="cc-rooms-filter-input"
+      type="text" autocomplete="off" placeholder="// filter rooms" />
+  </div>
   <div class="cc-ag-grid" id="cc-rooms-grid">
     <div class="cc-empty">Loading rooms…</div>
   </div>
@@ -513,6 +619,23 @@ export async function loadRooms(container) {
     _wireNewRoomForm(container);
   }
 
+  _wireRoomFilter(container);
   await _renderTemplates(container);
   await _loadRoomList(container);
 }
+
+// Helpers exported only for tests. Keep this at the bottom so import-time
+// side effects on the rest of the module stay minimal.
+export const __testables = {
+  PINNED_KEY,
+  _readPinned,
+  _writePinned,
+  _isPinned,
+  _togglePinned,
+  _sortRoomsForDisplay,
+  _participantNames,
+  _roomCard,
+  _applyRoomFilter,
+  _renderRoomGrid,
+  _setAgentCache: (agents) => { _agentCache = agents || []; },
+};
