@@ -1961,3 +1961,76 @@
   color: var(--text-muted);
   line-height: 1.4;
 }
+
+/* ── Room pin button ───────────────────────────────────────── */
+.cc-room-pin-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px 4px;
+  margin-left: 4px;
+  opacity: 0.5;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.cc-room-pin-btn:hover {
+  opacity: 1;
+  color: var(--text-primary);
+}
+
+.cc-room-pin-btn--active {
+  opacity: 1;
+  color: var(--red);
+  border-color: var(--border);
+}
+
+.cc-room-card--pinned {
+  border-color: var(--red);
+}
+
+/* ── Room participant list on card ─────────────────────────── */
+.cc-room-participants {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Room search filter ────────────────────────────────────── */
+.cc-rooms-filter-row {
+  margin: 8px 0 6px;
+}
+
+.cc-rooms-filter-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface-raise);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 6px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.cc-rooms-filter-input::placeholder {
+  color: var(--text-muted);
+}
+
+.cc-rooms-filter-input:focus {
+  border-color: var(--red);
+}
