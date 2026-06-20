@@ -242,23 +242,95 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content, viewport-fit=cover" />
 </head>
 <body>
-  <!-- Loading overlay — hides all flashing until app is ready -->
-  <style>
-    @keyframes cerb-pulse{0%,100%{opacity:.3;transform:scale(.92)}50%{opacity:.95;transform:scale(1.04)}}
-    @keyframes cerb-ring{0%,100%{opacity:.15;transform:scale(.85)}50%{opacity:.4;transform:scale(1.1)}}
-    #cerb-loader-shield{animation:cerb-pulse 2s ease-in-out infinite;transform-origin:center;filter:drop-shadow(0 0 10px rgba(192,57,43,.35))}
-    #cerb-loader-ring{animation:cerb-ring 2s ease-in-out infinite;transform-origin:center}
-  </style>
-  <div id="app-loader" style="position:fixed;inset:0;z-index:99999;background:var(--bg,#1a1d23);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;transition:opacity .3s">
-    <div style="position:relative;width:64px;height:64px;display:flex;align-items:center;justify-content:center">
-      <svg id="cerb-loader-ring" style="position:absolute" width="64" height="64" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke="var(--brand-color,#c0392b)" stroke-width="1" stroke-dasharray="6 4"/></svg>
-      <svg id="cerb-loader-shield" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--brand-color,#c0392b)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2 L19 5 V11 C19 16 12 22 12 22 C12 22 5 16 5 11 V5 L12 2 Z" fill="rgba(192,57,43,.1)"/>
-        <circle cx="12" cy="11" r="2.4" fill="var(--brand-color,#c0392b)" stroke="none"/>
-      </svg>
-    </div>
+  <!-- Loading overlay — particle globe; hides all flashing until app is ready -->
+  <div id="app-loader" style="position:fixed;inset:0;z-index:99999;background:var(--bg,#0a0a0a);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;transition:opacity .3s">
+    <canvas id="cerb-globe-canvas" width="120" height="120" style="display:block"></canvas>
     <div style="color:var(--brand-color,#c0392b);font-family:monospace;font-size:9px;letter-spacing:.3em;opacity:.5">CERBERUS</div>
   </div>
+  <script nonce="{{CSP_NONCE}}">
+  (function() {
+    // Particle globe for the app loader.
+    // ~300 points on a sphere surface via Fibonacci lattice, projected to 2D
+    // with a Y-axis rotation. Colour pulled from the --red token at frame
+    // time so a late-loading theme is picked up automatically; falls back
+    // to #c0392b if the token isn't resolved yet.
+    // Stops its rAF loop when the loader element is removed from the DOM.
+
+    var canvas = document.getElementById('cerb-globe-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height, CX = W / 2, CY = H / 2, R = 44;
+    var N = 300;
+
+    function getAccent() {
+      var v = getComputedStyle(document.documentElement)
+                .getPropertyValue('--red').trim();
+      return v || '#c0392b';
+    }
+
+    // Reduced motion — draw the static ring once and exit (no rAF loop).
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      ctx.strokeStyle = getAccent();
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.4;
+      ctx.beginPath();
+      ctx.arc(CX, CY, R, 0, Math.PI * 2);
+      ctx.stroke();
+      return;
+    }
+
+    // Fibonacci lattice — even distribution on the unit sphere.
+    var pts = [];
+    var golden = Math.PI * (3 - Math.sqrt(5));
+    for (var i = 0; i < N; i++) {
+      var y = 1 - (i / (N - 1)) * 2;
+      var r = Math.sqrt(1 - y * y);
+      var theta = golden * i;
+      pts.push([r * Math.cos(theta), y, r * Math.sin(theta)]);
+    }
+
+    var angle = 0, active = true;
+
+    function frame() {
+      if (!active) return;
+      requestAnimationFrame(frame);
+      ctx.clearRect(0, 0, W, H);
+      var accent = getAccent();
+      var cos = Math.cos(angle), sin = Math.sin(angle);
+      angle += 0.005;
+      for (var p = 0; p < pts.length; p++) {
+        var pt = pts[p];
+        var x = pt[0], py3 = pt[1], z = pt[2];
+        // Rotate around the Y axis
+        var rx = x * cos - z * sin;
+        var rz = x * sin + z * cos;
+        // Crude perspective: depth in [0,1], front = 1
+        var depth = (rz + 1) / 2;
+        var px = CX + rx * R;
+        var py = CY + py3 * R;
+        var alpha = 0.15 + depth * 0.7;
+        var size  = 0.8 + depth * 1.2;
+        ctx.beginPath();
+        ctx.arc(px, py, size, 0, Math.PI * 2);
+        ctx.fillStyle = accent;
+        ctx.globalAlpha = alpha;
+        ctx.fill();
+      }
+    }
+
+    frame();
+
+    // Stop the rAF loop the moment the loader leaves the DOM (whether the
+    // app's normal fade-out or the 5s timeout fallback removed it).
+    var observer = new MutationObserver(function() {
+      if (!document.getElementById('app-loader')) {
+        active = false;
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  })();
+  </script>
   <script nonce="{{CSP_NONCE}}">
   (function(){
     setTimeout(function(){var l=document.getElementById('app-loader');if(l){l.style.opacity='0';setTimeout(function(){l.remove()},300)}},5000);
