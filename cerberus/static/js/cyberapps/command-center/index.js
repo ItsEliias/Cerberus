@@ -16,6 +16,7 @@ import { buildGatewayTab, loadGateway } from './gateway.js';
 import { buildAgentsTab, loadAgents } from './agents.js';
 import { buildRoomsTab, loadRooms } from './rooms.js';
 import { buildObservabilityTab, loadObservability } from './observability.js';
+import { buildCompareTab, loadCompareTab } from './cc-compare.js';
 import { initShortcuts, destroyShortcuts } from './shortcuts.js';
 import * as Poll from './poll.js';
 
@@ -40,6 +41,7 @@ const TABS = [
   { id: 'gateway',       label: 'GATEWAY'   },
   { id: 'agents',        label: 'AGENTS'    },
   { id: 'rooms',         label: 'ROOMS'     },
+  { id: 'compare',       label: 'COMPARE'   },
   { id: 'observability', label: 'OBSERVE'   },
 ];
 
@@ -219,6 +221,9 @@ function _mountTab(id, shell) {
   } else if (id === 'rooms') {
     content.innerHTML = buildRoomsTab();
     loadRooms(content);
+  } else if (id === 'compare') {
+    content.innerHTML = buildCompareTab();
+    loadCompareTab(content);
   } else if (id === 'observability') {
     content.innerHTML = buildObservabilityTab();
     loadObservability(content);

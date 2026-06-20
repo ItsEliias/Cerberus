@@ -3319,3 +3319,186 @@
   border-color: var(--cc-crimson, var(--red, #c0392b));
   opacity: 1;
 }
+
+/* ── COMPARE tab ──────────────────────────────────────────────────────
+ * Spec named --surface / --surface-raise / --text-primary / --text-dim
+ * which don't exist here; each rule substitutes --cc-* / --cc-fg /
+ * color-mix(...) per the existing CC vocabulary. Token-only. */
+
+.cc-compare-tab { display: flex; flex-direction: column; gap: 10px; padding: 0 12px 14px; }
+
+.cc-compare-setup {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--cc-void-mid, var(--bg, #1a1d23)) 92%, transparent);
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  border-radius: 3px;
+  margin-top: 10px;
+}
+
+.cc-compare-prompt {
+  width: 100%; box-sizing: border-box;
+  min-height: 56px;
+  padding: 8px 10px;
+  background: var(--cc-void-mid, var(--bg, #1a1d23));
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px; line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  -webkit-appearance: none; appearance: none;
+}
+.cc-compare-prompt::placeholder {
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 40%, transparent);
+}
+.cc-compare-prompt:focus { border-color: var(--cc-crimson, var(--red, #c0392b)); }
+.cc-compare-prompt:focus-visible {
+  outline: 2px solid var(--cc-crimson, var(--red, #c0392b)); outline-offset: -2px;
+}
+
+.cc-compare-agent-picker { display: flex; flex-direction: column; gap: 6px; }
+.cc-compare-agent-grid {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+
+.cc-compare-agent-chip {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 70%, transparent);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px; letter-spacing: 0.04em;
+  border-radius: 2px; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cc-compare-agent-chip:hover:not([disabled]) {
+  border-color: color-mix(in srgb, var(--cc-crimson, var(--red, #c0392b)) 55%, transparent);
+}
+.cc-compare-agent-chip.selected {
+  border-color: var(--cc-crimson, var(--red, #c0392b));
+  color: var(--cc-crimson, var(--red, #c0392b));
+}
+.cc-compare-agent-chip.disabled,
+.cc-compare-agent-chip[disabled] { opacity: 0.35; cursor: not-allowed; }
+.cc-compare-agent-chip-name {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+}
+.cc-compare-agent-chip-model {
+  font-size: 8px; letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 40%, transparent);
+}
+
+.cc-compare-picker-hint {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px; letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 45%, transparent);
+}
+
+.cc-compare-run-btn,
+.cc-compare-reset-btn {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid var(--cc-crimson, var(--red, #c0392b));
+  color: var(--cc-crimson, var(--red, #c0392b));
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 2px; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+.cc-compare-run-btn:hover:not([disabled]),
+.cc-compare-reset-btn:hover { filter: brightness(1.15); }
+.cc-compare-run-btn[disabled] {
+  opacity: 0.4; cursor: not-allowed; filter: grayscale(0.5);
+}
+.cc-compare-run-btn:focus-visible,
+.cc-compare-reset-btn:focus-visible {
+  outline: 2px solid var(--cc-crimson, var(--red, #c0392b)); outline-offset: 2px;
+}
+
+.cc-compare-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.cc-compare-col {
+  display: flex; flex-direction: column;
+  background: color-mix(in srgb, var(--cc-void-mid, var(--bg, #1a1d23)) 92%, transparent);
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cc-compare-col-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  background: color-mix(in srgb, var(--cc-void, #060708) 70%, transparent);
+}
+
+.cc-compare-agent-name {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.06em;
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+}
+
+.cc-compare-status {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px; letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 40%, transparent);
+}
+.cc-compare-status[data-state="streaming"] {
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 75%, transparent);
+}
+.cc-compare-status[data-state="done"] {
+  color: var(--cc-ok, #27ae60);
+}
+.cc-compare-status[data-state="error"] {
+  color: var(--cc-crit, #e74c3c);
+}
+.cc-compare-status[data-state="cancelled"] {
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 45%, transparent);
+}
+
+.cc-compare-col-body {
+  flex: 1; padding: 12px;
+  overflow-y: auto; max-height: 400px;
+}
+
+.cc-compare-bubble {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px; line-height: 1.6;
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+  white-space: pre-wrap; word-break: break-word;
+}
+
+.cc-compare-error-line {
+  font-size: 10px;
+  color: var(--cc-crit, #e74c3c);
+  margin-top: 6px;
+}
+
+.cc-compare-col-footer {
+  padding: 6px 12px;
+  border-top: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px; letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 40%, transparent);
+}
+
+.cc-compare-reset-row {
+  display: flex; justify-content: flex-end;
+  margin-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-compare-agent-chip,
+  .cc-compare-run-btn,
+  .cc-compare-reset-btn { transition: none; }
+}
