@@ -237,6 +237,19 @@ def is_setting_overridden(key: str) -> bool:
         return False
 
 
+# Operator profile (per-user). Lives in the per-user prefs store
+# (data/user_prefs.json) — NOT in settings.json — because every key varies
+# per owner (display name, bio, avatar URL, etc). Namespaced under
+# `user_profile.` and read/written through routes/profile_routes.py so
+# settings.py doesn't need to know the schema. Recognised keys:
+#   user_profile.display_name
+#   user_profile.role
+#   user_profile.bio              (max 280 chars, see profile_routes._BIO_MAX)
+#   user_profile.location
+#   user_profile.interests        (list, max 20 items × 50 chars each)
+#   user_profile.avatar_url       (/static/avatars/{slug}.{ext})
+#   user_profile.onboarded        (bool — false until wizard completes)
+
 # Per-user settings (user prefs override the global admin default). Used for
 # keys that a user is allowed to choose individually — currently the vision
 # model + image-generation model. The owner argument is the authed username

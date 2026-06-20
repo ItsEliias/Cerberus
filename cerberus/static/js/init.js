@@ -71,6 +71,14 @@ window.addEventListener('pageshow', clearFreshComposerRestore);
         if (_chat) { _chat.classList.add('active'); _chat.click?.(); }
       }
     } catch (_) { /* DOM not ready or unexpected shape — UI gates are non-fatal */ }
+
+    // First-login operator-profile wizard. Fires once when GET
+    // /api/profile/onboarding-status returns {onboarded: false}; the module
+    // itself is the gate, so an early/anonymous load is a cheap no-op.
+    try {
+      const { maybeShowOnboarding } = await import('./onboarding.js');
+      maybeShowOnboarding();
+    } catch (_) { /* onboarding is non-critical; never block init on it */ }
   } catch (_) { /* anonymous / loopback mode — nothing to do */ }
 })();
 
