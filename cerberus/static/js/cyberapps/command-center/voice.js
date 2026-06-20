@@ -49,6 +49,7 @@ function _buildVoicePanel(agentName, agentAvatar, accentColor) {
   <div class="cc-voice-transcript" id="cc-voice-transcript">
     <div class="cc-empty">Hold the mic button to speak.</div>
   </div>
+  <div id="cc-voice-recent-mount"></div>
   <div class="cc-voice-controls">
     <button class="cc-voice-mic-btn" id="cc-voice-mic-btn" title="Hold to speak">🎤</button>
     <div class="cc-voice-fallback" id="cc-voice-fallback" style="display:none">
@@ -239,6 +240,131 @@ async function _streamAgentReply(agentId, message, contentEl, transcriptEl) {
 // State machine
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Transcript persistence
+// ---------------------------------------------------------------------------
+//
+// On back, the panel posts the user/agent transcript to /api/notes with
+// `source = "voice"` so the new GET /api/voice/sessions route can pick it
+// back up. Fire-and-forget: failure never blocks navigation.
+
+function _collectTranscriptLines(transcriptEl) {
+  if (!transcriptEl) return [];
+  const turns = [...transcriptEl.querySelectorAll('.cc-voice-turn')];
+  const lines = [];
+  for (const t of turns) {
+    // Role comes from the cc-voice-turn--<role> modifier class.
+    let role = 'unknown';
+    for (const cls of t.classList) {
+      if (cls.startsWith('cc-voice-turn--')) {
+        role = cls.slice('cc-voice-turn--'.length);
+        break;
+      }
+    }
+    const text = (t.querySelector('.cc-voice-turn-text')?.textContent || '').trim();
+    if (!text) continue;
+    const line = `[${role.toUpperCase()}] ${text}`;
+    if (line.length > 10) lines.push(line);
+  }
+  return lines;
+}
+
+function _saveTranscriptToNotes(container, transcriptEl, agentName) {
+  const lines = _collectTranscriptLines(transcriptEl);
+  if (lines.length === 0) return; // nothing to save → silent skip
+  const title = `Voice session — ${agentName} — ${new Date().toLocaleString()}`;
+  const body = {
+    title,
+    content: lines.join('\n'),
+    note_type: 'note',
+    source: 'voice',
+    label: agentName || '',
+  };
+  // Fire-and-forget POST. Errors are swallowed so navigation is never blocked.
+  fetch('/api/notes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(body),
+  }).catch(() => {});
+  _flashSavedToast(container);
+}
+
+function _flashSavedToast(container) {
+  const panel = container.querySelector('#cc-voice-panel');
+  if (!panel) return;
+  // Idempotent — don't stack multiple toasts if back is hammered.
+  if (panel.querySelector('.cc-voice-saved-toast')) return;
+  const toast = document.createElement('div');
+  toast.className = 'cc-voice-saved-toast';
+  toast.textContent = '// TRANSCRIPT SAVED';
+  panel.appendChild(toast);
+  setTimeout(() => toast.remove(), 1500);
+}
+
+// ---------------------------------------------------------------------------
+// Recent voice sessions
+// ---------------------------------------------------------------------------
+
+async function _renderRecentSessions(container) {
+  const mount = container.querySelector('#cc-voice-recent-mount');
+  if (!mount) return;
+  let sessions = [];
+  try {
+    const res = await fetch('/api/voice/sessions?limit=5', {
+      credentials: 'same-origin',
+    });
+    if (!res.ok) return; // silent — section just stays empty
+    const data = await res.json();
+    sessions = Array.isArray(data?.sessions) ? data.sessions : [];
+  } catch (_) {
+    return;
+  }
+  if (!sessions.length) return; // nothing recent → render nothing
+  const rows = sessions.map(s => {
+    const title = _esc(_truncate(s.title || 'Voice session', 48));
+    const when = s.created_at ? _formatRelative(s.created_at) : '';
+    return `<li class="cc-voice-recent-row" data-note-id="${_esc(s.id)}">
+  <span class="cc-voice-recent-title">${title}</span>
+  <span class="cc-voice-recent-when">${_esc(when)}</span>
+</li>`;
+  }).join('');
+  mount.innerHTML = `<div class="cc-voice-recent">
+  <div class="cc-voice-recent-label">// RECENT SESSIONS</div>
+  <ul class="cc-voice-recent-list">${rows}</ul>
+</div>`;
+  mount.querySelectorAll('.cc-voice-recent-row').forEach(row => {
+    row.addEventListener('click', () => _openNote(row.dataset.noteId));
+  });
+}
+
+function _truncate(s, n) {
+  s = String(s || '');
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+function _formatRelative(iso) {
+  try {
+    const d = new Date(iso + (iso.endsWith('Z') ? '' : 'Z'));
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  } catch (_) { return ''; }
+}
+
+function _openNote(noteId) {
+  if (!noteId) return;
+  // Notify any listening notes UI to surface this note. If nobody listens the
+  // event is a harmless no-op — we deliberately avoid hard-coding a route.
+  try {
+    document.dispatchEvent(new CustomEvent('cerberus:open-note', {
+      detail: { id: noteId },
+    }));
+  } catch (_) { /* CustomEvent unsupported (very old browser) — ignore */ }
+}
+
 function _setState(panel, state) {
   if (!STATES.includes(state)) return;
   const badge = panel.querySelector('#cc-voice-state-badge');
@@ -272,6 +398,10 @@ export async function openVoiceCall(container, agentId, agentName, agentAvatar, 
   _sttProvider = null;
   const _speakCancel = { cancel: null }; // Bug 3: mutable cancel handle for active audio
 
+  // Surface the user's most recent voice transcripts so they can re-open one
+  // without leaving the call panel. Fire-and-forget — silent on failure.
+  _renderRecentSessions(container);
+
   // ---- Text fallback toggle ----
   let textMode = false;
   toggleText?.addEventListener('click', () => {
@@ -285,6 +415,9 @@ export async function openVoiceCall(container, agentId, agentName, agentAvatar, 
   backBtn?.addEventListener('click', async () => {
     speechSynthesis?.cancel();
     _speakCancel.cancel?.(); // stop any server-side audio (Bug 3)
+    // Fire-and-forget transcript save → /api/notes. Never blocks navigation:
+    // failure is swallowed; the success flash is purely cosmetic.
+    _saveTranscriptToNotes(container, transcriptEl, agentName);
     const { openAgentChat } = await import('./chat.js');
     openAgentChat(container, agentId, agentName, agentAvatar, accentColor, ttsVoice);
   });

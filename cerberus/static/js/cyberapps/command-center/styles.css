@@ -1725,6 +1725,7 @@
 /* ---- VOICE CALL panel (Phase 4a) ---- */
 .cc-voice-panel {
   display: flex; flex-direction: column; height: 100%; overflow: hidden;
+  position: relative; /* anchors the saved-transcript toast */
   --cat-accent: rgba(197,201,208,0.45);
 }
 .cc-voice-header {
@@ -2033,4 +2034,90 @@
 
 .cc-rooms-filter-input:focus {
   border-color: var(--red);
+}
+
+/* ── Voice: transcript-saved flash toast ───────────────────── */
+.cc-voice-saved-toast {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  background: var(--surface-raise);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  pointer-events: none;
+  opacity: 0;
+  animation: cc-voice-toast-flash 1.5s ease-out forwards;
+}
+
+@keyframes cc-voice-toast-flash {
+  0%   { opacity: 0; transform: translateY(-4px); }
+  20%  { opacity: 1; transform: translateY(0); }
+  80%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-voice-saved-toast {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* ── Voice: recent sessions list ───────────────────────────── */
+.cc-voice-recent {
+  margin: 8px 0 4px;
+  padding: 0 6px;
+}
+
+.cc-voice-recent-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.10em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.cc-voice-recent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cc-voice-recent-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 3px 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.cc-voice-recent-row:hover {
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.cc-voice-recent-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cc-voice-recent-when {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  opacity: 0.7;
 }
