@@ -11,6 +11,7 @@
  */
 
 import { startRecording, stopRecording, getIsRecording, init as initVoice } from '../../voiceRecorder.js';
+import { buildDocsPanel, loadDocs } from './cc-documents.js';
 import { buildNotesPanel, loadNotes } from './cc-notes.js';
 import { buildResearchPanel, loadResearch } from './cc-research.js';
 import { buildContactsPanel, loadContacts } from './cc-contacts.js';
@@ -80,6 +81,7 @@ export function buildAssistantTab() {
         <div class="cc-empty">Loading profile…</div>
       </div>
     </section>
+    ${buildDocsPanel()}
     ${buildNotesPanel()}
     ${buildResearchPanel()}
     ${buildContactsPanel()}
@@ -133,6 +135,8 @@ export function initAssistant(root) {
   loadResearch(root);
   // CONTACTS — CardDAV-backed list / search / edit / export.
   loadContacts(root);
+  // DOCUMENTS — library list, viewer, PDF import, new + delete.
+  loadDocs(root);
   // Re-render when the onboarding wizard reports a successful save so the
   // panel reflects the latest state immediately.
   const _profileBus = () => _loadOpProfile(root);
