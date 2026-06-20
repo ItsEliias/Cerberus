@@ -45,6 +45,23 @@ function _toggleCollapsedFor(sec) {
   _writeCollapsedCats([...cats]);
 }
 
+// ---------------------------------------------------------------------------
+// Prompt-testing history (localStorage, per agent)
+// ---------------------------------------------------------------------------
+//
+// Each agent's last `INVOKE_HISTORY_MAX` invocations are stashed under
+// `cerberus.invoke.history.{agentId}` as an array of {prompt, response,
+// timestamp}. The store is a convenience — failures (private browsing,
+// quota, malformed JSON) are swallowed and treated as "no history".
+//
+// Constants live above the __testables export below because `const`
+// declarations aren't hoisted into the TDZ window the way function
+// declarations are.
+
+const INVOKE_HISTORY_KEY_PREFIX = 'cerberus.invoke.history.';
+const INVOKE_HISTORY_MAX = 5;
+const INVOKE_PROMPT_PREVIEW = 40;
+
 export const __testables = {
   COLLAPSED_KEY,
   _readCollapsedCats, _writeCollapsedCats, _applyCollapsedState, _toggleCollapsedFor,
@@ -53,7 +70,115 @@ export const __testables = {
   // though their bodies live further down the module.
   _filterMemoriesForAgent, _memMatchesQuery, _applyMemorySearch,
   _setMemCount, _setMemFallbackNote, _renderMemoryRow, _loadAgentMemories,
+  // Prompt-testing helpers (tests/test_invoke_history.test.mjs).
+  INVOKE_HISTORY_KEY_PREFIX, INVOKE_HISTORY_MAX,
+  _invokeHistoryKey, _readInvokeHistory, _writeInvokeHistory,
+  _appendInvokeHistory, _clearInvokeHistory,
+  _diffResponses, _buildExportMarkdown,
 };
+
+function _invokeHistoryKey(agentId) {
+  return INVOKE_HISTORY_KEY_PREFIX + String(agentId || '');
+}
+
+function _readInvokeHistory(agentId) {
+  try {
+    const raw = localStorage.getItem(_invokeHistoryKey(agentId));
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(e =>
+      e && typeof e === 'object'
+      && typeof e.prompt === 'string'
+      && typeof e.response === 'string',
+    );
+  } catch (_) { return []; }
+}
+
+function _writeInvokeHistory(agentId, entries) {
+  try {
+    localStorage.setItem(
+      _invokeHistoryKey(agentId),
+      JSON.stringify(entries),
+    );
+  } catch (_) { /* quota / private browsing — silent */ }
+}
+
+function _appendInvokeHistory(agentId, entry) {
+  const cleaned = {
+    prompt:    String(entry?.prompt    ?? '').trim(),
+    response:  String(entry?.response  ?? ''),
+    timestamp: entry?.timestamp ?? new Date().toISOString(),
+  };
+  if (!cleaned.prompt) return _readInvokeHistory(agentId);
+  const history = _readInvokeHistory(agentId);
+  // Newest-first. Drop the oldest when we'd exceed the cap so each agent
+  // keeps a tight rolling window — the spec's "max 5, drop oldest" rule.
+  history.unshift(cleaned);
+  while (history.length > INVOKE_HISTORY_MAX) history.pop();
+  _writeInvokeHistory(agentId, history);
+  return history;
+}
+
+function _clearInvokeHistory(agentId) {
+  try {
+    localStorage.removeItem(_invokeHistoryKey(agentId));
+  } catch (_) { /* silent */ }
+}
+
+// Hand-rolled, line-based diff. Returns a list of {kind, text} ops where
+// `kind` is one of "ctx" (unchanged), "add" (only in `current`), "rem"
+// (only in `prior`). Greedy LCS — O(n·m) where n,m are line counts; fine
+// for the ≤5×short-response payloads we work with here.
+function _diffResponses(prior, current) {
+  const a = String(prior   ?? '').split('\n');
+  const b = String(current ?? '').split('\n');
+  const n = a.length, m = b.length;
+  // LCS table; default-zero borders so the backtrack handles either-empty.
+  const lcs = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      lcs[i][j] = a[i] === b[j]
+        ? lcs[i + 1][j + 1] + 1
+        : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    }
+  }
+  const ops = [];
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) { ops.push({ kind: 'ctx', text: a[i] }); i++; j++; }
+    else if (lcs[i + 1][j] >= lcs[i][j + 1]) {
+      ops.push({ kind: 'rem', text: a[i] }); i++;
+    } else {
+      ops.push({ kind: 'add', text: b[j] }); j++;
+    }
+  }
+  while (i < n) { ops.push({ kind: 'rem', text: a[i] }); i++; }
+  while (j < m) { ops.push({ kind: 'add', text: b[j] }); j++; }
+  return ops;
+}
+
+// Render the Markdown export body for the agent's last invocations.
+function _buildExportMarkdown(agentName, entries) {
+  const name = String(agentName || 'AGENT');
+  const lines = [`# AGENT: ${name} — Invocation History`, ''];
+  if (!entries || !entries.length) {
+    lines.push('_No invocations recorded._');
+    return lines.join('\n') + '\n';
+  }
+  for (const e of entries) {
+    const ts = e?.timestamp || '';
+    lines.push(`## ${ts}`);
+    lines.push('');
+    lines.push(`**Prompt:** ${String(e?.prompt    ?? '')}`);
+    lines.push('');
+    lines.push(`**Response:** ${String(e?.response ?? '')}`);
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+  }
+  return lines.join('\n').trim() + '\n';
+}
 
 // ---------------------------------------------------------------------------
 // Voice picker — lazily fetched from /api/tts/voices, cached for session
@@ -236,8 +361,16 @@ function _agentDetail(agent) {
         <div class="cc-ag-invoke-actions">
           <button class="cc-ag-submit-btn" data-agent-id="${id}">Send</button>
           <button class="cc-ag-cancel-btn" data-agent-id="${id}">Cancel</button>
+          <button class="cc-invoke-export-btn" data-agent-id="${id}" type="button" title="Download last 5 invocations as Markdown">// EXPORT</button>
         </div>
         <div class="cc-ag-result" id="cc-ag-result-${id}"></div>
+        <div class="cc-invoke-history" id="cc-invoke-history-${id}">
+          <div class="cc-invoke-hist-head">
+            <span class="cc-section-label">// RECENT INVOCATIONS</span>
+            <button class="cc-invoke-hist-clear" data-agent-id="${id}" type="button">// CLEAR HISTORY</button>
+          </div>
+          <div class="cc-invoke-hist-list" id="cc-invoke-hist-list-${id}"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -472,11 +605,22 @@ function _wireRow(container, agentId) {
   const result     = detail.querySelector(`#cc-ag-result-${agentId}`);
   const submitBtn  = invokeForm?.querySelector('.cc-ag-submit-btn');
   const cancelBtn  = invokeForm?.querySelector('.cc-ag-cancel-btn');
-  submitBtn?.addEventListener('click', () => _invokeAgent(agentId, textarea, result, submitBtn));
+  const exportBtn  = invokeForm?.querySelector('.cc-invoke-export-btn');
+  const clearBtn   = invokeForm?.querySelector('.cc-invoke-hist-clear');
+  submitBtn?.addEventListener('click', () => _invokeAgentWithHistory(agentId, agent?.name, textarea, result, submitBtn, detail));
   cancelBtn?.addEventListener('click', () => {
     if (invokeForm) invokeForm.style.display = 'none';
     if (result)     result.textContent = '';
   });
+  exportBtn?.addEventListener('click', () => _exportInvokeHistory(agentId, agent?.name));
+  clearBtn?.addEventListener('click', () => {
+    if (typeof confirm === 'function'
+        && !confirm('Clear invocation history for this agent?')) return;
+    _clearInvokeHistory(agentId);
+    _renderInvokeHistory(detail, agentId);
+  });
+  // First paint — any prior invocations from this browser show on detail open.
+  _renderInvokeHistory(detail, agentId);
 
   // Edit form
   const editForm   = detail.querySelector(`#cc-ag-edit-${agentId}`);
@@ -601,6 +745,235 @@ async function _invokeAgent(agentId, textarea, resultEl, submitBtn) {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Send';
   }
+}
+
+// ─── Prompt-testing wrapper around _invokeAgent ────────────────────────────
+//
+// Runs the existing invoke flow, then captures whatever final text landed in
+// the result element and appends it to localStorage. Re-renders the recent-
+// invocations list once the call completes (success or error).
+async function _invokeAgentWithHistory(agentId, agentName, textarea, resultEl, submitBtn, detail) {
+  const prompt = textarea?.value?.trim() || '';
+  await _invokeAgent(agentId, textarea, resultEl, submitBtn);
+  if (!prompt) return;
+  const response = resultEl ? (resultEl.textContent || '') : '';
+  _appendInvokeHistory(agentId, {
+    prompt, response,
+    timestamp: new Date().toISOString(),
+  });
+  if (detail) _renderInvokeHistory(detail, agentId);
+}
+
+// ─── History render ─────────────────────────────────────────────────────────
+
+function _renderInvokeHistory(detail, agentId) {
+  _ensureInvokeStyles();
+  const list = detail?.querySelector(`#cc-invoke-hist-list-${agentId}`);
+  if (!list) return;
+  const history = _readInvokeHistory(agentId);
+  if (!history.length) {
+    list.innerHTML = '<div class="cc-empty">// NO INVOCATIONS YET</div>';
+    return;
+  }
+  list.innerHTML = history.map((entry, i) => {
+    const promptPreview = _esc(_truncateInvokePrompt(entry.prompt));
+    const tsAttr = _esc(entry.timestamp || '');
+    const time   = _esc(_invokeRelativeTime(entry.timestamp));
+    const fullPrompt = _esc(entry.prompt || '');
+    // The newest entry is at index 0; diff against the current (index 0)
+    // for any other row. Newest row has no diff target so the button is
+    // suppressed for it.
+    const diffBtn = i > 0
+      ? `<button class="cc-invoke-btn" data-action="diff" data-index="${i}" type="button">// DIFF</button>`
+      : '';
+    return `<div class="cc-invoke-row" data-index="${i}" data-ts="${tsAttr}">
+      <div class="cc-invoke-row-head">
+        <button class="cc-invoke-prompt" data-action="rerun" data-prompt="${fullPrompt}" title="${fullPrompt}">${promptPreview}</button>
+        <span class="cc-invoke-time">${time}</span>
+        <button class="cc-invoke-btn" data-action="expand" data-index="${i}" type="button">// EXPAND</button>
+        ${diffBtn}
+      </div>
+      <div class="cc-invoke-row-body" id="cc-invoke-body-${agentId}-${i}" hidden></div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-action]').forEach(btn => {
+    const action = btn.dataset.action;
+    if (action === 'rerun') {
+      btn.addEventListener('click', () => {
+        const ta = detail.querySelector('.cc-ag-invoke-input');
+        if (ta) { ta.value = btn.dataset.prompt || ''; ta.focus(); }
+      });
+    } else if (action === 'expand') {
+      btn.addEventListener('click', () => _toggleExpand(detail, agentId, btn, history));
+    } else if (action === 'diff') {
+      btn.addEventListener('click', () => _toggleDiff(detail, agentId, btn, history));
+    }
+  });
+}
+
+function _toggleExpand(detail, agentId, btn, history) {
+  const idx  = Number(btn.dataset.index);
+  const body = detail.querySelector(`#cc-invoke-body-${agentId}-${idx}`);
+  if (!body || !Number.isFinite(idx)) return;
+  if (!body.hidden) {
+    body.hidden = true;
+    btn.textContent = '// EXPAND';
+    return;
+  }
+  const entry = history[idx];
+  if (!entry) return;
+  body.innerHTML = `<pre class="cc-invoke-resp">${_esc(entry.response || '(empty)')}</pre>`;
+  body.hidden = false;
+  btn.textContent = '// COLLAPSE';
+}
+
+function _toggleDiff(detail, agentId, btn, history) {
+  const idx  = Number(btn.dataset.index);
+  const body = detail.querySelector(`#cc-invoke-body-${agentId}-${idx}`);
+  if (!body || !Number.isFinite(idx) || idx === 0) return;
+  if (!body.hidden && body.dataset.mode === 'diff') {
+    body.hidden = true;
+    body.dataset.mode = '';
+    btn.textContent = '// DIFF';
+    return;
+  }
+  const current = history[0]?.response || '';
+  const prior   = history[idx]?.response || '';
+  const ops = _diffResponses(prior, current);
+  body.innerHTML = `<pre class="cc-invoke-diff">` + ops.map(op => {
+    if (op.kind === 'add') return `<span class="cc-invoke-diff-add">+ ${_esc(op.text)}</span>`;
+    if (op.kind === 'rem') return `<span class="cc-invoke-diff-rem">- ${_esc(op.text)}</span>`;
+    return `<span class="cc-invoke-diff-ctx">  ${_esc(op.text)}</span>`;
+  }).join('\n') + `</pre>`;
+  body.dataset.mode = 'diff';
+  body.hidden = false;
+  btn.textContent = '// HIDE DIFF';
+}
+
+function _exportInvokeHistory(agentId, agentName) {
+  const history = _readInvokeHistory(agentId);
+  const md = _buildExportMarkdown(agentName, history);
+  try {
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const slug = String(agentName || 'agent').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'agent';
+    a.href = url;
+    a.download = `cerberus-invocations-${slug}.md`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  } catch (_) { /* download not available in this env — silent */ }
+}
+
+function _truncateInvokePrompt(s) {
+  s = String(s ?? '');
+  return s.length > INVOKE_PROMPT_PREVIEW
+    ? s.slice(0, INVOKE_PROMPT_PREVIEW - 1) + '…'
+    : s;
+}
+
+function _invokeRelativeTime(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const delta = (Date.now() - d.getTime()) / 1000;
+    if (delta < 60)    return 'just now';
+    if (delta < 3600)  return `${Math.floor(delta / 60)}m ago`;
+    if (delta < 86400) return `${Math.floor(delta / 3600)}h ago`;
+    return `${Math.floor(delta / 86400)}d ago`;
+  } catch (_) { return ''; }
+}
+
+// Token-only inline styles — shipped here so the panel module is
+// self-contained.
+const _INVOKE_STYLE_ID = 'cc-invoke-history-styles';
+function _ensureInvokeStyles() {
+  if (typeof document === 'undefined') return;
+  if (!document.head || typeof document.head.appendChild !== 'function') return;
+  if (typeof document.getElementById === 'function'
+      && document.getElementById(_INVOKE_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = _INVOKE_STYLE_ID;
+  style.textContent = `
+.cc-invoke-history {
+  margin-top: 10px;
+  border-top: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  padding-top: 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+.cc-invoke-hist-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+}
+.cc-invoke-hist-clear, .cc-invoke-export-btn, .cc-invoke-btn {
+  -webkit-appearance: none; appearance: none;
+  background: transparent;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 60%, transparent);
+  font-family: inherit;
+  font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.cc-invoke-hist-clear:hover, .cc-invoke-export-btn:hover, .cc-invoke-btn:hover {
+  color: var(--cc-crimson, var(--red, #c0392b));
+  border-color: var(--cc-crimson, var(--red, #c0392b));
+}
+.cc-invoke-hist-list { display: flex; flex-direction: column; gap: 4px; }
+.cc-invoke-row {
+  border-bottom: 1px solid color-mix(in srgb, var(--cc-border, var(--border, #3a2a2a)) 55%, transparent);
+  padding: 4px 0;
+}
+.cc-invoke-row-head { display: flex; align-items: center; gap: 8px; }
+.cc-invoke-prompt {
+  -webkit-appearance: none; appearance: none;
+  background: transparent; border: none;
+  flex: 1; min-width: 0;
+  text-align: left;
+  font-family: inherit; font-size: 11px; letter-spacing: 0.02em;
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+  cursor: pointer; padding: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cc-invoke-prompt:hover { color: var(--cc-crimson, var(--red, #c0392b)); }
+.cc-invoke-time {
+  font-family: inherit; font-size: 9px; letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 32%, transparent);
+  white-space: nowrap;
+}
+.cc-invoke-row-body { margin-top: 4px; }
+.cc-invoke-resp, .cc-invoke-diff {
+  font-family: inherit;
+  font-size: 10px; line-height: 1.4;
+  white-space: pre-wrap; word-break: break-word;
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+  background: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 3%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cc-border, var(--border, #3a2a2a)) 60%, transparent);
+  padding: 6px 8px;
+  margin: 0;
+}
+.cc-invoke-diff-add {
+  display: block;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 80%, var(--cc-crimson, var(--red, #c0392b)));
+  background: color-mix(in srgb, var(--cc-crimson, var(--red, #c0392b)) 10%, transparent);
+}
+.cc-invoke-diff-rem {
+  display: block;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 38%, transparent);
+  text-decoration: line-through;
+}
+.cc-invoke-diff-ctx {
+  display: block;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 65%, transparent);
+}
+  `.trim();
+  document.head.appendChild(style);
 }
 
 async function _streamSSE(body, resultEl) {
