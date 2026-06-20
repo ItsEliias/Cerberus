@@ -113,6 +113,7 @@ class ToolPolicy:
     mode: str = "normal"
     block_all_tool_calls: bool = False
     disable_mcp: bool = False
+    approval_gated_tools: frozenset[str] = frozenset()
 
     def all_disabled_names(self) -> Set[str]:
         return set(self.disabled_tools) | set(self.hidden_tools)
@@ -176,6 +177,7 @@ def build_effective_tool_policy(
     disabled_tools: Optional[Iterable[str]] = None,
     last_user_message: object = "",
     agent_allowlist: Optional[Iterable[str]] = None,
+    approval_gated_tools: Optional[Iterable[str]] = None,
 ) -> ToolPolicy:
     """Compose the effective policy for one agent turn.
 
@@ -204,6 +206,8 @@ def build_effective_tool_policy(
             for t in agent_blocked if t not in reasons
         })
 
+    _approval = frozenset(str(t) for t in (approval_gated_tools or []) if t)
+
     guide_reason = detect_guide_only_turn(last_user_message)
     if guide_reason:
         all_tools = known_tool_names()
@@ -223,4 +227,5 @@ def build_effective_tool_policy(
         disabled_tools=frozenset(disabled),
         hidden_tools=frozenset(hidden),
         reasons=MappingProxyType(dict(reasons)),
+        approval_gated_tools=_approval,
     )

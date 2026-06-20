@@ -13,6 +13,10 @@ _P1_FILE = ["read_file", "grep", "glob", "ls"]
 # running code; all execution routes through OpenSandbox (never the host shell).
 _P2_EXEC = ["bash", "python"]
 
+# Phase 3: approval-gated write tools.  The agent may REQUEST a file write;
+# the owner must approve each call before it executes.
+_P3_WRITE = ["write_file", "edit_file"]
+
 _DEFAULT_AGENTS: List[Dict[str, Any]] = [
     # ── Original 6: software-build swarm ──────────────────────────────────
     {
@@ -46,7 +50,7 @@ _DEFAULT_AGENTS: List[Dict[str, Any]] = [
         "agent_type": "backend-dev",
         "status": "idle",
         "model_alias": "sonnet",
-        "tool_allowlist": _P1_FILE + _P2_EXEC,
+        "tool_allowlist": _P1_FILE + _P2_EXEC + _P3_WRITE,
         "system_prompt": (
             "You are CODER, a senior software engineer inside the Cerberus AI workspace. "
             "You write production-quality code, not demos.\n\n"
@@ -207,7 +211,7 @@ _DEFAULT_AGENTS: List[Dict[str, Any]] = [
         "agent_type": "ops-engineer",
         "status": "idle",
         "model_alias": "default",
-        "tool_allowlist": _P1_FILE + ["bash"],  # manage_webhooks needs approval gate (Phase 3)
+        "tool_allowlist": _P1_FILE + ["bash"] + _P3_WRITE,
         "system_prompt": (
             "You are DEVOPS, a senior SRE and platform engineer inside the Cerberus AI workspace. "
             "You keep the system running, observable, and recoverable.\n\n"
@@ -379,7 +383,7 @@ _DEFAULT_AGENTS: List[Dict[str, Any]] = [
         "agent_type": "performance",
         "status": "standby",
         "model_alias": "default",
-        "tool_allowlist": _P1_FILE + _P2_EXEC,
+        "tool_allowlist": _P1_FILE + _P2_EXEC + _P3_WRITE,
         "system_prompt": (
             "You are OPTIMIZER, a performance and efficiency specialist inside the Cerberus AI workspace. "
             "You find waste and eliminate it.\n\n"

@@ -238,10 +238,15 @@ def setup_agent_thread_routes() -> APIRouter:
         url, model, headers = _resolve_agent_endpoint(model_alias, owner)
 
         _agent_allowlist = set(json.loads(raw_allowlist)) if raw_allowlist else None
+        _P3_WRITE_TOOLS = {"write_file", "edit_file"}
+        _approval_gated = (
+            _P3_WRITE_TOOLS & _agent_allowlist if _agent_allowlist else frozenset()
+        )
         from src.tool_policy import build_effective_tool_policy
         _tool_policy = build_effective_tool_policy(
             agent_allowlist=_agent_allowlist,
             last_user_message=text,
+            approval_gated_tools=_approval_gated,
         )
         # Execution agents (those with bash/python) get a per-turn tool budget so
         # a runaway generation loop can't spin up unlimited sandbox containers.
@@ -252,9 +257,23 @@ def setup_agent_thread_routes() -> APIRouter:
         memory_block = _build_memory_block(owner, agent_id, text)
         effective_system = system_prompt + memory_block
 
+        # If a write tool was approved and executed since the last turn, inject
+        # the result into the message history so the agent can continue.
+        import src.agent_approval as _approval_store
+        _executed = _approval_store.pop_executed(agent_id, thread_id)
+        _inject_msgs: list = []
+        if _executed:
+            _res_data = _executed.get("result") or {}
+            _inner = _res_data.get("result", _res_data)
+            _res_str = json.dumps(_inner, ensure_ascii=False)[:3000]
+            _inject_msgs = [
+                {"role": "user", "content": f"[Tool execution results]\n\n{_executed['tool_name']}: {_res_str}"}
+            ]
+
         messages = (
             [{"role": "system", "content": effective_system}]
             + history
+            + _inject_msgs
             + [{"role": "user", "content": text}]
         )
 
@@ -280,6 +299,7 @@ def setup_agent_thread_routes() -> APIRouter:
                     relevant_tools=_agent_allowlist,
                     session_id=thread_id,
                     max_tool_calls=_max_tool_calls,
+                    agent_id=agent_id,
                 ):
                     if chunk.startswith("event: error"):
                         errored = True
@@ -311,6 +331,65 @@ def setup_agent_thread_routes() -> APIRouter:
                     )
 
         return StreamingResponse(_generate(), media_type="text/event-stream")
+
+    @router.patch("/{agent_id}/thread/approve/{request_id}")
+    async def approve_tool(
+        agent_id: str, request_id: str, request: Request,
+    ) -> Dict[str, Any]:
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            agent = (
+                db.query(CerberusAgent)
+                .filter(CerberusAgent.id == agent_id, CerberusAgent.owner == owner)
+                .first()
+            )
+            if not agent:
+                raise HTTPException(404, "Agent not found")
+        finally:
+            db.close()
+
+        import src.agent_approval as _aa
+        entry = _aa.approve(request_id)
+        if not entry:
+            raise HTTPException(404, "Approval request not found or already decided")
+
+        # Execute the approved tool now
+        from src.agent_tools import execute_tool_block, ToolBlock
+        block = ToolBlock(entry["tool_name"], entry["tool_args"].get("content", ""))
+        try:
+            desc, result = await execute_tool_block(
+                block,
+                session_id=entry["thread_id"],
+                owner=owner,
+            )
+            _aa.set_result(request_id, {"desc": desc, "result": result})
+            return {"approved": True, "request_id": request_id, "result": result}
+        except Exception as exc:
+            _aa.set_result(request_id, {"error": str(exc)})
+            raise HTTPException(500, f"Tool execution failed: {exc}")
+
+    @router.delete("/{agent_id}/thread/approve/{request_id}")
+    def reject_tool(
+        agent_id: str, request_id: str, request: Request,
+    ) -> Dict[str, Any]:
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            agent = (
+                db.query(CerberusAgent)
+                .filter(CerberusAgent.id == agent_id, CerberusAgent.owner == owner)
+                .first()
+            )
+            if not agent:
+                raise HTTPException(404, "Agent not found")
+        finally:
+            db.close()
+
+        import src.agent_approval as _aa
+        if not _aa.reject(request_id):
+            raise HTTPException(404, "Approval request not found or already decided")
+        return {"rejected": True, "request_id": request_id}
 
     @router.delete("/{agent_id}/thread")
     def clear_thread(agent_id: str, request: Request) -> Dict[str, Any]:
