@@ -609,3 +609,44 @@ body.reduce-hud .dash-hud-chips     { display: none; }
 .dash-session-search:focus-visible { outline: 2px solid var(--red, #c0392b); outline-offset: 1px; }
 
 .dash-activity-item--hidden { display: none; }
+
+/* ── Activity heatmap (5 weeks × 7 days SVG) ──────────────────────── */
+
+.dash-heatmap-band {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.dash-heatmap-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px; gap: 16px; flex-wrap: wrap;
+}
+
+.dash-heatmap-chips {
+  display: flex; gap: 12px; align-items: baseline;
+}
+
+.dash-heatmap-chip {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--fg, #c5c9d0) 60%, transparent);
+  padding: 3px 9px;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.dash-heatmap-grid {
+  display: flex; align-items: center;
+}
+
+.dash-heatmap-svg {
+  display: block;
+}
+
+/* Reduced motion: cells are static SVG rects, but be explicit so any
+   inherited transitions (e.g. body-level CSS) don't apply on theme swap. */
+@media (prefers-reduced-motion: reduce) {
+  .dash-heatmap-svg rect { transition: none !important; }
+}

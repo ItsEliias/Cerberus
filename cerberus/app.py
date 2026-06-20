@@ -740,6 +740,10 @@ app.include_router(setup_note_routes(task_scheduler))
 from routes.voice_session_routes import setup_voice_session_routes
 app.include_router(setup_voice_session_routes())
 
+# Activity stats — daily message/session aggregation for the dashboard heatmap.
+from routes.activity_routes import setup_activity_routes
+app.include_router(setup_activity_routes())
+
 # Email
 from routes.email_routes import setup_email_routes
 email_router = setup_email_routes()
