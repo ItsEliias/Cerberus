@@ -140,12 +140,38 @@
 .cc-tab-nav::-webkit-scrollbar { display: none; }
 
 .cc-tab-btn {
+  /* position:relative anchors the GATEWAY pending-approval badge (.cc-tab-badge)
+     in the top-right corner of the pill. Harmless on tabs without a badge. */
+  position: relative;
   display: flex; align-items: center; gap: 5px; padding: 4px 10px;
   border: 1px solid transparent; border-radius: 3px; background: transparent;
   color: var(--cc-fg); cursor: pointer; font-family: 'Orbitron', monospace;
   font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
   white-space: nowrap; opacity: 0.5; transition: all 0.15s;
 }
+
+/* GATEWAY tab pending-approval badge — crimson dot with count.
+   Polled every 60s by index.js. Hidden when count === 0. */
+.cc-tab-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--cc-crimson);
+  color: color-mix(in srgb, var(--cc-fg) 95%, white);
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  line-height: 14px;
+  letter-spacing: 0;
+  text-align: center;
+  border: 1px solid color-mix(in srgb, var(--red, #c0392b) 75%, white);
+  box-shadow: 0 0 8px var(--cc-crimson-glow);
+  pointer-events: none;
+}
+.cc-tab-badge[hidden] { display: none; }
 .cc-tab-btn:hover { opacity: 0.85; border-color: var(--cc-border); }
 .cc-tab-btn:focus-visible {
   outline: 2px solid var(--cc-crimson); outline-offset: 2px; opacity: 1;
@@ -1107,6 +1133,145 @@
   letter-spacing: 0.05em;
 }
 .cc-gw-add-btn:hover { background: var(--cc-crimson-glow); }
+
+/* ── V5 GATEWAY STATUS panel ─────────────────────────────────────────── */
+.cc-gw-status-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cc-gw-status-platforms {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.cc-gw-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--cc-fg) 65%, transparent);
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.cc-gw-status-row.cc-gw-status-on {
+  color: var(--cc-fg);
+  border-color: color-mix(in srgb, var(--red, #c0392b) 30%, transparent);
+}
+
+/* HUD status dot — dim hollow when off, glowing crimson when on */
+.cc-gw-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--cc-fg) 35%, transparent);
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.cc-gw-status-on .cc-gw-status-dot {
+  background: var(--cc-crimson);
+  border-color: var(--cc-crimson);
+  box-shadow: 0 0 6px var(--cc-crimson-glow);
+}
+
+.cc-gw-status-name {
+  font-family: 'Orbitron', monospace;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  flex: 1;
+}
+
+.cc-gw-status-state {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  opacity: 0.75;
+  letter-spacing: 0.05em;
+}
+
+/* Email row — replaces the dot with a checkmark/cross mark */
+.cc-gw-status-mark {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  width: 8em;
+  color: color-mix(in srgb, var(--cc-fg) 50%, transparent);
+}
+.cc-gw-status-on .cc-gw-status-mark {
+  color: var(--cc-crimson-hot);
+}
+
+/* Pending approvals row — clickable, badge glows crimson when nonzero */
+.cc-gw-status-pending { cursor: pointer; }
+.cc-gw-status-badge {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  text-align: center;
+  background: color-mix(in srgb, var(--cc-fg) 10%, transparent);
+  color: color-mix(in srgb, var(--cc-fg) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cc-fg) 25%, transparent);
+}
+.cc-gw-status-pending.cc-gw-status-on .cc-gw-status-badge {
+  background: color-mix(in srgb, var(--red, #c0392b) 15%, transparent);
+  color: var(--cc-crimson-hot);
+  border-color: var(--cc-crimson);
+  box-shadow: 0 0 8px var(--cc-crimson-glow);
+}
+
+.cc-gw-status-pending-list {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--cc-crimson);
+  background: color-mix(in srgb, var(--cc-void-mid) 80%, transparent);
+}
+
+/* Recent activity feed */
+.cc-gw-status-activity-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  opacity: 0.55;
+  margin-top: 6px;
+}
+.cc-gw-status-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cc-gw-status-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--cc-void-mid) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
+}
+.cc-gw-status-activity-tool {
+  flex: 1;
+  color: var(--cc-fg);
+  word-break: break-all;
+}
+.cc-gw-status-activity-ago {
+  font-size: 9px;
+  opacity: 0.6;
+  letter-spacing: 0.05em;
+}
+.cc-gw-status-empty {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  opacity: 0.45;
+  padding: 4px 6px;
+}
 
 /* Add job form */
 .cc-gw-form {
