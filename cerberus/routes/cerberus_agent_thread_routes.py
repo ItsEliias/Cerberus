@@ -350,6 +350,11 @@ def setup_agent_thread_routes() -> APIRouter:
             db.close()
 
         import src.agent_approval as _aa
+        pending = _aa.get_pending(request_id)
+        if not pending:
+            raise HTTPException(404, "Approval request not found or already decided")
+        if pending["agent_id"] != agent_id:
+            raise HTTPException(403, "Approval request does not belong to this agent")
         entry = _aa.approve(request_id)
         if not entry:
             raise HTTPException(404, "Approval request not found or already decided")
@@ -387,6 +392,11 @@ def setup_agent_thread_routes() -> APIRouter:
             db.close()
 
         import src.agent_approval as _aa
+        pending = _aa.get_pending(request_id)
+        if not pending:
+            raise HTTPException(404, "Approval request not found or already decided")
+        if pending["agent_id"] != agent_id:
+            raise HTTPException(403, "Approval request does not belong to this agent")
         if not _aa.reject(request_id):
             raise HTTPException(404, "Approval request not found or already decided")
         return {"rejected": True, "request_id": request_id}

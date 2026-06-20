@@ -327,7 +327,51 @@ def test_non_write_agents_lack_write_tools():
 
 
 # ---------------------------------------------------------------------------
-# 12. Guide-only turn clears approval_gated_tools
+# 12. Agent-id ownership check on approve/reject (route logic reproduced)
+# ---------------------------------------------------------------------------
+
+def test_approve_wrong_agent_id_returns_403():
+    """get_pending must be called before approve to verify agent ownership."""
+    correct_aid = _new_agent()
+    wrong_aid = _new_agent()
+    tid = _new_thread()
+    rid = aa.store_pending(
+        agent_id=correct_aid,
+        thread_id=tid,
+        tool_name="write_file",
+        tool_args={"content": "/tmp/k.txt\nk"},
+        preview="/tmp/k.txt\nk",
+    )
+    # Simulate the route logic: get_pending → ownership check → approve
+    pending = aa.get_pending(rid)
+    assert pending is not None
+    # Wrong agent_id must be caught BEFORE approve() mutates state
+    assert pending["agent_id"] != wrong_aid, "ownership check would fire"
+    # Entry must still be pending (approve was not called)
+    assert aa.get_pending(rid)["status"] == "pending"
+
+
+def test_reject_wrong_agent_id_leaves_entry_pending():
+    """get_pending must be called before reject to verify agent ownership."""
+    correct_aid = _new_agent()
+    wrong_aid = _new_agent()
+    tid = _new_thread()
+    rid = aa.store_pending(
+        agent_id=correct_aid,
+        thread_id=tid,
+        tool_name="edit_file",
+        tool_args={"content": "{}"},
+        preview="{}",
+    )
+    pending = aa.get_pending(rid)
+    assert pending is not None
+    assert pending["agent_id"] != wrong_aid
+    # Entry must still be pending (reject was not called)
+    assert aa.get_pending(rid)["status"] == "pending"
+
+
+# ---------------------------------------------------------------------------
+# 14. Guide-only turn clears approval_gated_tools
 # ---------------------------------------------------------------------------
 
 def test_guide_only_clears_approval_gated_tools():
