@@ -7,6 +7,47 @@
 import { openAgentChat } from './chat.js';
 
 // ---------------------------------------------------------------------------
+// Category collapse-state persistence (localStorage)
+// ---------------------------------------------------------------------------
+
+const COLLAPSED_KEY = 'cerberus.agents.collapsed';
+
+function _readCollapsedCats() {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter(x => typeof x === 'string') : [];
+  } catch (_) { return []; }
+}
+
+function _writeCollapsedCats(cats) {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...new Set(cats)]));
+  } catch (_) { /* private browsing / quota — silent */ }
+}
+
+function _applyCollapsedState(container) {
+  const collapsed = new Set(_readCollapsedCats());
+  if (!collapsed.size) return;
+  container.querySelectorAll('.cc-cat-section').forEach(sec => {
+    if (collapsed.has(sec.dataset.cat || '')) sec.classList.add('collapsed');
+  });
+}
+
+function _toggleCollapsedFor(sec) {
+  if (!sec) return;
+  const cat = sec.dataset.cat || '';
+  if (!cat) return;
+  const cats = new Set(_readCollapsedCats());
+  if (sec.classList.contains('collapsed')) cats.add(cat);
+  else cats.delete(cat);
+  _writeCollapsedCats([...cats]);
+}
+
+export const __testables = { COLLAPSED_KEY, _readCollapsedCats, _writeCollapsedCats, _applyCollapsedState, _toggleCollapsedFor };
+
+// ---------------------------------------------------------------------------
 // Voice picker — lazily fetched from /api/tts/voices, cached for session
 // ---------------------------------------------------------------------------
 
@@ -715,8 +756,13 @@ async function _refreshGrid(container) {
 <div class="cc-cat-rows">${rows}</div>
 </div>`;
       }).join('');
+    _applyCollapsedState(container);
     container.querySelectorAll('.cc-cat-head').forEach(head => {
-      head.addEventListener('click', () => head.closest('.cc-cat-section')?.classList.toggle('collapsed'));
+      head.addEventListener('click', () => {
+        const sec = head.closest('.cc-cat-section');
+        sec?.classList.toggle('collapsed');
+        _toggleCollapsedFor(sec);
+      });
     });
     agents.forEach(a => _wireRow(container, a.id));
   } catch (e) {
