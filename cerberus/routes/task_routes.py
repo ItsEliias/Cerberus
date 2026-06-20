@@ -378,7 +378,7 @@ def setup_task_routes(task_scheduler) -> APIRouter:
                         "id": t.id,
                         "title": _display_task_name(t),
                         "status": t.status,
-                        "agent": t.agent or None,
+                        "agent": t.crew_member_id or None,
                         "started_at": t.updated_at.isoformat() + "Z" if t.updated_at else None,
                     }
                     for t in tasks
