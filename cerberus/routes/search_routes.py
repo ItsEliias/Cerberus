@@ -1,17 +1,83 @@
-"""Search routes — /api/search/config GET, /api/search POST."""
+"""Search routes — /api/search/config GET, /api/search POST,
+plus /api/search/history and /api/search/saved CRUD added in the
+Search Improvements PR.
+"""
 
 import logging
-from typing import Dict, Any
+import uuid
+from typing import Dict, Any, List, Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 
 import time
 
+from core.database import SavedSearch, SearchHistory, SessionLocal
 from services.search import get_search_config, comprehensive_web_search, PROVIDER_INFO
 from services.search.core import _call_provider
 from services.search.providers import _get_provider_key, _get_search_instance
+from src.auth_helpers import get_current_user, require_user
 
 logger = logging.getLogger(__name__)
+
+
+# ── Search-history recording ────────────────────────────────────────────────
+#
+# Called from every successful search handler below. Best-effort: a write
+# failure must NEVER propagate to the caller — the user still gets their
+# results, we just lose the audit row. Owner can be None when auth is
+# disabled (single-user mode); we store it that way and the GET endpoint
+# returns the same null-owner bucket.
+
+def _record_search_history(
+    owner: Optional[str], query: str, result_count: int, source: str,
+) -> None:
+    q = (query or "").strip()
+    if not q:
+        return
+    db = None
+    try:
+        db = SessionLocal()
+        db.add(SearchHistory(
+            id=str(uuid.uuid4()),
+            owner=owner,
+            query=q,
+            result_count=int(result_count or 0),
+            source=(source or "").strip() or None,
+        ))
+        db.commit()
+    except Exception as exc:
+        logger.warning("_record_search_history failed: %s", exc)
+    finally:
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+
+def _history_dict(row: SearchHistory) -> Dict[str, Any]:
+    return {
+        "id": row.id,
+        "query": row.query,
+        "result_count": row.result_count or 0,
+        "timestamp": row.timestamp.isoformat() if row.timestamp else None,
+        "source": row.source,
+    }
+
+
+def _saved_dict(row: SavedSearch) -> Dict[str, Any]:
+    return {
+        "id": row.id,
+        "query": row.query,
+        "label": row.label,
+        "timestamp": row.timestamp.isoformat() if row.timestamp else None,
+    }
+
+
+class SavedSearchCreate(BaseModel):
+    query: str
+    label: Optional[str] = None
 
 
 async def _request_values(request: Request) -> Dict[str, Any]:
@@ -60,6 +126,10 @@ def setup_search_routes(config) -> APIRouter:
             context, sources = comprehensive_web_search(
                 query, return_sources=True, time_filter=time_filter,
             )
+            _record_search_history(
+                get_current_user(request), query,
+                len(sources or []), source="web",
+            )
             return {"context": context, "sources": sources}
         except Exception as e:
             logger.error(f"Standalone web search failed: {e}")
@@ -102,10 +172,134 @@ def setup_search_routes(config) -> APIRouter:
         try:
             results = _call_provider(provider, query, min(count, 20))
             elapsed = round(time.time() - t0, 2)
+            _record_search_history(
+                get_current_user(request), query,
+                len(results or []), source=provider,
+            )
             return {"results": results, "provider": provider, "time": elapsed}
         except Exception as e:
             elapsed = round(time.time() - t0, 2)
             logger.error(f"Search provider {provider} failed: {e}")
             return {"results": [], "provider": provider, "time": elapsed, "error": str(e)}
+
+    # ── Search history ─────────────────────────────────────────────────────
+
+    @router.get("/api/search/history")
+    def list_search_history(request: Request, limit: int = 20) -> Dict[str, Any]:
+        owner = require_user(request)
+        try:
+            limit = max(1, min(int(limit), 200))
+        except (TypeError, ValueError):
+            limit = 20
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(SearchHistory)
+                .filter(SearchHistory.owner == owner)
+                .order_by(SearchHistory.timestamp.desc())
+                .limit(limit)
+                .all()
+            )
+            return {"history": [_history_dict(r) for r in rows]}
+        finally:
+            db.close()
+
+    @router.delete("/api/search/history/{entry_id}")
+    def delete_search_history_entry(entry_id: str, request: Request) -> Dict[str, Any]:
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            row = (
+                db.query(SearchHistory)
+                .filter(
+                    SearchHistory.id == entry_id,
+                    SearchHistory.owner == owner,
+                )
+                .first()
+            )
+            if not row:
+                raise HTTPException(404, "Search history entry not found")
+            db.delete(row)
+            db.commit()
+            return {"deleted": entry_id}
+        finally:
+            db.close()
+
+    @router.delete("/api/search/history")
+    def clear_search_history(request: Request) -> Dict[str, Any]:
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            removed = (
+                db.query(SearchHistory)
+                .filter(SearchHistory.owner == owner)
+                .delete(synchronize_session=False)
+            )
+            db.commit()
+            return {"removed": int(removed or 0)}
+        finally:
+            db.close()
+
+    # ── Saved searches ─────────────────────────────────────────────────────
+
+    @router.get("/api/search/saved")
+    def list_saved_searches(request: Request) -> Dict[str, Any]:
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(SavedSearch)
+                .filter(SavedSearch.owner == owner)
+                .order_by(SavedSearch.timestamp.desc())
+                .all()
+            )
+            return {"saved": [_saved_dict(r) for r in rows]}
+        finally:
+            db.close()
+
+    @router.post("/api/search/saved")
+    def create_saved_search(
+        request: Request, body: SavedSearchCreate,
+    ) -> Dict[str, Any]:
+        owner = require_user(request)
+        query = (body.query or "").strip()
+        if not query:
+            raise HTTPException(400, "query is required")
+        label = (body.label or "").strip() or None
+        db = SessionLocal()
+        try:
+            row = SavedSearch(
+                id=str(uuid.uuid4()),
+                owner=owner,
+                query=query,
+                label=label,
+            )
+            db.add(row)
+            db.commit()
+            db.refresh(row)
+            return _saved_dict(row)
+        finally:
+            db.close()
+
+    @router.delete("/api/search/saved/{entry_id}")
+    def delete_saved_search(entry_id: str, request: Request) -> Dict[str, Any]:
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            row = (
+                db.query(SavedSearch)
+                .filter(
+                    SavedSearch.id == entry_id,
+                    SavedSearch.owner == owner,
+                )
+                .first()
+            )
+            if not row:
+                raise HTTPException(404, "Saved search not found")
+            db.delete(row)
+            db.commit()
+            return {"deleted": entry_id}
+        finally:
+            db.close()
 
     return router

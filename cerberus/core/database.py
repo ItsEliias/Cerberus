@@ -834,6 +834,35 @@ class RoutingEvent(Base):
     )
 
 
+class SearchHistory(Base):
+    """One row per web-search the user actually ran (SearXNG / provider /
+    aggregated). Surfaced in the CC Research panel as a re-runnable feed."""
+    __tablename__ = "search_history"
+
+    id           = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    owner        = Column(String, nullable=True, index=True)
+    query        = Column(String, nullable=False)
+    result_count = Column(Integer, default=0)
+    timestamp    = Column(DateTime, default=utcnow_naive, index=True)
+    source       = Column(String, nullable=True)   # "searxng" | "web" | "rag" | provider id
+
+    __table_args__ = (
+        Index("ix_search_history_owner_ts", "owner", "timestamp"),
+    )
+
+
+class SavedSearch(Base):
+    """User-bookmarked search. Re-running pre-fills the search input with
+    `query`; `label` is an optional human-friendly title for the card."""
+    __tablename__ = "saved_searches"
+
+    id        = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    owner     = Column(String, nullable=True, index=True)
+    query     = Column(String, nullable=False)
+    label     = Column(String, nullable=True)
+    timestamp = Column(DateTime, default=utcnow_naive)
+
+
 def _migrate_add_routing_events_table():
     """Create the routing_events table if it doesn't yet exist.
 
@@ -877,6 +906,80 @@ def _migrate_add_routing_events_table():
         logging.getLogger(__name__).info("Migrated: created 'routing_events' table")
     except Exception as e:
         logging.getLogger(__name__).warning(f"routing_events migration failed: {e}")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+def _migrate_add_search_history_table():
+    """Create the search_history + saved_searches tables if missing.
+
+    Base.metadata.create_all() in init_db() covers the fresh-DB case; this
+    helper is the defensive cover for paths that bypass create_all (test
+    setups, partial restores) and to make the schema migration discoverable
+    alongside the other _migrate_* helpers. Idempotent — each CREATE TABLE
+    statement is guarded by an existence probe so re-running is a no-op."""
+    import sqlite3
+    db_path = DATABASE_URL.replace("sqlite:///", "")
+    if not os.path.exists(db_path):
+        return
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        existing = {row[0] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name IN ('search_history', 'saved_searches')"
+        )}
+        if "search_history" not in existing:
+            conn.execute(
+                """
+                CREATE TABLE search_history (
+                    id           TEXT PRIMARY KEY,
+                    owner        TEXT,
+                    query        TEXT NOT NULL,
+                    result_count INTEGER DEFAULT 0,
+                    timestamp    DATETIME,
+                    source       TEXT
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS ix_search_history_owner "
+                "ON search_history(owner)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS ix_search_history_timestamp "
+                "ON search_history(timestamp)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS ix_search_history_owner_ts "
+                "ON search_history(owner, timestamp)"
+            )
+        if "saved_searches" not in existing:
+            conn.execute(
+                """
+                CREATE TABLE saved_searches (
+                    id        TEXT PRIMARY KEY,
+                    owner     TEXT,
+                    query     TEXT NOT NULL,
+                    label     TEXT,
+                    timestamp DATETIME
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS ix_saved_searches_owner "
+                "ON saved_searches(owner)"
+            )
+        conn.commit()
+        if existing != {"search_history", "saved_searches"}:
+            logging.getLogger(__name__).info(
+                "Migrated: ensured 'search_history' + 'saved_searches' tables"
+            )
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"search_history migration failed: {e}")
     finally:
         try:
             conn.close()
@@ -2003,6 +2106,7 @@ def init_db():
     _migrate_add_document_archived_column()
     _migrate_add_last_message_at_column()
     _migrate_add_routing_events_table()
+    _migrate_add_search_history_table()
     _migrate_add_folder_column()
     _migrate_add_token_columns()
     _migrate_add_mode_column()
