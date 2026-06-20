@@ -112,6 +112,25 @@ def list_pending_for_agent(agent_id: str) -> list:
         ]
 
 
+def list_all_pending() -> list:
+    """Return ALL non-expired pending approvals, newest first.
+
+    Gateway-origin approvals are stored with `agent_id=""`, so
+    `list_pending_for_agent` won't surface them; the CC gateway tab uses
+    this helper to render approval cards regardless of origin. Each entry
+    is a shallow copy — caller may safely serialize or mutate without
+    affecting the live store."""
+    now = time.time()
+    with _lock:
+        pending = [
+            dict(e) for e in _store.values()
+            if e["status"] == "pending"
+            and now - e["created_at"] <= _TTL_SECONDS
+        ]
+    pending.sort(key=lambda e: e["created_at"], reverse=True)
+    return pending
+
+
 def _cleanup_expired() -> None:
     now = time.time()
     with _lock:

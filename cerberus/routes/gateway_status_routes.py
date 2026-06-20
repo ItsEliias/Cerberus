@@ -1,17 +1,16 @@
 """Gateway status route — snapshot of inbound-gateway state for the CC HUD.
 
-  GET /api/gateway/status
+  GET /api/gateway/status      — counts + recent activity (no per-request detail)
+  GET /api/gateway/approvals   — per-pending request_id/tool/preview/created_at,
+                                 the source-of-truth for the CC approval cards
 
-Returns platform connection status (from env vars), email allowlist state
-(count only, addresses redacted), pending approval count, and the recent
-executed activity feed.
-
-Auth: require_user (owner only). No-op tolerant — every section degrades to
-a safe default rather than 500ing the dashboard.
+Both endpoints are owner-only (require_user) and no-op tolerant — every
+section degrades to a safe default rather than 500ing the dashboard.
 """
 
 from __future__ import annotations
 
+import datetime as _dt
 import logging
 import os
 import time
@@ -80,6 +79,36 @@ def _serialize_recent(entries: List[dict]) -> List[Dict[str, Any]]:
     return items
 
 
+def _serialize_pending(entries: List[dict]) -> List[Dict[str, Any]]:
+    """Convert pending agent_approval entries into the card-list shape.
+
+    Returns request_id + tool + preview + created_at (ISO UTC, no offset)
+    per entry. The preview is truncated to 2000 chars at store time; we
+    cap again here at 400 so even a runaway preview can't blow up the
+    SSE/HTTP body. Malformed entries are silently skipped — never let a
+    single bad row 500 the whole approvals fetch."""
+    items: List[Dict[str, Any]] = []
+    for e in entries:
+        try:
+            ts = float(e.get("created_at") or 0)
+            iso = (
+                _dt.datetime.utcfromtimestamp(ts).isoformat() + "Z"
+                if ts else ""
+            )
+            preview = e.get("preview") or ""
+            if isinstance(preview, str) and len(preview) > 400:
+                preview = preview[:400] + "…"
+            items.append({
+                "request_id": e.get("request_id") or "",
+                "tool": e.get("tool_name") or "",
+                "preview": preview,
+                "created_at": iso,
+            })
+        except Exception:
+            continue
+    return items
+
+
 def setup_gateway_status_routes() -> APIRouter:
     """Factory for the gateway-status router. Mounted on /api/gateway/status."""
 
@@ -114,5 +143,23 @@ def setup_gateway_status_routes() -> APIRouter:
             "pending_approvals": pending,
             "recent_approvals": recent,
         }
+
+    @router.get("/approvals")
+    def gateway_approvals(request: Request) -> Dict[str, Any]:
+        """Full list of pending gateway approvals, newest first.
+
+        Returns request_id + tool + preview + created_at per pending entry —
+        the CC gateway tab uses this to render approve/reject cards. Use
+        the PATCH/DELETE `/api/gateway/approve/{request_id}` endpoints to
+        act on each card.
+        """
+        require_user(request)
+        try:
+            from src import agent_approval as _aa
+            pending = _serialize_pending(_aa.list_all_pending())
+        except Exception as exc:
+            logger.warning("gateway_approvals: approval store read failed: %s", exc)
+            pending = []
+        return {"pending": pending}
 
     return router
