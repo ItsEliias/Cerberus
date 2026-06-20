@@ -16,6 +16,7 @@ import { buildGatewayTab, loadGateway } from './gateway.js';
 import { buildAgentsTab, loadAgents } from './agents.js';
 import { buildRoomsTab, loadRooms } from './rooms.js';
 import { buildObservabilityTab, loadObservability } from './observability.js';
+import { buildResearchTab, loadResearch } from './cc-research.js';
 import * as Poll from './poll.js';
 
 // Inject CC stylesheet once — version param busts browser/SW cache on updates
@@ -39,6 +40,7 @@ const TABS = [
   { id: 'gateway',       label: 'GATEWAY'   },
   { id: 'agents',        label: 'AGENTS'    },
   { id: 'rooms',         label: 'ROOMS'     },
+  { id: 'research',      label: 'RESEARCH'  },
   { id: 'observability', label: 'OBSERVE'   },
 ];
 
@@ -168,6 +170,9 @@ function _mountTab(id, shell) {
   } else if (id === 'rooms') {
     content.innerHTML = buildRoomsTab();
     loadRooms(content);
+  } else if (id === 'research') {
+    content.innerHTML = buildResearchTab();
+    loadResearch(content);
   } else if (id === 'observability') {
     content.innerHTML = buildObservabilityTab();
     loadObservability(content);
