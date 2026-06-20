@@ -710,6 +710,7 @@ class CerberusAgent(TimestampMixin, Base):
     tts_voice           = Column(String, nullable=True)                    # preferred TTS voice for this agent
     context_window      = Column(Integer, nullable=True)                   # per-agent thread context size (None → global default)
     tool_allowlist      = Column(Text, nullable=True)                      # JSON array of permitted tool names; None = no restriction
+    invocation_count    = Column(Integer, default=0, nullable=False)       # cumulative successful thread sends; surfaced as a HUD chip in the AGENTS tab
 
     __table_args__ = (
         Index('ix_cerberus_agents_owner_name', 'owner', 'name', unique=True),
@@ -737,6 +738,7 @@ class CerberusAgent(TimestampMixin, Base):
             "tts_voice": self.tts_voice or "",
             "context_window": self.context_window,
             "tool_allowlist": json.loads(self.tool_allowlist) if self.tool_allowlist else None,
+            "invocation_count": self.invocation_count or 0,
         }
 
 
@@ -2036,6 +2038,7 @@ def init_db():
     _migrate_add_room_phase3b_columns()
     _migrate_add_agent_tts_voice_column()
     _migrate_add_agent_context_window_column()
+    _migrate_add_agent_invocation_count_column()
 
 
 def _migrate_add_agent_context_window_column():
@@ -2049,6 +2052,26 @@ def _migrate_add_agent_context_window_column():
         logging.getLogger(__name__).info("cerberus_agents context_window migration complete")
     except Exception as e:
         logging.getLogger(__name__).warning(f"cerberus_agents context_window migration: {e}")
+
+
+def _migrate_add_agent_invocation_count_column():
+    """Add `invocation_count` to cerberus_agents — surfaces usage in the AGENTS HUD.
+
+    The column is NOT NULL with default 0; existing rows backfill via the
+    DEFAULT, so legacy data lights up as `0` invocations the first time the
+    UI loads. Idempotent — safe to re-run on every startup."""
+    try:
+        with engine.connect() as conn:
+            cols = [r[1] for r in conn.execute(text("PRAGMA table_info(cerberus_agents)"))]
+            if "invocation_count" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE cerberus_agents "
+                    "ADD COLUMN invocation_count INTEGER NOT NULL DEFAULT 0"
+                ))
+            conn.commit()
+        logging.getLogger(__name__).info("cerberus_agents invocation_count migration complete")
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"cerberus_agents invocation_count migration: {e}")
 
 
 def _migrate_add_agent_tts_voice_column():

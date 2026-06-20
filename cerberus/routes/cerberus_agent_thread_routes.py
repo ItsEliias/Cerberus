@@ -178,6 +178,34 @@ def _get_or_create_thread(db, agent_id: str, owner: str) -> AgentThread:
     return thread
 
 
+def _increment_invocation_count(agent_id: str) -> None:
+    """Bump the agent's cumulative invocation counter after a successful send.
+
+    Best-effort: a failure here MUST NEVER break the send path. The caller has
+    already streamed the response and persisted the assistant message; this is
+    pure HUD telemetry. Every exception is logged at WARNING and swallowed."""
+    if not agent_id:
+        return
+    db = None
+    try:
+        db = SessionLocal()
+        db.query(CerberusAgent).filter(
+            CerberusAgent.id == agent_id,
+        ).update(
+            {"invocation_count": CerberusAgent.invocation_count + 1},
+            synchronize_session=False,
+        )
+        db.commit()
+    except Exception as exc:
+        logger.warning("_increment_invocation_count failed: %s", exc)
+    finally:
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+
 def _save_assistant_message(thread_id: str, content: str) -> None:
     db = SessionLocal()
     try:
@@ -426,6 +454,10 @@ def setup_agent_thread_routes() -> APIRouter:
                 if parts and not errored:
                     full_reply = "".join(parts)
                     _save_assistant_message(thread_id, full_reply)
+                    # HUD telemetry — bumps invocation_count on the agent row
+                    # for the AGENTS-tab usage chip. Best-effort: never breaks
+                    # the send path on failure.
+                    _increment_invocation_count(agent_id)
                     # Background memory extraction tagged with this agent
                     _fire_extraction(
                         owner, agent_id, thread_id,

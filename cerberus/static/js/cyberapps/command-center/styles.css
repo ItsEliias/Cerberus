@@ -2121,3 +2121,16 @@
   color: var(--text-muted);
   opacity: 0.7;
 }
+
+/* ── Agents tab: invocation-count HUD chip ─────────────────── */
+/* Lives next to the score on each agent card. Rendering work in agents.js
+   is tracked separately (concurrent-session lock); the chip class is
+   shipped here so styling lands ahead of the markup. */
+.cc-ag-invoke-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 8px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
