@@ -133,6 +133,21 @@ function _buildPanel() {
           </div>
         </div>
 
+        <!-- ── Activity heatmap (5 weeks × 7 days) ─────────────── -->
+        <div class="dash-heatmap-band" id="dash-heatmap-band">
+          <div class="dash-heatmap-head">
+            <span class="dash-section-title">ACTIVITY · LAST 30 DAYS</span>
+            <div class="dash-heatmap-chips" id="dash-heatmap-chips" aria-live="polite">
+              <span class="dash-heatmap-chip" id="dash-heatmap-streak">🔥&thinsp;—</span>
+              <span class="dash-heatmap-chip" id="dash-heatmap-total">⚡&thinsp;—</span>
+            </div>
+          </div>
+          <div class="dash-heatmap-grid" id="dash-heatmap-grid" role="img"
+               aria-label="Daily message activity, last 30 days">
+            <div class="dash-empty">Loading…</div>
+          </div>
+        </div>
+
         <!-- ── Lower: activity + vitals ─────────────────────── -->
         <div class="dash-lower">
 
@@ -341,9 +356,114 @@ function _startBgAnimation() {
 
 async function _loadData() {
   _wireSessionSearch();
-  await Promise.all([_loadSessions(), _loadVitals(), _loadAgents(), _loadTokenUsage(), _loadSecurity()]);
+  await Promise.all([
+    _loadSessions(),
+    _loadVitals(),
+    _loadAgents(),
+    _loadTokenUsage(),
+    _loadSecurity(),
+    _loadActivity(),
+  ]);
   _vitalsTimer = setInterval(_loadVitals, 8000);
   _agentsTimer = setInterval(_loadAgents, 12000);
+}
+
+// ── Activity heatmap ─────────────────────────────────────────────────────────
+//
+// 5 weeks × 7 days = 35 cells (the API returns 30 days; the leading 5 cells
+// stay blank/inactive so the grid always looks like a tidy week-aligned block).
+// Colours are read from CSS tokens via getComputedStyle so the swatch reacts to
+// theme switches without a re-render.
+
+async function _loadActivity() {
+  const grid    = document.getElementById('dash-heatmap-grid');
+  const streakEl = document.getElementById('dash-heatmap-streak');
+  const totalEl  = document.getElementById('dash-heatmap-total');
+  if (!grid) return;
+  let data;
+  try {
+    const res = await fetch('/api/stats/activity?days=30', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = await res.json();
+  } catch (_) {
+    grid.innerHTML = '<span class="dash-empty">// no activity data</span>';
+    if (streakEl) streakEl.textContent = '🔥 —';
+    if (totalEl)  totalEl.textContent  = '⚡ —';
+    return;
+  }
+  const days = Array.isArray(data?.days) ? data.days : [];
+  if (!days.length) {
+    grid.innerHTML = '<span class="dash-empty">// no activity data</span>';
+    return;
+  }
+  if (streakEl) streakEl.textContent = `🔥 ${data.current_streak || 0} day streak`;
+  if (totalEl)  totalEl.textContent  = `⚡ ${data.total_messages || 0} messages`;
+  grid.innerHTML = _heatmapSVG(days);
+}
+
+function _heatmapSVG(days) {
+  // Layout: 5 columns × 7 rows, 12×12 cell, 2px gap.
+  const COLS = 5, ROWS = 7, CELL = 12, GAP = 2;
+  const W = COLS * (CELL + GAP) - GAP;
+  const H = ROWS * (CELL + GAP) - GAP;
+
+  // Read theme-reactive colours so cells repaint correctly after a theme swap.
+  const style = getComputedStyle(document.documentElement);
+  const cssVar = (name, fallback) =>
+    (style.getPropertyValue(name).trim() || fallback);
+  const COLD     = cssVar('--surface-raise', 'rgba(255,255,255,0.04)');
+  const BORDER   = cssVar('--border',        'rgba(255,255,255,0.08)');
+  const RED      = cssVar('--red',           '#c0392b');
+
+  // Right-align so today lands at the bottom-right cell.
+  const total = COLS * ROWS;
+  const leading = Math.max(0, total - days.length);
+
+  const cells = [];
+  for (let i = 0; i < total; i++) {
+    const col = Math.floor(i / ROWS);
+    const row = i % ROWS;
+    const x = col * (CELL + GAP);
+    const y = row * (CELL + GAP);
+    const idx = i - leading;
+    const entry = idx >= 0 ? days[idx] : null;
+    const messages = entry ? entry.messages : 0;
+    const fill = entry ? _heatColor(RED, COLD, messages) : COLD;
+    const title = entry ? _heatTitle(entry) : '';
+    cells.push(
+      `<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="2" ry="2" `
+      + `fill="${_esc(fill)}" stroke="${_esc(BORDER)}" stroke-width="0.5">`
+      + (title ? `<title>${_esc(title)}</title>` : '')
+      + `</rect>`
+    );
+  }
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" `
+    + `xmlns="http://www.w3.org/2000/svg" class="dash-heatmap-svg">${cells.join('')}</svg>`;
+}
+
+function _heatColor(red, cold, messages) {
+  if (!messages) return cold;
+  // Token red can be hex or rgb(...); use opacity via color-mix when supported,
+  // fall back to per-bucket interpolation against the cold token.
+  if (messages >= 10) return red;
+  if (messages >= 4)  return `color-mix(in srgb, ${red} 60%, ${cold})`;
+  return `color-mix(in srgb, ${red} 30%, ${cold})`;
+}
+
+function _heatTitle(entry) {
+  // entry.date is ISO `YYYY-MM-DD`. Treat as UTC so the rendered date matches
+  // what the backend bucketed it under, then format short for the tooltip.
+  let label = entry.date;
+  try {
+    const d = new Date(entry.date + 'T00:00:00Z');
+    if (!Number.isNaN(d.getTime())) {
+      label = d.toLocaleDateString(undefined, {
+        weekday: 'short', day: 'numeric', month: 'short',
+      });
+    }
+  } catch (_) { /* keep ISO fallback */ }
+  const n = entry.messages || 0;
+  return `${label} — ${n} message${n === 1 ? '' : 's'}`;
 }
 
 async function _loadSessions() {
