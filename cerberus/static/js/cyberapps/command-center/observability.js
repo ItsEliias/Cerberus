@@ -272,6 +272,27 @@ export function buildObservabilityTab() {
     </div>
   </div>
 
+  <div class="cc-obs-spark-section cc-diag-section">
+    <div class="cc-obs-spark-label">// SYSTEM DIAGNOSTICS</div>
+    <div id="cc-diag-services" class="cc-diag-services">
+      <div class="cc-empty">Loading…</div>
+    </div>
+  </div>
+
+  <div class="cc-obs-spark-section cc-diag-section">
+    <div class="cc-obs-spark-label">// DATABASE</div>
+    <div id="cc-diag-db" class="cc-diag-chips">
+      <div class="cc-empty">Loading…</div>
+    </div>
+  </div>
+
+  <div class="cc-obs-spark-section cc-diag-section">
+    <div class="cc-obs-spark-label">// RAG INDEX</div>
+    <div id="cc-diag-rag" class="cc-diag-chips">
+      <div class="cc-empty">Loading…</div>
+    </div>
+  </div>
+
   <div id="cc-obs-empty" class="cc-obs-empty-note" style="display:none">
     No sessions yet — token data will appear here after your first conversation.
   </div>
@@ -327,9 +348,223 @@ function _applyActivityFailure(container) {
   if (sessionsEl) sessionsEl.textContent = '—';
 }
 
+// ─── Diagnostics: services / database / RAG index ──────────────────────────
+//
+// Three independent panels under the OBSERVE tab. Each fetch settles on its
+// own — one failure paints `// UNAVAILABLE` in its row instead of taking the
+// other two down with it. The non-admin 403 from the underlying routes lands
+// here as a regular fetch failure.
+
+const _DIAG_OK_STATUSES = new Set(['ok', 'online', 'healthy']);
+
+function _diagDotClass(status) {
+  const s = String(status || '').toLowerCase();
+  if (_DIAG_OK_STATUSES.has(s)) return 'cc-diag-dot--ok';
+  if (s === 'degraded')        return 'cc-diag-dot--warn';
+  if (s === 'down' || s === 'error') return 'cc-diag-dot--err';
+  if (s === 'disabled')        return 'cc-diag-dot--off';
+  return 'cc-diag-dot--unknown';
+}
+
+function _diagLabel(status) {
+  const s = String(status || '').toLowerCase();
+  if (_DIAG_OK_STATUSES.has(s)) return 'ONLINE';
+  if (!s) return 'UNKNOWN';
+  return s.toUpperCase();
+}
+
+function _applyServices(container, data) {
+  const el = container.querySelector('#cc-diag-services');
+  if (!el) return;
+  const services = Array.isArray(data?.services) ? data.services
+                 : Array.isArray(data) ? data
+                 : [];
+  if (!services.length) {
+    el.innerHTML = '<div class="cc-empty">// NO SERVICE PROBES</div>';
+    return;
+  }
+  el.innerHTML = services.map(s => {
+    const name    = String(s.name || '').toUpperCase();
+    const dotCls  = _diagDotClass(s.status);
+    const label   = _diagLabel(s.status);
+    const latency = (s.meta && (s.meta.latency_ms ?? s.meta.latency))
+                  || s.latency_ms || s.latency;
+    const latStr  = latency != null ? `${Math.round(latency)}ms` : '';
+    return `<div class="cc-diag-row">
+      <span class="cc-diag-service-name">${_esc(name)}</span>
+      <span class="cc-diag-dot ${dotCls}"></span>
+      <span class="cc-diag-status">${_esc(label)}</span>
+      <span class="cc-diag-latency">${_esc(latStr)}</span>
+    </div>`;
+  }).join('');
+}
+
+function _applyServicesFailure(container) {
+  const el = container.querySelector('#cc-diag-services');
+  if (el) el.innerHTML = '<div class="cc-empty">// UNAVAILABLE</div>';
+}
+
+function _applyDbStats(container, data) {
+  const el = container.querySelector('#cc-diag-db');
+  if (!el) return;
+  const sessions = Number(data?.total_sessions ?? 0);
+  const messages = Number(data?.total_messages ?? 0);
+  const memories = Number(data?.total_memories ?? 0);
+  const sizeMb   = Number(data?.database_size_mb ?? 0);
+  const chips = [
+    { lbl: 'SESSIONS', val: sessions.toLocaleString() },
+    { lbl: 'MESSAGES', val: messages.toLocaleString() },
+    { lbl: 'MEMORIES', val: memories.toLocaleString() },
+  ];
+  if (sizeMb > 0) chips.push({ lbl: 'SIZE', val: `${sizeMb} MB` });
+  el.innerHTML = chips.map(c => `
+    <div class="cc-diag-chip">
+      <span class="cc-diag-chip-lbl">${_esc(c.lbl)}</span>
+      <span class="cc-diag-chip-val">${_esc(c.val)}</span>
+    </div>
+  `).join('');
+}
+
+function _applyDbStatsFailure(container) {
+  const el = container.querySelector('#cc-diag-db');
+  if (el) el.innerHTML = '<div class="cc-empty">// UNAVAILABLE</div>';
+}
+
+function _applyRagStats(container, data) {
+  const el = container.querySelector('#cc-diag-rag');
+  if (!el) return;
+  if (data?.error) {
+    el.innerHTML = `<div class="cc-empty">// ${_esc(String(data.error).toUpperCase())}</div>`;
+    return;
+  }
+  const docs   = Number(data?.document_count ?? 0);
+  const model  = data?.embedding_model || '';
+  const healthy = data?.healthy !== false;
+  const chips = [
+    { lbl: 'DOCUMENTS', val: docs.toLocaleString() },
+    { lbl: 'STATUS',    val: healthy ? 'HEALTHY' : 'DEGRADED' },
+  ];
+  if (model) chips.push({ lbl: 'EMBEDDER', val: String(model).split(' @ ')[0] });
+  el.innerHTML = chips.map(c => `
+    <div class="cc-diag-chip">
+      <span class="cc-diag-chip-lbl">${_esc(c.lbl)}</span>
+      <span class="cc-diag-chip-val">${_esc(c.val)}</span>
+    </div>
+  `).join('');
+}
+
+function _applyRagStatsFailure(container) {
+  const el = container.querySelector('#cc-diag-rag');
+  if (el) el.innerHTML = '<div class="cc-empty">// UNAVAILABLE</div>';
+}
+
+async function _loadDiagnostics(container) {
+  const [svc, db, rag] = await Promise.allSettled([
+    _fetchJSON('/api/diagnostics/services'),
+    _fetchJSON('/api/db/stats'),
+    _fetchJSON('/api/rag/stats'),
+  ]);
+  if (svc.status === 'fulfilled') _applyServices(container, svc.value);
+  else                            _applyServicesFailure(container);
+  if (db.status === 'fulfilled')  _applyDbStats(container, db.value);
+  else                            _applyDbStatsFailure(container);
+  if (rag.status === 'fulfilled') _applyRagStats(container, rag.value);
+  else                            _applyRagStatsFailure(container);
+}
+
+// Inject diagnostics-only CSS at module-load time. styles.css is locked by
+// a concurrent session so we ship the styles inline here; token-only — no
+// hardcoded hex except as final fallbacks for the var() chain.
+const _DIAG_STYLE_ID = 'cc-diag-styles';
+function _ensureDiagStyles() {
+  if (typeof document === 'undefined') return;
+  if (!document.head || typeof document.head.appendChild !== 'function') return;
+  if (typeof document.getElementById === 'function'
+      && document.getElementById(_DIAG_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = _DIAG_STYLE_ID;
+  style.textContent = `
+.cc-diag-section { padding-top: 8px; }
+.cc-diag-services {
+  display: flex; flex-direction: column;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+.cc-diag-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--cc-border, var(--border, #3a2a2a));
+}
+.cc-diag-row:last-child { border-bottom: none; }
+.cc-diag-service-name {
+  font-size: 11px;
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+  min-width: 100px;
+  letter-spacing: 0.06em;
+}
+.cc-diag-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--cc-border, var(--border, #3a2a2a));
+  flex-shrink: 0;
+}
+.cc-diag-dot--ok   { background: var(--green, var(--cc-ok, #50fa7b)); }
+.cc-diag-dot--warn { background: var(--warn, var(--cc-warn, #f0ad4e)); }
+.cc-diag-dot--err  { background: var(--cc-crimson, var(--red, #c0392b)); }
+.cc-diag-dot--off  { background: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 25%, transparent); }
+.cc-diag-dot--unknown { background: var(--cc-border, var(--border, #3a2a2a)); }
+.cc-diag-status {
+  font-size: 10px; letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 60%, transparent);
+  flex: 1; min-width: 0;
+}
+.cc-diag-latency {
+  font-size: 10px; letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 40%, transparent);
+  white-space: nowrap;
+}
+.cc-diag-chips {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+.cc-diag-chip {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  background: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 4%, transparent);
+}
+.cc-diag-chip-lbl {
+  font-size: 8.5px; letter-spacing: 0.14em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 45%, transparent);
+}
+.cc-diag-chip-val {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.04em;
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+  font-variant-numeric: tabular-nums;
+}
+  `.trim();
+  document.head.appendChild(style);
+}
+
+// Slow auto-refresh for diagnostics — they don't change as often as token
+// totals. The interval self-clears when the OBSERVE tab is unmounted (the
+// container leaves the DOM), so no separate destroyObservability hook is
+// required from index.js.
+function _scheduleDiagRefresh(container) {
+  if (typeof setInterval !== 'function') return;
+  const id = setInterval(() => {
+    if (!container || !container.isConnected) {
+      clearInterval(id);
+      return;
+    }
+    if (typeof document !== 'undefined' && document.hidden) return;
+    _loadDiagnostics(container);
+  }, 60_000);
+}
+
 export async function loadObservability(container) {
-  // Fire all three fetches concurrently; settle independently so one
-  // backend wobble doesn't blank the whole tab.
+  _ensureDiagStyles();
+  // Fire all three usage fetches AND the diagnostics fetch concurrently;
+  // settle independently so one backend wobble doesn't blank the whole tab.
   const [usage, agents, activity] = await Promise.allSettled([
     _fetchJSON('/api/usage/tokens'),
     _fetchJSON('/api/agents'),
@@ -344,9 +579,14 @@ export async function loadObservability(container) {
 
   if (activity.status === 'fulfilled') _applyActivity(container, activity.value);
   else                                 _applyActivityFailure(container);
+
+  // Diagnostics fan-out runs alongside the token data and self-refreshes
+  // every 60s while the tab stays mounted.
+  await _loadDiagnostics(container);
+  _scheduleDiagRefresh(container);
 }
 
-// Exposed for tests/test_observability.test.mjs.
+// Exposed for tests/test_observability.test.mjs + test_cc_diagnostics.test.mjs.
 export const __testables = {
   CLOUD_RATE_USD_PER_TOKEN, BREAKDOWN_CAP,
   _aggregatePerAgent, _aggregatePerModel,
@@ -355,4 +595,8 @@ export const __testables = {
   _applyUsage, _applyUsageFailure,
   _applyAgents, _applyAgentsFailure,
   _applyActivity, _applyActivityFailure,
+  _applyServices, _applyServicesFailure,
+  _applyDbStats, _applyDbStatsFailure,
+  _applyRagStats, _applyRagStatsFailure,
+  _loadDiagnostics, _diagDotClass,
 };
