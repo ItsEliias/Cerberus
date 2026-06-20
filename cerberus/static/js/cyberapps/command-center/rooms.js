@@ -4,6 +4,8 @@
  * Exports: buildRoomsTab, loadRooms
  */
 
+import { notifyCCComplete, requestNotifyPermission } from './cc-notify.js';
+
 function _esc(s) {
   const d = document.createElement('div');
   d.textContent = String(s ?? '');
@@ -331,6 +333,10 @@ async function _toggleMode(btn, container) {
 // ---- Open a room (chat view) ----
 
 async function _openRoom(container, room) {
+  // Lazy permission prompt — first user-initiated room open is the natural
+  // moment to ask, mirroring the chat.js entry hook (spec step 4).
+  requestNotifyPermission();
+
   container.innerHTML = _buildRoomChatView(room);
   const messagesEl = container.querySelector('#cc-room-messages');
   const input      = container.querySelector('#cc-room-input');
@@ -393,6 +399,11 @@ async function _openRoom(container, room) {
         _insertContinuePrompt(messagesEl, room.id, meta.rounds, meta.cap, () => {
           _doSend(`/api/rooms/${encodeURIComponent(room.id)}/continue`);
         });
+      });
+      notifyCCComplete({
+        title: '[C]ERBERUS // COUNCIL',
+        body:  `${room.name || 'Room'} round complete`,
+        tag:   `cc-room-${room.id}`,
       });
     } catch (e) {
       messagesEl.insertAdjacentHTML('beforeend',
