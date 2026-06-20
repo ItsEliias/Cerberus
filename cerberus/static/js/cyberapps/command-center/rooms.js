@@ -400,6 +400,54 @@ async function _loadRoomList(container) {
   }
 }
 
+// ---- Preset templates ----
+
+async function _renderTemplates(container) {
+  const mount = container.querySelector('#cc-room-templates-mount');
+  if (!mount) return;
+  try {
+    const res = await fetch('/api/rooms/templates');
+    const data = await res.json();
+    const templates = data.templates || [];
+    mount.innerHTML = `
+<div class="cc-room-templates">
+  <div class="cc-section-label">// TEMPLATES</div>
+  <div class="cc-room-template-grid">
+    ${templates.map(t => `
+      <button class="cc-room-template-card" data-id="${_esc(t.id)}"
+              title="${_esc(t.description)}">
+        <span class="cc-room-tmpl-icon">${_esc(t.icon)}</span>
+        <span class="cc-room-tmpl-name">${_esc(t.name)}</span>
+        <span class="cc-room-tmpl-agents">${_esc(t.agents.join(' · '))}</span>
+      </button>`).join('')}
+  </div>
+</div>`.trim();
+    mount.querySelectorAll('.cc-room-template-card').forEach(btn => {
+      btn.dataset.originalText = btn.querySelector('.cc-room-tmpl-name')?.textContent || '';
+      btn.addEventListener('click', () => _launchTemplate(container, btn.dataset.id));
+    });
+  } catch (_) {
+    // Templates are a convenience — fail silent.
+    mount.innerHTML = '';
+  }
+}
+
+async function _launchTemplate(container, templateId) {
+  const btn = container.querySelector(`.cc-room-template-card[data-id="${templateId}"]`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+  try {
+    const res = await fetch(`/api/rooms/templates/${encodeURIComponent(templateId)}/create`,
+      { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    await _loadRoomList(container);
+    const room = data.room;
+    if (room) await _openRoom(container, room);
+  } catch (_) {
+    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.originalText || ''; }
+  }
+}
+
 function _wireNewRoomForm(container) {
   const form      = container.querySelector('#cc-room-new-form');
   const createBtn = container.querySelector('#cc-room-create-btn');
@@ -447,6 +495,7 @@ export function buildRoomsTab() {
     <span class="cc-agents-tab-count" id="cc-rooms-count">—</span>
     <button class="cc-ag-new-btn" id="cc-rooms-new-btn">+ New Room</button>
   </div>
+  <div id="cc-room-templates-mount"></div>
   <div id="cc-room-new-form-mount"></div>
   <div class="cc-ag-grid" id="cc-rooms-grid">
     <div class="cc-empty">Loading rooms…</div>
@@ -464,5 +513,6 @@ export async function loadRooms(container) {
     _wireNewRoomForm(container);
   }
 
+  await _renderTemplates(container);
   await _loadRoomList(container);
 }

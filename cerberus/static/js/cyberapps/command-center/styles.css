@@ -1903,3 +1903,61 @@
   padding: 6px 10px; align-self: center; max-width: 88%;
   text-align: center;
 }
+
+/* ── Room Templates ────────────────────────────────────────── */
+.cc-room-templates {
+  margin-bottom: 16px;
+}
+
+.cc-room-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cc-room-template-card {
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--surface-raise);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.cc-room-template-card:hover {
+  border-color: var(--red);
+  background: var(--surface);
+}
+
+.cc-room-template-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cc-room-tmpl-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.cc-room-tmpl-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cc-room-tmpl-agents {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
