@@ -772,6 +772,11 @@ app.include_router(setup_cerberus_agent_routes())
 from routes.cerberus_agent_thread_routes import setup_agent_thread_routes
 app.include_router(setup_agent_thread_routes())
 
+# Room templates must register BEFORE the generic conference_room_routes — the
+# `/api/rooms/{room_id}` matcher would otherwise eat `/api/rooms/templates`.
+from routes.room_template_routes import setup_room_template_routes
+app.include_router(setup_room_template_routes())
+
 from routes.conference_room_routes import setup_conference_room_routes
 app.include_router(setup_conference_room_routes())
 
