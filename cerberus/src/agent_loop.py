@@ -773,7 +773,7 @@ def _classify_agent_request(messages: List[Dict], last_user: str) -> Dict[str, o
         domains.add("notes_calendar_tasks")
     if has(r"\b(every day|every morning|every evening|recurring|automatically|cron|scheduled task|background task)\b"):
         domains.add("notes_calendar_tasks")
-    if has(r"\b(calendar|event|meeting|appointment|schedule)\b"):
+    if has(r"\b(calendar|calander|calender|event|meeting|appointment|schedule)\b"):
         domains.add("notes_calendar_tasks")
     if has(r"\b(documents?|docs?|draft|compose|poem|story|essay|outline|letter|edit|rewrite|proofread|suggest|feedback|review this|make a file)\b"):
         domains.add("documents")
@@ -1822,6 +1822,15 @@ async def stream_agent_loop(
                         )
                 if _retrieval_query:
                     try:
+                        # TODO: wire in Phase 4a — gateway-origin sessions
+                        # (Discord/Telegram/Slack) should pass
+                        # always_include=ASSISTANT_ALWAYS_AVAILABLE here so
+                        # personal-assistant tools (manage_calendar,
+                        # manage_notes, manage_tasks, list_emails, …) survive
+                        # any retrieval miss. Requires threading a gateway
+                        # flag from chat_routes.chat_stream into this loop;
+                        # ToolIndex.get_tools_for_query already accepts the
+                        # always_include kwarg.
                         _relevant_tools = await asyncio.wait_for(
                             asyncio.to_thread(tool_idx.get_tools_for_query, _retrieval_query, 8),
                             timeout=_TOOL_SELECTION_TIMEOUT_SECONDS,

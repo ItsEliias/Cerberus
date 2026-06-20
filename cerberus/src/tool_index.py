@@ -345,7 +345,19 @@ class ToolIndex:
         # believed it had only email tools and refused web/other tasks (#1707).
         frozenset({"email", "emails", "mail", "mails", "gmail", "googlemail", "message", "messages", "send", "reply", "replies", "inbox", "unread"}):
             {"list_email_accounts", "list_emails", "read_email", "send_email", "reply_to_email", "bulk_email", "delete_email", "archive_email", "mark_email_read", "resolve_contact", "ui_control"},
-        frozenset({"calendar", "event", "meeting", "schedule", "appointment"}):
+        # Calendar keywords include common typos ("calander", "calender") and
+        # plural forms so a misspelled Discord/Telegram ask still surfaces the
+        # tool. "remind"/"reminder" overlap with the notes set below; both
+        # tools end up selected, which matches how calendar reminders are
+        # actually routed (calendar event + Notes reminder).
+        frozenset({
+            "calendar", "calander", "calender",
+            "event", "events",
+            "meeting", "meetings",
+            "appointment", "appointments",
+            "schedule", "scheduled",
+            "reminder", "remind",
+        }):
             {"manage_calendar"},
         frozenset({"note", "todo", "reminder", "remind", "checklist", "remember to"}):
             {"manage_notes"},
