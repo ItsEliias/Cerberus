@@ -45,7 +45,15 @@ function _toggleCollapsedFor(sec) {
   _writeCollapsedCats([...cats]);
 }
 
-export const __testables = { COLLAPSED_KEY, _readCollapsedCats, _writeCollapsedCats, _applyCollapsedState, _toggleCollapsedFor };
+export const __testables = {
+  COLLAPSED_KEY,
+  _readCollapsedCats, _writeCollapsedCats, _applyCollapsedState, _toggleCollapsedFor,
+  // Memory viewer helpers (exposed for tests/test_agent_memory_viewer.test.mjs).
+  // Function declarations are hoisted, so referencing them up here is safe even
+  // though their bodies live further down the module.
+  _filterMemoriesForAgent, _memMatchesQuery, _applyMemorySearch,
+  _setMemCount, _setMemFallbackNote, _renderMemoryRow, _loadAgentMemories,
+};
 
 // ---------------------------------------------------------------------------
 // Voice picker — lazily fetched from /api/tts/voices, cached for session
@@ -234,10 +242,23 @@ function _agentDetail(agent) {
   </div>
   <div class="cc-ag-memory-panel" id="cc-ag-memory-${id}" style="display:none">
     <div class="cc-ag-memory-header">
-      <span class="cc-ag-memory-title">AGENT MEMORY</span>
+      <span class="cc-ag-memory-title">
+        <span class="cc-ag-mem-title-prefix">//</span>
+        MEMORY — <span class="cc-ag-mem-title-agent">${_esc((agent.name || '').toUpperCase() || 'AGENT')}</span>
+      </span>
       <button class="cc-ag-memory-close-btn" data-agent-id="${id}">✕</button>
     </div>
+    <div class="cc-ag-mem-fallback-note" id="cc-ag-mem-fallback-${id}" style="display:none">(showing recent memories — none tagged to this agent)</div>
+    <input class="cc-ag-mem-search-input" id="cc-ag-mem-search-${id}"
+           data-agent-id="${id}"
+           type="search" autocomplete="off" spellcheck="false"
+           placeholder="// search memories"
+           aria-label="Search this agent's memories"
+           style="-webkit-appearance:none;appearance:none">
     <div class="cc-ag-memory-list" id="cc-ag-memory-list-${id}"></div>
+    <div class="cc-ag-mem-footer">
+      <span class="cc-ag-mem-count" id="cc-ag-mem-count-${id}">0 entries</span>
+    </div>
   </div>
   <div class="cc-ag-edit-form" id="cc-ag-edit-${id}" style="display:none">
     <label>Avatar (emoji)</label>
@@ -468,6 +489,18 @@ function _wireRow(container, agentId) {
     const memPanel = detail.querySelector(`#cc-ag-memory-${agentId}`);
     if (memPanel) memPanel.style.display = 'none';
   });
+
+  // Memory panel search input — client-side filter over already-rendered rows
+  const memSearch = detail.querySelector(`#cc-ag-mem-search-${agentId}`);
+  if (memSearch) {
+    memSearch.addEventListener('input', () => {
+      const list  = detail.querySelector(`#cc-ag-memory-list-${agentId}`);
+      const panel = detail.querySelector(`#cc-ag-memory-${agentId}`);
+      if (!list || !panel) return;
+      const shown = _applyMemorySearch(list, memSearch.value);
+      _setMemCount(panel, shown);
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -611,43 +644,114 @@ async function _streamSSE(body, resultEl) {
 // ---------------------------------------------------------------------------
 // Agent memory panel
 // ---------------------------------------------------------------------------
+// Memories live in /api/memory keyed by owner; agent-scoped entries carry an
+// `agent_id` field (verified against src/memory.py:217 — the only memory field
+// that ties to an agent). Client-side filter on that field; if no matches,
+// fall back to the 10 most recent so the panel is never empty for a freshly-
+// created agent.
+
+const MEM_FALLBACK_LIMIT = 10;
+
+function _filterMemoriesForAgent(memories, agentId) {
+  const list = Array.isArray(memories) ? memories : [];
+  const matched = list.filter(m => m && m.agent_id === agentId);
+  if (matched.length) return { entries: matched, isFallback: false };
+  const sorted = list
+    .slice()
+    .sort((a, b) => (b?.timestamp || 0) - (a?.timestamp || 0))
+    .slice(0, MEM_FALLBACK_LIMIT);
+  return { entries: sorted, isFallback: true };
+}
+
+function _memMatchesQuery(m, q) {
+  if (!q) return true;
+  const haystack = ((m?.text || '') + ' ' + (m?.category || '')).toLowerCase();
+  return haystack.includes(q);
+}
+
+function _applyMemorySearch(listEl, query) {
+  const q = String(query || '').trim().toLowerCase();
+  let shown = 0;
+  listEl.querySelectorAll('.cc-ag-mem-row').forEach(row => {
+    const txt = (row.dataset.memText || '').toLowerCase();
+    const cat = (row.dataset.memCategory || '').toLowerCase();
+    const match = !q || txt.includes(q) || cat.includes(q);
+    row.classList.toggle('cc-ag-mem-row--hidden', !match);
+    if (match) shown++;
+  });
+  return shown;
+}
+
+function _setMemCount(panel, n) {
+  const el = panel?.querySelector('.cc-ag-mem-count');
+  if (el) el.textContent = `${n} ${n === 1 ? 'entry' : 'entries'}`;
+}
+
+function _setMemFallbackNote(panel, isFallback) {
+  const el = panel?.querySelector('.cc-ag-mem-fallback-note');
+  if (el) el.style.display = isFallback ? 'block' : 'none';
+}
+
+function _renderMemoryRow(entry, agentId, listEl, panel) {
+  const row = document.createElement('div');
+  row.className = 'cc-ag-mem-row';
+  row.dataset.memId       = entry.id;
+  row.dataset.memText     = entry.text || '';
+  row.dataset.memCategory = entry.category || '';
+  // Only memories tagged to this agent get the agent-scoped delete route;
+  // fallback entries (no agent_id match) use the general /api/memory/{id}.
+  const agentScoped = entry.agent_id === agentId;
+  const cat = entry.category ? `<span class="cc-ag-mem-cat">${_esc(entry.category)}</span>` : '';
+  row.innerHTML = `
+    <div class="cc-ag-mem-text">${_esc(entry.text || '')}${cat}</div>
+    <button class="cc-ag-mem-del-btn" title="Delete memory">✕</button>
+  `.trim();
+  row.querySelector('.cc-ag-mem-del-btn')?.addEventListener('click', async () => {
+    try {
+      const url = agentScoped
+        ? `/api/agents/${encodeURIComponent(agentId)}/memories/${encodeURIComponent(entry.id)}`
+        : `/api/memory/${encodeURIComponent(entry.id)}`;
+      const dr = await fetch(url, { method: 'DELETE' });
+      if (!dr.ok) throw new Error(`HTTP ${dr.status}`);
+      row.remove();
+      const remaining = listEl.querySelectorAll('.cc-ag-mem-row').length;
+      _setMemCount(panel, remaining);
+      if (!remaining) {
+        listEl.innerHTML = '<div class="cc-empty">No memories yet. Start chatting to build agent memory.</div>';
+      }
+    } catch (_) {
+      const btn = row.querySelector('.cc-ag-mem-del-btn');
+      if (btn) btn.textContent = '!';
+    }
+  });
+  listEl.appendChild(row);
+}
 
 async function _loadAgentMemories(agentId, listEl) {
+  const panel = listEl.closest?.('.cc-ag-memory-panel') || null;
   listEl.innerHTML = '<div class="cc-empty cc-ag-mem-loading">Loading…</div>';
+  _setMemCount(panel, 0);
+  _setMemFallbackNote(panel, false);
   try {
-    const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/memories`);
+    const res = await fetch('/api/memory');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const { memories = [] } = await res.json();
-    if (!memories.length) {
+    const data = await res.json();
+    const all  = Array.isArray(data) ? data : (data.memory || data.memories || []);
+    const { entries, isFallback } = _filterMemoriesForAgent(all, agentId);
+    if (!entries.length) {
       listEl.innerHTML = '<div class="cc-empty">No memories yet. Start chatting to build agent memory.</div>';
+      _setMemCount(panel, 0);
       return;
     }
+    _setMemFallbackNote(panel, isFallback);
     listEl.innerHTML = '';
-    for (const m of memories) {
-      const row = document.createElement('div');
-      row.className = 'cc-ag-mem-row';
-      row.dataset.memId = m.id;
-      const cat = m.category ? `<span class="cc-ag-mem-cat">${_esc(m.category)}</span>` : '';
-      row.innerHTML = `
-        <div class="cc-ag-mem-text">${_esc(m.text)}${cat}</div>
-        <button class="cc-ag-mem-del-btn" title="Delete memory">✕</button>
-      `.trim();
-      row.querySelector('.cc-ag-mem-del-btn')?.addEventListener('click', async () => {
-        try {
-          const dr = await fetch(
-            `/api/agents/${encodeURIComponent(agentId)}/memories/${encodeURIComponent(m.id)}`,
-            { method: 'DELETE' },
-          );
-          if (!dr.ok) throw new Error(`HTTP ${dr.status}`);
-          row.remove();
-          if (!listEl.querySelector('.cc-ag-mem-row')) {
-            listEl.innerHTML = '<div class="cc-empty">No memories yet. Start chatting to build agent memory.</div>';
-          }
-        } catch (_) {
-          row.querySelector('.cc-ag-mem-del-btn').textContent = '!';
-        }
-      });
-      listEl.appendChild(row);
+    for (const m of entries) _renderMemoryRow(m, agentId, listEl, panel);
+    _setMemCount(panel, entries.length);
+    // Re-apply any text already in the search input
+    const searchInput = panel?.querySelector('.cc-ag-mem-search-input');
+    if (searchInput && searchInput.value) {
+      const shown = _applyMemorySearch(listEl, searchInput.value);
+      _setMemCount(panel, shown);
     }
   } catch (e) {
     listEl.innerHTML = `<div class="cc-empty">Could not load memories — ${_esc(e.message)}</div>`;
