@@ -847,6 +847,27 @@ class RoutingEvent(Base):
     )
 
 
+class CouncilPreset(Base):
+    """Owner-saved conference-room composition. Spinning up a preset creates
+    a fresh ConferenceRoom from the stored agent names — same logic the
+    hardcoded room templates use, just sourced from this table instead of
+    the in-process _TEMPLATES list."""
+    __tablename__ = "council_presets"
+
+    id            = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    owner         = Column(String, nullable=False, index=True)
+    name          = Column(String, nullable=False)
+    description   = Column(String, nullable=True)
+    # JSON-encoded list[str] of CerberusAgent.name values. Resolved per-owner
+    # at create-room time, missing agents skipped (logged), 400 if none match.
+    agent_names   = Column(Text, nullable=False, default="[]")
+    created_at    = Column(DateTime, default=utcnow_naive)
+
+    __table_args__ = (
+        Index("ix_council_presets_owner_created", "owner", "created_at"),
+    )
+
+
 class SearchHistory(Base):
     """One row per web-search the user actually ran (SearXNG / provider /
     aggregated). Surfaced in the CC Research panel as a re-runnable feed."""
@@ -2163,6 +2184,37 @@ def _migrate_add_room_phase3b_columns():
         logging.getLogger(__name__).warning(f"conference_rooms phase-3b migration: {e}")
 
 
+def _migrate_create_council_presets_table():
+    """Create the council_presets table on existing databases that pre-date
+    the CouncilPreset model. Idempotent — uses CREATE TABLE IF NOT EXISTS so
+    a fresh DB (Base.metadata.create_all already ran) is a no-op."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS council_presets (
+                    id          VARCHAR PRIMARY KEY,
+                    owner       VARCHAR NOT NULL,
+                    name        VARCHAR NOT NULL,
+                    description VARCHAR,
+                    agent_names TEXT NOT NULL DEFAULT '[]',
+                    created_at  DATETIME
+                )
+            """))
+            conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_council_presets_owner_created "
+                "ON council_presets (owner, created_at)"
+            ))
+            conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_council_presets_owner "
+                "ON council_presets (owner)"
+            ))
+            conn.commit()
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            f"council_presets table create migration: {e}"
+        )
+
+
 def init_db():
     """
     Initialize the database by creating all tables.
@@ -2219,6 +2271,7 @@ def init_db():
     _migrate_add_agent_usage_columns()
     _migrate_add_agent_phase_a_columns()
     _migrate_add_room_phase3b_columns()
+    _migrate_create_council_presets_table()
     _migrate_add_agent_tts_voice_column()
     _migrate_add_agent_context_window_column()
     _migrate_add_agent_invocation_count_column()
