@@ -26,6 +26,84 @@ const STATE_LABELS = {
   'your-turn':   'Your turn',
 };
 
+// ── Wake word (Feature 6) ────────────────────────────────────────────
+// The phrase fires while the voice panel is open. On match the mic button
+// is auto-pressed so the operator can speak the actual prompt immediately.
+
+const WAKE_PHRASE             = 'hey cerberus';
+const WAKE_PREF_KEY           = 'cerberus.wake_word_enabled';
+let   _wakeActive             = false;
+let   _wakeRecognition        = null;
+let   _wakeMicTriggerCallback = null;
+
+function _wakeSupported() {
+  return typeof window !== 'undefined'
+      && (typeof window.SpeechRecognition !== 'undefined'
+       || typeof window.webkitSpeechRecognition !== 'undefined');
+}
+
+function _readWakePref() {
+  try { return localStorage.getItem(WAKE_PREF_KEY) === '1'; }
+  catch (_) { return false; }
+}
+
+function _writeWakePref(on) {
+  try { localStorage.setItem(WAKE_PREF_KEY, on ? '1' : '0'); }
+  catch (_) { /* private browsing — silent */ }
+}
+
+function startWakeWordListener(onTrigger) {
+  if (!_wakeSupported()) return false;
+  _wakeMicTriggerCallback = onTrigger || _wakeMicTriggerCallback;
+  if (_wakeRecognition) return true; // already running
+  try {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SR();
+    rec.continuous     = true;
+    rec.interimResults = true;
+    rec.onresult = (e) => {
+      let transcript = '';
+      try {
+        transcript = Array.from(e.results || [])
+          .map(r => (r[0] && r[0].transcript) || '')
+          .join(' ')
+          .toLowerCase();
+      } catch (_) { transcript = ''; }
+      if (transcript && transcript.includes(WAKE_PHRASE)) {
+        // Stop the listener; the auto-restart in `onend` won't kick back
+        // in because the trigger callback may close the panel (in which
+        // case _wakeActive will be flipped off).
+        try { rec.stop(); } catch (_) {}
+        if (typeof _wakeMicTriggerCallback === 'function') {
+          try { _wakeMicTriggerCallback(); } catch (_) {}
+        }
+      }
+    };
+    rec.onerror = () => { /* swallow — auto-restart on `onend` */ };
+    rec.onend   = () => {
+      _wakeRecognition = null;
+      if (_wakeActive) {
+        try { startWakeWordListener(); } catch (_) {}
+      }
+    };
+    rec.start();
+    _wakeRecognition = rec;
+    _wakeActive = true;
+    return true;
+  } catch (_) {
+    _wakeRecognition = null;
+    return false;
+  }
+}
+
+function stopWakeWordListener() {
+  _wakeActive = false;
+  if (_wakeRecognition) {
+    try { _wakeRecognition.stop(); } catch (_) {}
+    _wakeRecognition = null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // HTML template
 // ---------------------------------------------------------------------------
@@ -45,6 +123,11 @@ function _buildVoicePanel(agentName, agentAvatar, accentColor) {
     <span class="cc-voice-sigil" style="background:${_esc(accentColor)}">${_esc(glyph)}</span>
     <span class="cc-voice-name">${_esc(agentName)}</span>
     <span class="cc-voice-state-badge" id="cc-voice-state-badge">Ready</span>
+    <button class="cc-voice-wake-btn" id="cc-voice-wake-toggle" type="button"
+            title="Hands-free wake phrase: '${WAKE_PHRASE}'" hidden>
+      <span class="cc-voice-wake-dot" aria-hidden="true"></span>
+      <span class="cc-voice-wake-label">// WAKE WORD: OFF</span>
+    </button>
   </div>
   <div class="cc-voice-transcript" id="cc-voice-transcript">
     <div class="cc-empty">Hold the mic button to speak.</div>
@@ -402,6 +485,43 @@ export async function openVoiceCall(container, agentId, agentName, agentAvatar, 
   // without leaving the call panel. Fire-and-forget — silent on failure.
   _renderRecentSessions(container);
 
+  // ---- Wake-word toggle (hidden when SpeechRecognition isn't supported) ----
+  const wakeBtn   = container.querySelector('#cc-voice-wake-toggle');
+  const wakeLabel = container.querySelector('.cc-voice-wake-label');
+  if (wakeBtn) {
+    if (!_wakeSupported()) {
+      wakeBtn.hidden = true;
+    } else {
+      wakeBtn.hidden = false;
+      const _applyWakeUi = (on) => {
+        wakeBtn.classList.toggle('cc-voice-wake-btn--on', on);
+        if (wakeLabel) wakeLabel.textContent = on ? '// WAKE WORD: ON' : '// WAKE WORD: OFF';
+      };
+      const _onWakeTriggered = () => {
+        try { micBtn?.click(); } catch (_) {}
+      };
+      if (_readWakePref()) {
+        startWakeWordListener(_onWakeTriggered);
+        _applyWakeUi(true);
+      } else {
+        _applyWakeUi(false);
+      }
+      wakeBtn.addEventListener('click', () => {
+        if (_wakeActive) {
+          stopWakeWordListener();
+          _writeWakePref(false);
+          _applyWakeUi(false);
+        } else {
+          const ok = startWakeWordListener(_onWakeTriggered);
+          if (ok) {
+            _writeWakePref(true);
+            _applyWakeUi(true);
+          }
+        }
+      });
+    }
+  }
+
   // ---- Text fallback toggle ----
   let textMode = false;
   toggleText?.addEventListener('click', () => {
@@ -558,3 +678,17 @@ export async function openVoiceCall(container, agentId, agentName, agentAvatar, 
     _setState(panel, 'your-turn');
   }
 }
+
+// ── Wake-word: testables (consumed by tests/test_wake_memory.test.mjs) ──
+export {
+  WAKE_PHRASE, startWakeWordListener, stopWakeWordListener,
+};
+export const __wakeTestables = {
+  WAKE_PHRASE, WAKE_PREF_KEY,
+  isWakeActive: () => _wakeActive,
+  isSupported:  _wakeSupported,
+  readPref:     _readWakePref,
+  writePref:    _writeWakePref,
+  start:        startWakeWordListener,
+  stop:         stopWakeWordListener,
+};

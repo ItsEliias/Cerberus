@@ -4002,3 +4002,97 @@
   color: var(--cc-fg, var(--fg, #c5c9d0));
   white-space: pre-wrap;
 }
+
+/* ── AGENTS — CUSTOM badge + pinned-skills chip on the row ───────────── */
+.cc-row-custom-badge {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 1px 5px; border-radius: 2px;
+  color: var(--cc-crimson, var(--red, #c0392b));
+  border: 1px solid color-mix(in srgb, var(--cc-crimson, var(--red, #c0392b)) 55%, transparent);
+}
+.cc-row-skills-chip {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px; letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 60%, transparent);
+  padding: 1px 6px;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  border-radius: 2px;
+}
+
+/* ── AGENTS — pinned-skills picker inside the edit form ──────────────── */
+.cc-ag-edit-skills-label {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--cc-crimson, var(--red, #c0392b));
+  margin-top: 6px;
+}
+.cc-ag-edit-skills {
+  display: flex; flex-direction: column; gap: 3px;
+  max-height: 160px; overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--cc-void-mid, var(--bg, #1a1d23)) 92%, transparent);
+}
+.cc-ag-edit-skill {
+  display: grid; grid-template-columns: auto auto 1fr; gap: 6px;
+  align-items: baseline;
+  padding: 3px 5px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  cursor: pointer;
+}
+.cc-ag-edit-skill:hover {
+  background: color-mix(in srgb, var(--cc-crimson, var(--red, #c0392b)) 6%, transparent);
+}
+.cc-ag-edit-skill-cb { accent-color: var(--cc-crimson, var(--red, #c0392b)); }
+.cc-ag-edit-skill-name {
+  font-size: 10px; letter-spacing: 0.04em;
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+}
+.cc-ag-edit-skill-desc {
+  font-size: 9px;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 40%, transparent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── VOICE — wake-word toggle button + pulsing dot ──────────────────── */
+.cc-voice-wake-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-left: auto;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 65%, transparent);
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  border-radius: 2px; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cc-voice-wake-btn[hidden] { display: none; }
+.cc-voice-wake-btn:hover {
+  border-color: var(--cc-crimson, var(--red, #c0392b));
+  color: var(--cc-crimson, var(--red, #c0392b));
+}
+.cc-voice-wake-btn--on {
+  border-color: var(--cc-crimson, var(--red, #c0392b));
+  color: var(--cc-crimson, var(--red, #c0392b));
+}
+.cc-voice-wake-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 35%, transparent);
+  flex-shrink: 0;
+}
+.cc-voice-wake-btn--on .cc-voice-wake-dot {
+  background: var(--cc-crimson, var(--red, #c0392b));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--cc-crimson, var(--red, #c0392b)) 60%, transparent);
+  animation: cc-wake-pulse 1.2s ease-in-out infinite;
+}
+@keyframes cc-wake-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-voice-wake-btn--on .cc-voice-wake-dot { animation: none; }
+}

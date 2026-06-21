@@ -312,6 +312,10 @@ function _agentRow(agent) {
   <span class="cc-row-role">${_esc(agent.role || agent.agent_type || '—')}</span>
   <span class="cc-row-model">${_esc(agent.model_alias || '—')}</span>
   <span class="cc-row-score">${score}</span>
+  ${agent.is_custom ? '<span class="cc-row-custom-badge" title="Custom agent">CUSTOM</span>' : ''}
+  ${(agent.pinned_skills && agent.pinned_skills.length)
+      ? `<span class="cc-row-skills-chip" title="Pinned skills: ${_esc(agent.pinned_skills.join(', '))}">📎 ${agent.pinned_skills.length} skill${agent.pinned_skills.length === 1 ? '' : 's'}</span>`
+      : ''}
   <span class="cc-ag-invoke-count" title="Total invocations">↑ ${_esc(agent.invocation_count || 0)}</span>
   <span class="cc-row-actions">
     <button class="cc-row-btn cc-row-btn-chat">Chat</button>
@@ -435,6 +439,11 @@ function _agentDetail(agent) {
     </select>
     <label>System prompt</label>
     <textarea class="cc-ag-edit-prompt" rows="5">${_esc(agent.system_prompt || '')}</textarea>
+    <label class="cc-ag-edit-skills-label">// PINNED SKILLS</label>
+    <div class="cc-ag-edit-skills" id="cc-ag-edit-skills-${id}"
+         data-current="${_esc((agent.pinned_skills || []).join(','))}">
+      <div class="cc-empty">Loading skills…</div>
+    </div>
     <div class="cc-ag-invoke-actions">
       <button class="cc-ag-save-btn"    data-agent-id="${id}">Save</button>
       <button class="cc-ag-discard-btn" data-agent-id="${id}">Cancel</button>
@@ -509,6 +518,53 @@ function _initEditVoicePicker(editForm) {
   sel.dataset.voiceLoaded = '1';
   const current = sel.dataset.current || '';
   _populateVoiceSelect(sel, current);
+  // Pinned skills picker lives alongside the voice picker — both lazy-loaded
+  // the first time the edit form opens.
+  _initEditSkillsPicker(editForm);
+}
+
+// Skills cache — lazily fetched once per session.
+let _skillsCache = null;
+let _skillsFetch = null;
+async function _getSkills() {
+  if (_skillsCache !== null) return _skillsCache;
+  if (_skillsFetch) return _skillsFetch;
+  _skillsFetch = fetch('/api/skills', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : { skills: [] })
+    .then(d => { _skillsCache = d.skills || []; _skillsFetch = null; return _skillsCache; })
+    .catch(() => { _skillsCache = []; _skillsFetch = null; return _skillsCache; });
+  return _skillsFetch;
+}
+
+async function _initEditSkillsPicker(editForm) {
+  const wrap = editForm.querySelector('.cc-ag-edit-skills');
+  if (!wrap || wrap.dataset.skillsLoaded) return;
+  wrap.dataset.skillsLoaded = '1';
+  const current = new Set((wrap.dataset.current || '').split(',').filter(Boolean));
+  const skills = await _getSkills();
+  if (!skills.length) {
+    wrap.innerHTML = '<div class="cc-empty">No skills configured.</div>';
+    return;
+  }
+  wrap.innerHTML = skills.map(sk => {
+    const name = sk.name || sk.id || '';
+    if (!name) return '';
+    const desc = (sk.description || sk.problem || '').slice(0, 80);
+    const checked = current.has(name) ? 'checked' : '';
+    return `<label class="cc-ag-edit-skill">
+      <input type="checkbox" class="cc-ag-edit-skill-cb" value="${_esc(name)}" ${checked}>
+      <span class="cc-ag-edit-skill-name">${_esc(name)}</span>
+      ${desc ? `<span class="cc-ag-edit-skill-desc">${_esc(desc)}</span>` : ''}
+    </label>`;
+  }).join('');
+}
+
+function _readPinnedSkillsFromForm(editForm) {
+  if (!editForm) return [];
+  return [...editForm.querySelectorAll('.cc-ag-edit-skill-cb')]
+    .filter(cb => cb.checked)
+    .map(cb => cb.value)
+    .filter(Boolean);
 }
 
 // ---------------------------------------------------------------------------
@@ -684,13 +740,14 @@ function _wireRow(container, agentId) {
 async function _saveAgent(agentId, row, detail, editForm) {
   const msgEl = editForm.querySelector(`#cc-ag-edit-msg-${agentId}`);
   const body = {
-    name:          editForm.querySelector('.cc-ag-edit-name')?.value?.trim(),
-    role:          editForm.querySelector('.cc-ag-edit-role')?.value?.trim(),
-    agent_type:    editForm.querySelector('.cc-ag-edit-agent-type')?.value?.trim(),
-    model_alias:   editForm.querySelector('.cc-ag-edit-model')?.value?.trim() || 'default',
-    system_prompt: editForm.querySelector('.cc-ag-edit-prompt')?.value ?? '',
-    avatar:        editForm.querySelector('.cc-ag-edit-avatar')?.value?.trim() || '',
-    tts_voice:     editForm.querySelector('.cc-ag-edit-tts-voice')?.value?.trim() || '',
+    name:           editForm.querySelector('.cc-ag-edit-name')?.value?.trim(),
+    role:           editForm.querySelector('.cc-ag-edit-role')?.value?.trim(),
+    agent_type:     editForm.querySelector('.cc-ag-edit-agent-type')?.value?.trim(),
+    model_alias:    editForm.querySelector('.cc-ag-edit-model')?.value?.trim() || 'default',
+    system_prompt:  editForm.querySelector('.cc-ag-edit-prompt')?.value ?? '',
+    avatar:         editForm.querySelector('.cc-ag-edit-avatar')?.value?.trim() || '',
+    tts_voice:      editForm.querySelector('.cc-ag-edit-tts-voice')?.value?.trim() || '',
+    pinned_skills:  _readPinnedSkillsFromForm(editForm),
   };
   if (!body.name) { if (msgEl) msgEl.textContent = 'Name is required'; return; }
   try {

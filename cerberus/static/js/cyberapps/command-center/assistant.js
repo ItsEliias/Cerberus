@@ -15,6 +15,7 @@ import { buildDocsPanel, loadDocs } from './cc-documents.js';
 import { buildNotesPanel, loadNotes } from './cc-notes.js';
 import { buildResearchPanel, loadResearch } from './cc-research.js';
 import { buildContactsPanel, loadContacts } from './cc-contacts.js';
+import { buildMemoryTimelinePanel, loadMemoryTimeline } from './cc-memory-timeline.js';
 
 const SYSTEM_PROMPT = 'You are the Cerberus operations assistant. Answer concisely about the Cerberus system state, tasks, agents, and operations. Be direct and informative.';
 const API = '/api/chat_stream';
@@ -85,6 +86,7 @@ export function buildAssistantTab() {
     ${buildNotesPanel()}
     ${buildResearchPanel()}
     ${buildContactsPanel()}
+    ${buildMemoryTimelinePanel()}
     <div class="cc-chat-history" id="cc-chat-history">
       <div class="cc-empty" style="margin-top:32px;">
         Cerberus Operations Assistant ready. Ask about tasks, agents, or system state.
@@ -135,6 +137,8 @@ export function initAssistant(root) {
   loadResearch(root);
   // CONTACTS — CardDAV-backed list / search / edit / export.
   loadContacts(root);
+  // MEMORY TIMELINE — week-grouped recap, category filter, click-to-expand.
+  loadMemoryTimeline(root);
   // DOCUMENTS — library list, viewer, PDF import, new + delete.
   loadDocs(root);
   // Re-render when the onboarding wizard reports a successful save so the
