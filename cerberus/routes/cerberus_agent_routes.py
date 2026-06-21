@@ -385,6 +385,54 @@ def setup_cerberus_agent_routes() -> APIRouter:
 
         return StreamingResponse(_generate(), media_type="text/event-stream")
 
+    # ── Health monitoring ─────────────────────────────────────────────────
+    @router.get("/{agent_id}/health")
+    def get_agent_health(agent_id: str, request: Request) -> Dict[str, Any]:
+        """Owner-scoped health snapshot for the AGENTS HUD."""
+        from datetime import datetime, timezone
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            agent = _get_agent_for_owner(db, agent_id, owner)
+            uptime_hours: Optional[float] = None
+            if agent.created_at:
+                created = agent.created_at
+                # Existing rows store naive UTC; use the same convention.
+                now = datetime.now(timezone.utc).replace(tzinfo=None)
+                delta = (now - created).total_seconds() / 3600.0
+                uptime_hours = round(max(0.0, delta), 2)
+            return {
+                "health_status":    agent.health_status or "ok",
+                "last_error":       agent.last_error,
+                "last_error_at":    agent.last_error_at.isoformat() if agent.last_error_at else None,
+                "error_count":      int(agent.error_count or 0),
+                "invocation_count": int(agent.invocation_count or 0),
+                "last_active_at":   agent.last_active_at.isoformat() if agent.last_active_at else None,
+                "uptime_hours":     uptime_hours,
+            }
+        finally:
+            db.close()
+
+    @router.post("/{agent_id}/reset-health")
+    def reset_agent_health(agent_id: str, request: Request) -> Dict[str, Any]:
+        """Clear the error streak and flip the dot back to OK."""
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            agent = _get_agent_for_owner(db, agent_id, owner)
+            agent.health_status = "ok"
+            agent.last_error = None
+            agent.last_error_at = None
+            agent.error_count = 0
+            db.commit()
+            return {
+                "agent_id": agent_id,
+                "health_status": "ok",
+                "error_count": 0,
+            }
+        finally:
+            db.close()
+
     return router
 
 

@@ -23,7 +23,7 @@ import os
 import types
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -178,6 +178,77 @@ def _get_or_create_thread(db, agent_id: str, owner: str) -> AgentThread:
         db.commit()
         db.refresh(thread)
     return thread
+
+
+def _record_agent_health(
+    agent_id: str, success: bool, error_msg: Optional[str] = None,
+) -> None:
+    """Update the agent's health columns after a thread send.
+
+    Success path → clears the error fields and sets health_status='ok'.
+    Failure path → bumps error_count, stores the error message + time,
+    and sets health_status to 'degraded' for the first 1-2 errors or
+    'error' once the lifetime count reaches the 3-error threshold.
+
+    Best-effort: every failure path is caught, logged at WARNING, and
+    swallowed — health tracking MUST NEVER break the send path."""
+    if not agent_id:
+        return
+    db = None
+    try:
+        db = SessionLocal()
+        row = (
+            db.query(CerberusAgent)
+            .filter(CerberusAgent.id == agent_id)
+            .first()
+        )
+        if row is None:
+            return
+        if success:
+            row.health_status = "ok"
+            row.last_error = None
+            row.last_error_at = None
+            # Successful completion clears the rolling error streak so a
+            # recovered agent doesn't stay marked "degraded" forever after
+            # a transient blip.
+            row.error_count = 0
+        else:
+            row.last_error = (error_msg or "").strip()[:1000] or "unknown error"
+            row.last_error_at = _utcnow()
+            row.error_count = int(row.error_count or 0) + 1
+            row.health_status = "error" if row.error_count >= 3 else "degraded"
+        db.commit()
+    except Exception as exc:
+        logger.warning("_record_agent_health failed: %s", exc)
+    finally:
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+
+def _extract_error_from_chunk(chunk: str) -> str:
+    """Pull the error text out of a `event: error\\ndata: {...}\\n\\n` chunk.
+
+    Returns the inner `error` field when the chunk is well-formed JSON, the
+    raw `data:` payload as a fallback, or an empty string if neither shape
+    matches. Defensive — never raises."""
+    try:
+        for line in (chunk or "").split("\n"):
+            if line.startswith("data:"):
+                raw = line[5:].strip()
+                if not raw:
+                    continue
+                try:
+                    obj = json.loads(raw)
+                    if isinstance(obj, dict):
+                        return str(obj.get("error") or raw)
+                except (ValueError, TypeError):
+                    return raw
+    except Exception:
+        pass
+    return ""
 
 
 def _increment_invocation_count(agent_id: str) -> None:
@@ -627,6 +698,7 @@ def setup_agent_thread_routes() -> APIRouter:
 
             parts: list[str] = []
             errored = False
+            _last_error_msg = ""
             try:
                 async for chunk in stream_agent_loop(
                     url, model, messages, headers=headers,
@@ -639,6 +711,7 @@ def setup_agent_thread_routes() -> APIRouter:
                 ):
                     if chunk.startswith("event: error"):
                         errored = True
+                        _last_error_msg = _extract_error_from_chunk(chunk)
                         yield chunk
                         continue
                     for line in chunk.split("\n"):
@@ -654,6 +727,7 @@ def setup_agent_thread_routes() -> APIRouter:
                     yield chunk
             except Exception as exc:
                 errored = True
+                _last_error_msg = str(exc)
                 yield f'event: error\ndata: {json.dumps({"error": str(exc), "status": 500})}\n\n'
             finally:
                 if parts and not errored:
@@ -663,11 +737,21 @@ def setup_agent_thread_routes() -> APIRouter:
                     # for the AGENTS-tab usage chip. Best-effort: never breaks
                     # the send path on failure.
                     _increment_invocation_count(agent_id)
+                    # Health: successful completion clears any prior error
+                    # streak so the AGENTS-tab dot returns to "ok".
+                    _record_agent_health(agent_id, success=True)
                     # Background memory extraction tagged with this agent
                     _fire_extraction(
                         owner, agent_id, thread_id,
                         extraction_messages + [{"role": "assistant", "content": full_reply}],
                         url, model, headers,
+                    )
+                elif errored:
+                    # Error path — record the failure and let the dot turn
+                    # degraded/error depending on the rolling count.
+                    _record_agent_health(
+                        agent_id, success=False,
+                        error_msg=_last_error_msg or "stream error",
                     )
 
         return StreamingResponse(_generate(), media_type="text/event-stream")

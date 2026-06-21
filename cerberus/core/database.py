@@ -711,6 +711,13 @@ class CerberusAgent(TimestampMixin, Base):
     context_window      = Column(Integer, nullable=True)                   # per-agent thread context size (None → global default)
     tool_allowlist      = Column(Text, nullable=True)                      # JSON array of permitted tool names; None = no restriction
     invocation_count    = Column(Integer, default=0, nullable=False)       # cumulative successful thread sends; surfaced as a HUD chip in the AGENTS tab
+    # Health monitoring — populated by the thread send path when an
+    # invocation errors or completes cleanly. Surfaced in the AGENTS card
+    # as a status dot + dedicated health section.
+    last_error          = Column(Text, nullable=True)
+    last_error_at       = Column(DateTime, nullable=True)
+    error_count         = Column(Integer, default=0, nullable=False)
+    health_status       = Column(String, default="ok", nullable=False)     # ok | degraded | error
 
     __table_args__ = (
         Index('ix_cerberus_agents_owner_name', 'owner', 'name', unique=True),
@@ -739,6 +746,10 @@ class CerberusAgent(TimestampMixin, Base):
             "context_window": self.context_window,
             "tool_allowlist": json.loads(self.tool_allowlist) if self.tool_allowlist else None,
             "invocation_count": self.invocation_count or 0,
+            "health_status": self.health_status or "ok",
+            "error_count": self.error_count or 0,
+            "last_error": self.last_error,
+            "last_error_at": self.last_error_at.isoformat() if self.last_error_at else None,
         }
 
 
@@ -2209,6 +2220,7 @@ def init_db():
     _migrate_add_agent_tts_voice_column()
     _migrate_add_agent_context_window_column()
     _migrate_add_agent_invocation_count_column()
+    _migrate_add_agent_health_columns()
 
 
 def _migrate_add_agent_context_window_column():
@@ -2242,6 +2254,37 @@ def _migrate_add_agent_invocation_count_column():
         logging.getLogger(__name__).info("cerberus_agents invocation_count migration complete")
     except Exception as e:
         logging.getLogger(__name__).warning(f"cerberus_agents invocation_count migration: {e}")
+
+
+def _migrate_add_agent_health_columns():
+    """Add health-monitoring columns to cerberus_agents.
+
+    Four columns: last_error (TEXT), last_error_at (DATETIME),
+    error_count (INTEGER NOT NULL DEFAULT 0), health_status (TEXT NOT
+    NULL DEFAULT 'ok'). Existing rows light up as healthy by virtue of
+    the DEFAULTs. Idempotent — re-runnable on every startup; each ALTER
+    is guarded against the column already existing."""
+    try:
+        with engine.connect() as conn:
+            cols = [r[1] for r in conn.execute(text("PRAGMA table_info(cerberus_agents)"))]
+            if "last_error" not in cols:
+                conn.execute(text("ALTER TABLE cerberus_agents ADD COLUMN last_error TEXT"))
+            if "last_error_at" not in cols:
+                conn.execute(text("ALTER TABLE cerberus_agents ADD COLUMN last_error_at DATETIME"))
+            if "error_count" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE cerberus_agents "
+                    "ADD COLUMN error_count INTEGER NOT NULL DEFAULT 0"
+                ))
+            if "health_status" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE cerberus_agents "
+                    "ADD COLUMN health_status TEXT NOT NULL DEFAULT 'ok'"
+                ))
+            conn.commit()
+        logging.getLogger(__name__).info("cerberus_agents health columns migration complete")
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"cerberus_agents health columns migration: {e}")
 
 
 def _migrate_add_agent_tts_voice_column():
