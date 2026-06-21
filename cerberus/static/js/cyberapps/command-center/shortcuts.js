@@ -56,6 +56,7 @@ const SHORTCUTS_LIST = [
   ['p',         'ASSISTANT — open profile editor'],
   ['g',         'Jump to GATEWAY tab'],
   ['Shift+R',   'Reset the active tab\'s form (COMPARE / RESEARCH)'],
+  [',',         'Open Settings overlay'],
   ['1–8',       'Switch tabs by index'],
 ];
 
@@ -162,6 +163,10 @@ function _onKeyDown(e) {
       return;
     case 'g':
       _switchTabById('gateway');
+      e.preventDefault();
+      return;
+    case ',':
+      document.dispatchEvent(new CustomEvent('cerberus:open-settings'));
       e.preventDefault();
       return;
     default: {
