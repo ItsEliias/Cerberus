@@ -3800,9 +3800,22 @@
   box-shadow: 0 0 4px var(--cc-crimson-glow);
 }
 
-.cc-webhook-input {
+/* ── COMPOSE EMAIL panel (gateway.js) ─────────────────────────────────── */
+.cc-email-compose[hidden] { display: none; }
+.cc-email-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cc-webhook-input,
+.cc-email-compose > .cc-email-to,
+.cc-email-compose > .cc-email-subject,
+.cc-email-compose > .cc-email-body {
   -webkit-appearance: none;
   appearance: none;
+  width: 100%;
+  box-sizing: border-box;
   font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
   font-size: 10px;
   padding: 6px 8px;
@@ -3813,18 +3826,29 @@
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.cc-webhook-input:focus {
+.cc-webhook-input:focus,
+.cc-email-compose > .cc-email-to:focus,
+.cc-email-compose > .cc-email-subject:focus,
+.cc-email-compose > .cc-email-body:focus {
   border-color: var(--cc-crimson);
   box-shadow: 0 0 6px var(--cc-crimson-glow);
 }
+.cc-email-compose > .cc-email-body {
+  resize: vertical;
+  min-height: 100px;
+  max-height: 280px;
+}
 
-.cc-webhook-form-actions {
+.cc-webhook-form-actions,
+.cc-email-compose-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
 }
 .cc-webhook-cancel-btn,
-.cc-webhook-submit-btn {
+.cc-webhook-submit-btn,
+.cc-email-send-btn,
+.cc-email-clear-btn {
   -webkit-appearance: none;
   appearance: none;
   font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
@@ -3872,3 +3896,39 @@
   transition: opacity 0.2s;
 }
 .cc-webhook-toast[hidden] { display: none; }
+.cc-email-send-btn {
+  border: 1px solid var(--cc-crimson);
+  color: var(--cc-crimson-hot);
+}
+.cc-email-send-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red, #c0392b) 12%, transparent);
+  box-shadow: 0 0 8px var(--cc-crimson-glow);
+}
+.cc-email-clear-btn {
+  border: 1px solid var(--cc-border);
+  color: color-mix(in srgb, var(--cc-fg) 75%, transparent);
+}
+.cc-email-clear-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--cc-fg) 8%, transparent);
+  color: var(--cc-fg);
+}
+.cc-email-send-btn:disabled,
+.cc-email-clear-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cc-email-status {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 4px 0 0;
+  color: color-mix(in srgb, var(--cc-fg) 70%, transparent);
+}
+.cc-email-status[hidden] { display: none; }
+.cc-email-status--pending { color: color-mix(in srgb, var(--cc-fg) 80%, transparent); }
+.cc-email-status--ok {
+  color: var(--cc-crimson-hot);
+  text-shadow: 0 0 6px var(--cc-crimson-glow);
+}
+.cc-email-status--err { color: var(--cc-crit); }

@@ -77,6 +77,20 @@ export function buildGatewayTab() {
     <div class="cc-gw-approvals-list" id="gw-approvals-list"></div>
   </div>
 
+  <!-- COMPOSE EMAIL — backed by /api/email/compose-send + compose-allowlist.
+       Hidden when the allowlist is empty (no enabled recipients). -->
+  <div class="cc-gw-section cc-email-compose" id="cc-email-compose" hidden>
+    <div class="cc-section-label">// COMPOSE EMAIL</div>
+    <select class="cc-email-to" id="cc-email-to" aria-label="Recipient"></select>
+    <input class="cc-email-subject" id="cc-email-subject" type="text" maxlength="998" placeholder="// subject">
+    <textarea class="cc-email-body" id="cc-email-body" rows="6" maxlength="200000" placeholder="// message body..."></textarea>
+    <div class="cc-email-compose-actions">
+      <button type="button" class="cc-email-send-btn"  id="cc-email-send-btn">// SEND</button>
+      <button type="button" class="cc-email-clear-btn" id="cc-email-clear-btn">// CLEAR</button>
+    </div>
+    <div class="cc-email-status" id="cc-email-status" hidden></div>
+  </div>
+
   <div class="cc-gw-section">
     <div class="cc-section-label">PLATFORM STATUS</div>
     <div class="cc-gw-platforms" id="gw-platforms">
@@ -143,6 +157,8 @@ const _STATUS_POLL_KEY = '__gwStatusPollId';
 export function loadGateway(root) {
   _loadGatewayStatus(root);
   _loadApprovals(root);
+  _loadComposeAllowlist(root);
+  _initEmailCompose(root);
   _loadPlatforms(root);
   _loadJobs(root);
 
@@ -544,4 +560,146 @@ function _esc(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+
+// ── COMPOSE EMAIL panel ────────────────────────────────────────────────────
+//
+// Backed by:
+//   GET  /api/email/compose-allowlist  → { addresses, count, enabled }
+//   POST /api/email/compose-send       → { ok, error }
+//
+// Surfaces the gateway email allowlist (Phase 4a) as a 1-step compose form.
+// The To field is a <select> pre-populated from the allowlist (only allowed
+// addresses are sendable), so the 403 path in the server is a backstop,
+// not the primary UX.
+
+async function _loadComposeAllowlist(root) {
+  const section = root.querySelector('#cc-email-compose');
+  const sel = root.querySelector('#cc-email-to');
+  if (!section || !sel) return;
+  try {
+    const r = await fetch('/api/email/compose-allowlist', { credentials: 'same-origin' });
+    if (!r.ok) {
+      // 401/403 (auth) or 500 (config) — hide the panel so the empty form
+      // doesn't render in an unreachable state.
+      section.hidden = true;
+      return;
+    }
+    const data = await r.json();
+    const addrs = Array.isArray(data.addresses) ? data.addresses : [];
+    if (!addrs.length) {
+      section.hidden = true;
+      sel.innerHTML = '';
+      return;
+    }
+    section.hidden = false;
+    sel.innerHTML = addrs
+      .map(a => `<option value="${_esc(a)}">${_esc(a)}</option>`)
+      .join('');
+  } catch (_) {
+    section.hidden = true;
+  }
+}
+
+function _initEmailCompose(root) {
+  const sendBtn  = root.querySelector('#cc-email-send-btn');
+  const clearBtn = root.querySelector('#cc-email-clear-btn');
+  if (sendBtn)  sendBtn.addEventListener('click',  () => _sendComposeEmail(root));
+  if (clearBtn) clearBtn.addEventListener('click', () => _clearComposeEmail(root));
+}
+
+async function _sendComposeEmail(root) {
+  const toEl   = root.querySelector('#cc-email-to');
+  const subjEl = root.querySelector('#cc-email-subject');
+  const bodyEl = root.querySelector('#cc-email-body');
+  const stat   = root.querySelector('#cc-email-status');
+  const send   = root.querySelector('#cc-email-send-btn');
+  const clear  = root.querySelector('#cc-email-clear-btn');
+  if (!toEl || !subjEl || !bodyEl) return;
+
+  const to      = (toEl.value || '').trim();
+  const subject = (subjEl.value || '').trim();
+  const body    = (bodyEl.value || '').trim();
+
+  // Client-side guard so the user gets immediate feedback for empty fields
+  // and out-of-allowlist recipients without a network round-trip.
+  if (!to || !subject || !body) {
+    _setEmailStatus(stat, 'err', '// MISSING FIELD: to, subject, and body are all required');
+    return;
+  }
+  const opts = Array.from(toEl.options || []).map(o => (o.value || '').toLowerCase());
+  if (opts.length && !opts.includes(to.toLowerCase())) {
+    // The To select is bound to the allowlist, so this branch only fires
+    // when the option list is empty (panel should already be hidden) or
+    // the value was tampered with.
+    _setEmailStatus(stat, 'err', '// BLOCKED: recipient not in allowlist');
+    return;
+  }
+
+  // Disable controls during in-flight to prevent double-submit.
+  if (send)  send.disabled  = true;
+  if (clear) clear.disabled = true;
+  _setEmailStatus(stat, 'pending', '// SENDING…');
+
+  try {
+    const r = await fetch('/api/email/compose-send', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, subject, body }),
+    });
+    if (r.status === 403) {
+      _setEmailStatus(stat, 'err', '// BLOCKED: recipient not in allowlist');
+      return;
+    }
+    if (!r.ok) {
+      const detail = await _readEmailErrDetail(r);
+      _setEmailStatus(stat, 'err', detail ? `// FAILED: ${detail}` : `// FAILED: ${r.status}`);
+      return;
+    }
+    const data = await r.json();
+    if (data && data.ok) {
+      _setEmailStatus(stat, 'ok', '// SENT');
+      _clearComposeEmail(root, { keepStatus: true });
+    } else {
+      _setEmailStatus(stat, 'err', `// FAILED: ${(data && data.error) || 'unknown error'}`);
+    }
+  } catch (_) {
+    _setEmailStatus(stat, 'err', '// FAILED: network error');
+  } finally {
+    if (send)  send.disabled  = false;
+    if (clear) clear.disabled = false;
+  }
+}
+
+function _clearComposeEmail(root, opts) {
+  opts = opts || {};
+  const subjEl = root.querySelector('#cc-email-subject');
+  const bodyEl = root.querySelector('#cc-email-body');
+  const stat   = root.querySelector('#cc-email-status');
+  if (subjEl) subjEl.value = '';
+  if (bodyEl) bodyEl.value = '';
+  if (!opts.keepStatus && stat) {
+    stat.hidden = true;
+    stat.className = 'cc-email-status';
+    stat.textContent = '';
+  }
+}
+
+function _setEmailStatus(el, kind, message) {
+  if (!el) return;
+  el.hidden = false;
+  el.textContent = message;
+  el.className = `cc-email-status cc-email-status--${kind}`;
+}
+
+async function _readEmailErrDetail(resp) {
+  try {
+    const j = await resp.json();
+    if (j && (j.detail || j.error || j.message)) {
+      return String(j.detail || j.error || j.message);
+    }
+  } catch (_) {}
+  return '';
 }
