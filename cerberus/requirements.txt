@@ -56,3 +56,8 @@ ptyprocess
 # System metrics for Operations overview panel (CPU/RAM/disk).
 # Optional — Operations degrades gracefully to stdlib/resource if missing.
 psutil
+# Microsoft MarkItDown — converts DOCX/XLSX/PPTX/CSV/EPUB/IPYNB/MSG/HTML/ZIP
+# (and YouTube URLs) to Markdown for the CC document import endpoint.
+# Wrapped by services/docs/markitdown_converter.py with lazy init so the
+# heavy optional deps load only on first use.
+markitdown>=0.1.5

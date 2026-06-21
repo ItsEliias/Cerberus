@@ -15,7 +15,12 @@
  *   - POST   /api/document                  → create
  *                                              body { title, content,
  *                                                     language?, session_id? }
- *   - POST   /api/documents/import-pdf      → multipart
+ *   - POST   /api/documents/import          → multipart, any format
+ *                                              (PDF + MarkItDown formats:
+ *                                               docx/xlsx/pptx/csv/epub/
+ *                                               ipynb/msg/html/zip/...)
+ *   - POST   /api/documents/import-url      → JSON { url } — YouTube only
+ *   - POST   /api/documents/import-pdf      → multipart, PDF-only (legacy)
  *   - DELETE /api/document/{doc_id}         → soft delete (SINGULAR path)
  *
  * styles.css is locked for this branch, so styles are injected once via a
@@ -49,6 +54,9 @@ function _injectStyles() {
 }
 .cc-docs-upload-btn,
 .cc-docs-new-btn,
+.cc-docs-url-btn,
+.cc-docs-url-submit,
+.cc-docs-url-cancel,
 .cc-docs-copy-btn,
 .cc-docs-delete-btn,
 .cc-docs-back-btn,
@@ -66,6 +74,9 @@ function _injectStyles() {
 }
 .cc-docs-upload-btn:hover,
 .cc-docs-new-btn:hover,
+.cc-docs-url-btn:hover,
+.cc-docs-url-submit:hover,
+.cc-docs-url-cancel:hover,
 .cc-docs-copy-btn:hover,
 .cc-docs-back-btn:hover,
 .cc-docs-save-btn:hover,
@@ -73,6 +84,29 @@ function _injectStyles() {
   border-color: var(--cc-crimson, var(--red, #c0392b));
   color: var(--cc-crimson, var(--red, #c0392b));
 }
+.cc-docs-format-hint {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px; letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 35%, transparent);
+}
+.cc-docs-url-row {
+  display: flex; gap: 6px; align-items: center;
+}
+.cc-docs-url-input {
+  flex: 1 1 auto; box-sizing: border-box;
+  padding: 5px 10px;
+  background: var(--cc-void-mid, var(--bg, #1a1d23));
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px; letter-spacing: 0.02em;
+  outline: none;
+  -webkit-appearance: none; appearance: none;
+}
+.cc-docs-url-input::placeholder {
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 40%, transparent);
+}
+.cc-docs-url-input:focus { border-color: var(--cc-crimson, var(--red, #c0392b)); }
 .cc-docs-delete-btn,
 .cc-docs-confirm-btn {
   border-color: color-mix(in srgb, var(--cc-crit, #e74c3c) 60%, transparent);
@@ -204,11 +238,27 @@ export function buildDocsPanel() {
   <div class="cc-agents-tab-header">
     <span class="cc-agents-tab-title">DOCUMENTS</span>
     <label class="cc-docs-upload-label">
-      <input type="file" id="cc-docs-pdf-input" accept=".pdf" hidden />
-      <span class="cc-docs-upload-btn">↑ Import PDF</span>
+      <input type="file" id="cc-docs-pdf-input"
+             accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.csv,.epub,.ipynb,.msg,.html,.htm,.zip"
+             hidden />
+      <span class="cc-docs-upload-btn">↑ Import File</span>
     </label>
+    <button class="cc-docs-url-btn" type="button">↑ Import URL</button>
     <button class="cc-docs-new-btn" type="button">+ New</button>
     <span class="cc-docs-status" id="cc-docs-status" data-tone=""></span>
+  </div>
+
+  <div class="cc-docs-format-hint">
+    // PDF · DOCX · XLSX · PPTX · CSV · EPUB · IPYNB · MSG · HTML · ZIP · YouTube
+  </div>
+
+  <div class="cc-docs-url-row" id="cc-docs-url-row" style="display:none">
+    <input class="cc-docs-url-input" id="cc-docs-url-input"
+           type="url" placeholder="// https://www.youtube.com/watch?v=..."
+           autocomplete="off" spellcheck="false"
+           aria-label="URL to import (YouTube)" />
+    <button class="cc-docs-url-submit" type="button">// IMPORT</button>
+    <button class="cc-docs-url-cancel" type="button">// CANCEL</button>
   </div>
 
   <input class="cc-docs-search" id="cc-docs-search"
@@ -255,6 +305,11 @@ export async function loadDocs(container) {
   const editorEl  = root.querySelector('#cc-docs-editor');
   const newBtn    = root.querySelector('.cc-docs-new-btn');
   const pdfInput  = root.querySelector('#cc-docs-pdf-input');
+  const urlBtn    = root.querySelector('.cc-docs-url-btn');
+  const urlRow    = root.querySelector('#cc-docs-url-row');
+  const urlInput  = root.querySelector('#cc-docs-url-input');
+  const urlSubmit = root.querySelector('.cc-docs-url-submit');
+  const urlCancel = root.querySelector('.cc-docs-url-cancel');
   const statusEl  = root.querySelector('#cc-docs-status');
 
   const titleEl    = root.querySelector('#cc-docs-viewer-title');
@@ -444,16 +499,72 @@ export async function loadDocs(container) {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const r = await fetch('/api/documents/import-pdf', {
+      // Unified endpoint dispatches by extension: PDF → existing handler,
+      // Office/structured-text → MarkItDown, anything else → 415.
+      const r = await fetch('/api/documents/import', {
         method: 'POST', credentials: 'same-origin', body: fd,
       });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      if (!r.ok) {
+        let msg = `HTTP ${r.status}`;
+        try {
+          const j = await r.json();
+          if (j && j.detail) msg = `${msg} — ${j.detail}`;
+        } catch (_) {}
+        throw new Error(msg);
+      }
       _setStatus('// DONE', 'ok');
       await _fetchLibrary();
     } catch (e) {
       _setStatus(`// FAILED — ${e.message}`, 'err');
     } finally {
       pdfInput.value = '';
+    }
+  });
+
+  function _hideUrlRow() {
+    if (urlRow)   urlRow.style.display = 'none';
+    if (urlInput) urlInput.value = '';
+  }
+  function _showUrlRow() {
+    if (urlRow)   urlRow.style.display = '';
+    if (urlInput) { urlInput.focus(); }
+  }
+  urlBtn?.addEventListener('click', () => {
+    if (!urlRow) return;
+    if (urlRow.style.display === 'none') _showUrlRow();
+    else _hideUrlRow();
+  });
+  urlCancel?.addEventListener('click', _hideUrlRow);
+  urlInput?.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') { ev.preventDefault(); urlSubmit?.click(); }
+    else if (ev.key === 'Escape') { ev.preventDefault(); _hideUrlRow(); }
+  });
+  urlSubmit?.addEventListener('click', async () => {
+    const url = (urlInput?.value || '').trim();
+    if (!url) { _setStatus('// URL REQUIRED', 'err'); return; }
+    _setStatus('// IMPORTING…', '');
+    if (urlSubmit) urlSubmit.disabled = true;
+    try {
+      const r = await fetch('/api/documents/import-url', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      if (!r.ok) {
+        let msg = `HTTP ${r.status}`;
+        try {
+          const j = await r.json();
+          if (j && j.detail) msg = `${msg} — ${j.detail}`;
+        } catch (_) {}
+        throw new Error(msg);
+      }
+      _setStatus('// DONE', 'ok');
+      _hideUrlRow();
+      await _fetchLibrary();
+    } catch (e) {
+      _setStatus(`// FAILED — ${e.message}`, 'err');
+    } finally {
+      if (urlSubmit) urlSubmit.disabled = false;
     }
   });
 

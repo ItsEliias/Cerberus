@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File, Form
+from pydantic import BaseModel
 
 from sqlalchemy import case, func, or_
 from core.database import SessionLocal, Document, DocumentVersion
@@ -61,6 +62,18 @@ from routes.document_helpers import (
     _slug, _resolve_user_upload_path, _assert_pdf_marker_upload_owned, _derive_title,
     _PDF_RENDER_SCALE,
 )
+
+
+# Pydantic body for POST /api/documents/import-url. Lives at module scope
+# so tests can import it directly.
+class _ImportURLBody(BaseModel):
+    url: str
+    session_id: Optional[str] = None
+
+
+# 20MB cap on MarkItDown imports. Lives at module scope so tests can
+# monkeypatch it down without rebuilding the route closure.
+_MARKITDOWN_MAX_BYTES = 20 * 1024 * 1024
 
 
 def setup_document_routes(session_manager, upload_handler=None) -> APIRouter:
@@ -256,6 +269,228 @@ def setup_document_routes(session_manager, upload_handler=None) -> APIRouter:
                 db.commit()
                 db.refresh(doc)
             return _doc_to_dict(doc)
+        finally:
+            db.close()
+
+    # ---- POST /api/documents/import ----
+    # Generic multi-format import. PDFs delegate back to the existing
+    # /import-pdf code path (form detection + sidecar). Office / structured
+    # text files are streamed to a temp file and converted via MarkItDown,
+    # then stored as a markdown Document. Anything else returns 415 so the
+    # frontend can show a precise error.
+    @router.post("/api/documents/import")
+    async def import_document(
+        request: Request,
+        file: UploadFile = File(...),
+        session_id: Optional[str] = Form(None),
+    ) -> Dict[str, Any]:
+        import os, uuid, tempfile
+        from src.auth_helpers import require_privilege
+        from services.docs.markitdown_converter import (
+            is_supported as _md_is_supported,
+            convert_to_markdown as _md_convert,
+        )
+        user = require_privilege(request, "can_use_documents")
+
+        filename = file.filename or ""
+        ext = os.path.splitext(filename)[1].lower()
+
+        # PDFs: hand off to the dedicated handler. We re-enter the function
+        # rather than duplicating the form-detection + sidecar logic — the
+        # source of truth stays in import_pdf().
+        if ext == ".pdf":
+            return await import_pdf(request, file, session_id)
+
+        if not _md_is_supported(filename):
+            raise HTTPException(415, f"Unsupported file type: {ext or '(no extension)'}")
+
+        if session_id:
+            db = SessionLocal()
+            try:
+                _get_session_or_404(db, session_id, user)
+            finally:
+                db.close()
+
+        # Stream to a temp file with the original extension so MarkItDown's
+        # extension-based dispatch picks the right converter. NamedTemporaryFile
+        # with delete=False because we need to close the handle before passing
+        # the path to MarkItDown on Windows-safe code paths.
+        size = 0
+        chunk_size = 1024 * 1024
+        suffix = ext if ext else ""
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        tmp_path = tmp.name
+        try:
+            try:
+                while True:
+                    chunk = await file.read(chunk_size)
+                    if not chunk:
+                        break
+                    size += len(chunk)
+                    cap = _MARKITDOWN_MAX_BYTES
+                    if size > cap:
+                        raise HTTPException(
+                            413,
+                            f"File exceeds {cap // (1024*1024)}MB limit"
+                            if cap >= 1024*1024
+                            else f"File exceeds {cap} bytes limit",
+                        )
+                    tmp.write(chunk)
+            finally:
+                tmp.close()
+
+            if size == 0:
+                raise HTTPException(400, "File is empty")
+
+            try:
+                content = _md_convert(tmp_path, filename)
+            except ImportError:
+                raise HTTPException(503, "MarkItDown is not installed on the server")
+            except ValueError as ve:
+                raise HTTPException(400, str(ve))
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.warning(f"MarkItDown conversion failed for {filename}: {e}")
+                raise HTTPException(400, f"Failed to convert {filename}: {e}")
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+
+        title = os.path.splitext(filename)[0] or "Imported document"
+        db = SessionLocal()
+        try:
+            session = None
+            if session_id:
+                session = db.query(DbSession).filter(DbSession.id == session_id).first()
+            doc_id = str(uuid.uuid4())
+            ver_id = str(uuid.uuid4())
+            doc = Document(
+                id=doc_id,
+                session_id=session_id,
+                title=title,
+                language="markdown",
+                current_content=content,
+                version_count=1,
+                is_active=True,
+                owner=user or (session.owner if session else None),
+            )
+            ver = DocumentVersion(
+                id=ver_id,
+                document_id=doc_id,
+                version_number=1,
+                content=content,
+                summary=f"Imported via MarkItDown ({ext})",
+                source="upload",
+            )
+            db.add(doc)
+            db.add(ver)
+            db.commit()
+            db.refresh(doc)
+            try:
+                from src.event_bus import fire_event
+                fire_event("document_created", doc.owner)
+            except Exception:
+                logger.debug("document_created event dispatch failed", exc_info=True)
+            return _doc_to_dict(doc)
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to persist imported document: {e}")
+            raise HTTPException(500, f"Failed to save document: {e}")
+        finally:
+            db.close()
+
+    # ---- POST /api/documents/import-url ----
+    # Currently YouTube only (MarkItDown's URL handler also covers RSS and
+    # plain pages, but those add scrape/SSRF surface — gate them explicitly
+    # when we want them).
+    @router.post("/api/documents/import-url")
+    async def import_url(
+        request: Request,
+        body: _ImportURLBody,
+    ) -> Dict[str, Any]:
+        import uuid
+        from src.auth_helpers import require_privilege
+        from services.docs.markitdown_converter import (
+            is_youtube_url as _md_is_youtube,
+            convert_url as _md_convert_url,
+        )
+        user = require_privilege(request, "can_use_documents")
+
+        url = (body.url or "").strip()
+        if not url:
+            raise HTTPException(400, "URL is required")
+        if not _md_is_youtube(url):
+            raise HTTPException(
+                415,
+                "Only YouTube URLs are supported for URL import",
+            )
+
+        if body.session_id:
+            db = SessionLocal()
+            try:
+                _get_session_or_404(db, body.session_id, user)
+            finally:
+                db.close()
+
+        try:
+            content, title = _md_convert_url(url)
+        except ImportError:
+            raise HTTPException(503, "MarkItDown is not installed on the server")
+        except ValueError as ve:
+            raise HTTPException(400, str(ve))
+        except Exception as e:
+            logger.warning(f"MarkItDown URL import failed for {url}: {e}")
+            raise HTTPException(400, f"Failed to import URL: {e}")
+
+        if not title:
+            title = url
+
+        db = SessionLocal()
+        try:
+            session = None
+            if body.session_id:
+                session = db.query(DbSession).filter(DbSession.id == body.session_id).first()
+            doc_id = str(uuid.uuid4())
+            ver_id = str(uuid.uuid4())
+            doc = Document(
+                id=doc_id,
+                session_id=body.session_id,
+                title=title,
+                language="markdown",
+                current_content=content,
+                version_count=1,
+                is_active=True,
+                owner=user or (session.owner if session else None),
+            )
+            ver = DocumentVersion(
+                id=ver_id,
+                document_id=doc_id,
+                version_number=1,
+                content=content,
+                summary=f"Imported from {url}",
+                source="upload",
+            )
+            db.add(doc)
+            db.add(ver)
+            db.commit()
+            db.refresh(doc)
+            try:
+                from src.event_bus import fire_event
+                fire_event("document_created", doc.owner)
+            except Exception:
+                logger.debug("document_created event dispatch failed", exc_info=True)
+            return _doc_to_dict(doc)
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to persist imported URL document: {e}")
+            raise HTTPException(500, f"Failed to save document: {e}")
         finally:
             db.close()
 
