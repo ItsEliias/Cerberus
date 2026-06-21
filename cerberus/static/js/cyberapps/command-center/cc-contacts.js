@@ -79,7 +79,7 @@ function _renderRows(container, contacts) {
   const list = container.querySelector('#cc-contacts-list');
   if (!list) return;
   if (!contacts.length) {
-    list.innerHTML = '<div class="cc-empty">// NO CONTACTS</div>';
+    list.innerHTML = '<div class="cc-empty">// NO CONTACTS YET — import via CardDAV or click + NEW to add one.</div>';
     return;
   }
   list.innerHTML = contacts.map(c => _rowHTML(c)).join('');
