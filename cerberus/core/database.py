@@ -718,6 +718,7 @@ class CerberusAgent(TimestampMixin, Base):
     last_error_at       = Column(DateTime, nullable=True)
     error_count         = Column(Integer, default=0, nullable=False)
     health_status       = Column(String, default="ok", nullable=False)     # ok | degraded | error
+    pinned_skills       = Column(Text, nullable=True)                      # JSON array of skill names pinned to this agent; injected into the system prompt at thread-send time
 
     __table_args__ = (
         Index('ix_cerberus_agents_owner_name', 'owner', 'name', unique=True),
@@ -750,6 +751,7 @@ class CerberusAgent(TimestampMixin, Base):
             "error_count": self.error_count or 0,
             "last_error": self.last_error,
             "last_error_at": self.last_error_at.isoformat() if self.last_error_at else None,
+            "pinned_skills": json.loads(self.pinned_skills) if self.pinned_skills else [],
         }
 
 
@@ -2221,6 +2223,26 @@ def init_db():
     _migrate_add_agent_context_window_column()
     _migrate_add_agent_invocation_count_column()
     _migrate_add_agent_health_columns()
+    _migrate_add_agent_pinned_skills_column()
+
+
+def _migrate_add_agent_pinned_skills_column():
+    """Add `pinned_skills` (JSON text) to cerberus_agents.
+
+    Idempotent — safe to re-run on every startup. The column stores a JSON
+    array of skill names that the thread-send pipeline prepends to the agent's
+    system prompt at injection time."""
+    try:
+        with engine.connect() as conn:
+            cols = [r[1] for r in conn.execute(text("PRAGMA table_info(cerberus_agents)"))]
+            if "pinned_skills" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE cerberus_agents ADD COLUMN pinned_skills TEXT"
+                ))
+            conn.commit()
+        logging.getLogger(__name__).info("cerberus_agents pinned_skills migration complete")
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"cerberus_agents pinned_skills migration: {e}")
 
 
 def _migrate_add_agent_context_window_column():

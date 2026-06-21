@@ -156,10 +156,23 @@ class AgentPatch(BaseModel):
     avatar: Optional[str] = None
     tts_voice: Optional[str] = None
     context_window: Optional[int] = None  # None = use global default; 0 = reset to default
+    pinned_skills: Optional[List[str]] = None  # skill names; persisted as JSON
 
 
 class AgentInvoke(BaseModel):
     prompt: str
+
+
+def _enrich_agent_dict(agent) -> Dict[str, Any]:
+    """Tag the model's ``to_dict()`` with ``is_custom``.
+
+    Custom = an agent whose name is NOT in the seeded default set. We derive
+    the flag at serialisation time rather than persisting it on the row so a
+    rename or a new seed entry is reflected immediately without a migration.
+    """
+    out = agent.to_dict()
+    out["is_custom"] = (out.get("name") not in _DEFAULT_NAMES)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -184,7 +197,7 @@ def setup_cerberus_agent_routes() -> APIRouter:
                 .order_by(CerberusAgent.created_at)
                 .all()
             )
-            return {"agents": [a.to_dict() for a in agents]}
+            return {"agents": [_enrich_agent_dict(a) for a in agents]}
         finally:
             db.close()
 
@@ -213,7 +226,7 @@ def setup_cerberus_agent_routes() -> APIRouter:
                     existing.avatar = body.avatar or ""
                     db.commit()
                     db.refresh(existing)
-                    return existing.to_dict()
+                    return _enrich_agent_dict(existing)
                 raise HTTPException(409, f"Agent '{name}' already exists")
             agent = CerberusAgent(
                 id=str(uuid.uuid4()),
@@ -230,7 +243,7 @@ def setup_cerberus_agent_routes() -> APIRouter:
             db.add(agent)
             db.commit()
             db.refresh(agent)
-            return agent.to_dict()
+            return _enrich_agent_dict(agent)
         except HTTPException:
             raise
         except Exception as exc:
@@ -284,9 +297,23 @@ def setup_cerberus_agent_routes() -> APIRouter:
             if body.context_window is not None:
                 # 0 = clear override (use global default); else clamp 1-200
                 agent.context_window = None if body.context_window == 0 else max(1, min(int(body.context_window), 200))
+            if body.pinned_skills is not None:
+                # Persist as JSON array of trimmed unique strings; an empty list
+                # clears any prior pinning so deselecting all skills is a no-op
+                # on prompt injection.
+                cleaned: List[str] = []
+                seen = set()
+                for raw in body.pinned_skills:
+                    name = (str(raw) if raw is not None else '').strip()
+                    if not name or name in seen:
+                        continue
+                    seen.add(name)
+                    cleaned.append(name)
+                import json as _json
+                agent.pinned_skills = _json.dumps(cleaned) if cleaned else None
             db.commit()
             db.refresh(agent)
-            return agent.to_dict()
+            return _enrich_agent_dict(agent)
         except HTTPException:
             raise
         except Exception as exc:
