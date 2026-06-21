@@ -4,7 +4,7 @@
 //   3. viewer renders content via textContent (not innerHTML — XSS safe)
 //   4. copy button writes to navigator.clipboard.writeText
 //   5. delete requires a two-step confirm before firing DELETE
-//   6. PDF import fires POST /api/documents/import-pdf (multipart)
+//   6. File import fires POST /api/documents/import (multipart)
 //
 // Same vm-sandbox + DOM-shim pattern as the other CC tests.
 
@@ -370,14 +370,14 @@ test('delete is two-step: first click reveals CONFIRM; second click fires DELETE
   assert.equal(deleteCalled, 1, 'DELETE fired on confirm click');
 });
 
-test('PDF import fires POST /api/documents/import-pdf with multipart form data', async () => {
+test('File import fires POST /api/documents/import with multipart form data', async () => {
   let importedWith = null;
   const sb = makeSandbox({
     fetch: async (url, opts) => {
       if (url.startsWith('/api/documents/library')) {
         return { ok: true, status: 200, json: async () => ({ documents: [] }) };
       }
-      if (url === '/api/documents/import-pdf' && opts?.method === 'POST') {
+      if (url === '/api/documents/import' && opts?.method === 'POST') {
         importedWith = opts.body;
         return { ok: true, status: 200, json: async () => ({}) };
       }
@@ -393,9 +393,46 @@ test('PDF import fires POST /api/documents/import-pdf with multipart form data',
   (pdfInput._listeners.change || []).forEach(cb => cb({ target: pdfInput }));
   await _settle();
 
-  assert.ok(importedWith, 'POST /api/documents/import-pdf was called');
+  assert.ok(importedWith, 'POST /api/documents/import was called');
   // The body should be the FormData stub with one file field
   assert.equal(importedWith._fields?.length, 1);
   assert.equal(importedWith._fields[0][0], 'file');
   assert.equal(importedWith._fields[0][1].name, 'paper.pdf');
+});
+
+test('URL import fires POST /api/documents/import-url with JSON body', async () => {
+  let importedWith = null;
+  let importedHeaders = null;
+  const sb = makeSandbox({
+    fetch: async (url, opts) => {
+      if (url.startsWith('/api/documents/library')) {
+        return { ok: true, status: 200, json: async () => ({ documents: [] }) };
+      }
+      if (url === '/api/documents/import-url' && opts?.method === 'POST') {
+        importedWith = opts.body;
+        importedHeaders = opts.headers;
+        return { ok: true, status: 200, json: async () => ({}) };
+      }
+      return { ok: false, status: 404 };
+    },
+  });
+  const container = makeElement('div');
+  container.innerHTML = sb.buildDocsPanel();
+  await sb.loadDocs(container);
+  await _settle();
+
+  // Open the URL row, type a YouTube URL, click IMPORT.
+  const urlBtn    = container.querySelector('.cc-docs-url-btn');
+  const urlInput  = container.querySelector('#cc-docs-url-input');
+  const urlSubmit = container.querySelector('.cc-docs-url-submit');
+  (urlBtn._listeners.click || []).forEach(cb => cb({}));
+  await _settle();
+  urlInput.value = 'https://www.youtube.com/watch?v=abc';
+  (urlSubmit._listeners.click || []).forEach(cb => cb({}));
+  await _settle();
+
+  assert.ok(importedWith, 'POST /api/documents/import-url was called');
+  assert.equal(importedHeaders['Content-Type'], 'application/json');
+  const parsed = JSON.parse(importedWith);
+  assert.equal(parsed.url, 'https://www.youtube.com/watch?v=abc');
 });
