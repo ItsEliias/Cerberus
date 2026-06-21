@@ -612,6 +612,10 @@ app.include_router(setup_preset_routes(preset_manager))
 from routes.diagnostics_routes import setup_diagnostics_routes
 app.include_router(setup_diagnostics_routes(rag_manager, rag_available, research_handler, memory_vector))
 
+# Git change summariser — POST /api/git/summarise → AI bullet summary, saved as a Note.
+from routes.git_routes import setup_git_routes
+app.include_router(setup_git_routes())
+
 # Cleanup
 from routes.cleanup_routes import setup_cleanup_routes
 app.include_router(setup_cleanup_routes(session_manager))

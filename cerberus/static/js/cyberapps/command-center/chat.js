@@ -24,8 +24,10 @@ function _buildChatPanel(agentName, agentAvatar, accentColor, ttsVoice) {
     <span class="cc-agent-chat-sigil" style="background:${_esc(accentColor)}">${_esc(glyph)}</span>
     <span class="cc-agent-chat-name">${_esc(agentName)}</span>
     ${callBtn}
+    <button class="cc-chat-summarise-btn" title="Summarise this thread">// SUMMARISE</button>
     <button class="cc-chat-clear-btn" title="Clear conversation">Clear</button>
   </div>
+  <div class="cc-chat-summary" id="cc-chat-summary" hidden></div>
   <div class="cc-chat-messages" id="cc-chat-messages">
     <div class="cc-empty">Loading…</div>
   </div>
@@ -204,11 +206,56 @@ export async function openAgentChat(container, agentId, agentName, agentAvatar, 
   const messagesEl  = container.querySelector('#cc-chat-messages');
   const input       = container.querySelector('#cc-chat-input');
   const sendBtn     = container.querySelector('#cc-chat-send-btn');
-  const backBtn     = container.querySelector('.cc-chat-back-btn');
-  const clearBtn    = container.querySelector('.cc-chat-clear-btn');
-  const stopBtn     = container.querySelector('.cc-chat-stop-btn');
-  const chatCallBtn = container.querySelector('.cc-chat-call-btn');
-  const chatPanel   = container.querySelector('#cc-agent-chat');
+  const backBtn       = container.querySelector('.cc-chat-back-btn');
+  const clearBtn      = container.querySelector('.cc-chat-clear-btn');
+  const summariseBtn  = container.querySelector('.cc-chat-summarise-btn');
+  const summaryEl     = container.querySelector('#cc-chat-summary');
+  const stopBtn       = container.querySelector('.cc-chat-stop-btn');
+  const chatCallBtn   = container.querySelector('.cc-chat-call-btn');
+  const chatPanel     = container.querySelector('#cc-agent-chat');
+
+  // Summarise this thread — POST /api/agents/{id}/thread/summarise.
+  // Shows the result inline below the header for 5s and saves it as a
+  // Note (the backend writes the note; the inline panel is just feedback).
+  let _summaryFade = null;
+  summariseBtn?.addEventListener('click', async () => {
+    if (summariseBtn.disabled) return;
+    const original = summariseBtn.textContent;
+    summariseBtn.disabled = true;
+    summariseBtn.textContent = '// SUMMARISING…';
+    if (summaryEl) {
+      summaryEl.hidden = false;
+      summaryEl.textContent = '…';
+      summaryEl.classList.remove('cc-chat-summary--fade');
+    }
+    if (_summaryFade) { clearTimeout(_summaryFade); _summaryFade = null; }
+    try {
+      const res = await fetch(
+        `/api/agents/${encodeURIComponent(agentId)}/thread/summarise`,
+        { method: 'POST', credentials: 'same-origin' },
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (summaryEl) summaryEl.textContent = (data?.summary || '').trim() || '(empty)';
+    } catch (e) {
+      if (summaryEl) summaryEl.textContent = `Summary failed — ${e.message}`;
+    } finally {
+      summariseBtn.disabled = false;
+      summariseBtn.textContent = original;
+      // Fade after 5s — matches spec. CSS handles the visual fade; this
+      // just hides the panel once the transition completes.
+      if (summaryEl) {
+        _summaryFade = setTimeout(() => {
+          summaryEl.classList.add('cc-chat-summary--fade');
+          _summaryFade = setTimeout(() => {
+            summaryEl.hidden = true;
+            summaryEl.classList.remove('cc-chat-summary--fade');
+            _summaryFade = null;
+          }, 400);
+        }, 5000);
+      }
+    }
+  });
 
   // ---- Audio lifecycle (Bug 3) ----
   let _currentAudio = null;

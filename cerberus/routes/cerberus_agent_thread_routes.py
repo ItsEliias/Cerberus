@@ -3,6 +3,7 @@
 Endpoints:
   GET    /api/agents/{id}/thread               — get or create thread; returns message history
   GET    /api/agents/{id}/thread/export        — download the full thread as a Markdown file
+  POST   /api/agents/{id}/thread/summarise     — LLM bullet summary, saved as a Note
   POST   /api/agents/{id}/thread/send          — send a message, stream SSE reply, persist both sides
   DELETE /api/agents/{id}/thread               — clear all messages (keeps the thread row)
   GET    /api/agents/{id}/memories             — list per-agent memories for this owner
@@ -424,6 +425,104 @@ def setup_agent_thread_routes() -> APIRouter:
                 "Content-Disposition": f'attachment; filename="{filename}"',
             },
         )
+
+    @router.post("/{agent_id}/thread/summarise")
+    async def summarise_thread(
+        agent_id: str, request: Request,
+    ) -> Dict[str, Any]:
+        """Summarise the current thread, save as a Note, return both.
+
+        Owner-scoped (same gate as GET /thread). Empty threads degrade to
+        a "nothing to summarise" response with a 200 so the frontend can
+        render the message without an error toast."""
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            agent = (
+                db.query(CerberusAgent)
+                .filter(CerberusAgent.id == agent_id, CerberusAgent.owner == owner)
+                .first()
+            )
+            if not agent:
+                raise HTTPException(404, "Agent not found")
+            thread = _get_or_create_thread(db, agent_id, owner)
+            messages = list(thread.messages)
+        finally:
+            db.close()
+
+        if not messages:
+            return {
+                "note_id": None,
+                "summary": "_(Nothing to summarise — thread is empty.)_",
+            }
+
+        # Build a compact transcript for the LLM. Cap at 12k chars to keep
+        # the summary call snappy even on long threads.
+        lines: List[str] = []
+        agent_label = (agent.name or "AGENT").upper()
+        for m in messages:
+            role_label = "You" if (m.role or "").lower() == "user" else agent_label
+            lines.append(f"**{role_label}:** {(m.content or '').strip()}")
+        transcript = "\n\n".join(lines)
+        if len(transcript) > 12_000:
+            transcript = transcript[:12_000] + "\n\n... (truncated)"
+
+        try:
+            from src.endpoint_resolver import resolve_endpoint
+            from src.llm_core import llm_call_async
+            url, model, headers = resolve_endpoint("default", owner=owner)
+            summary = ""
+            if url and model:
+                summary = await llm_call_async(
+                    url, model,
+                    [
+                        {
+                            "role": "system",
+                            "content": (
+                                "Summarise this conversation in 5 bullet "
+                                "points. Focus on decisions made and outcomes. "
+                                "Plain English, no jargon."
+                            ),
+                        },
+                        {"role": "user", "content": transcript},
+                    ],
+                    temperature=0.2, max_tokens=600, headers=headers,
+                )
+            summary = (summary or "").strip() or transcript
+        except Exception as exc:
+            logger.warning("thread summarise LLM failed: %s", exc)
+            summary = transcript
+
+        # Save as a Note under the owner. Same `source` convention as the
+        # git summariser ("git") so consumers can filter telemetry-style
+        # auto-notes from user-authored notes.
+        from core.database import Note as _Note
+        note_id = None
+        nb = None
+        try:
+            nb = SessionLocal()
+            n = _Note(
+                id=str(uuid.uuid4()),
+                owner=owner,
+                title=f"// SUMMARY: {agent.name or 'AGENT'} {_utcnow().date().isoformat()}",
+                content=summary,
+                note_type="note",
+                source="thread-summary",
+            )
+            nb.add(n)
+            nb.commit()
+            nb.refresh(n)
+            note_id = n.id
+        except Exception as exc:
+            logger.warning("thread summary note insert failed: %s", exc)
+        finally:
+            if nb is not None:
+                try:
+                    nb.close()
+                except Exception:
+                    pass
+
+        return {"note_id": note_id, "summary": summary}
 
     @router.post("/{agent_id}/thread/send")
     async def send_message(
