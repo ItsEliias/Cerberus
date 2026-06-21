@@ -17,6 +17,7 @@ import { buildAgentsTab, loadAgents } from './agents.js';
 import { buildRoomsTab, loadRooms } from './rooms.js';
 import { buildObservabilityTab, loadObservability } from './observability.js';
 import { buildCompareTab, loadCompareTab } from './cc-compare.js';
+import { buildResearchTab, loadDeepResearch } from './cc-deep-research.js';
 import { initShortcuts, destroyShortcuts } from './shortcuts.js';
 import * as Poll from './poll.js';
 import { t, setLocale, getLocale, AVAILABLE_LOCALES } from '/static/js/i18n.js';
@@ -47,6 +48,7 @@ const TABS = [
   { id: 'agents',        label: 'AGENTS'    },
   { id: 'rooms',         label: 'ROOMS'     },
   { id: 'compare',       label: 'COMPARE'   },
+  { id: 'research',      label: 'RESEARCH'  },
   { id: 'observability', label: 'OBSERVE'   },
 ];
 
@@ -268,6 +270,9 @@ function _mountTab(id, shell) {
   } else if (id === 'compare') {
     content.innerHTML = buildCompareTab();
     loadCompareTab(content);
+  } else if (id === 'research') {
+    content.innerHTML = buildResearchTab();
+    loadDeepResearch(content);
   } else if (id === 'observability') {
     content.innerHTML = buildObservabilityTab();
     loadObservability(content);
