@@ -8,6 +8,9 @@
  * Phase C Fix: restores SPEAK (TTS) + VOICE (STT) buttons + audio waveform.
  * - TTS: window.aiTTSManager (tts-ai.js) — .play(text), .stop()
  * - STT: voiceRecorder.js exports — startRecording(), stopRecording(), getIsRecording()
+ *
+ * Sub-nav (task): horizontal bar below voice/chat switches between 6 panels.
+ * Panels lazy-load on first activation; re-clicking the active tab refreshes.
  */
 
 import { startRecording, stopRecording, getIsRecording, init as initVoice } from '../../voiceRecorder.js';
@@ -22,11 +25,21 @@ const SYSTEM_PROMPT = 'You are the Cerberus operations assistant. Answer concise
 const API = '/api/chat_stream';
 const LS_TTS_KEY = 'cc_assistant_tts_on';
 
-let _messages = [];  // {role, content}[]
+let _messages = [];
 let _streaming = false;
 let _abortCtrl = null;
 let _ttsOn = false;
 let _waveAnimId = null;
+let _altKeyHandler = null;
+let _loadedPanels = new Set();
+
+const _PANEL_LOADERS = {
+  notes:    (root) => loadNotes(root),
+  docs:     (root) => loadDocs(root),
+  contacts: (root) => loadContacts(root),
+  memory:   (root) => loadMemoryTimeline(root),
+  more:     (root) => { loadResearch(root); loadChangelog(root); },
+};
 
 // ---- TTS toggle state ----
 
@@ -70,25 +83,37 @@ function _animateWave(root, active) {
   _waveAnimId = requestAnimationFrame(tick);
 }
 
+// ---- Sub-tab helpers ----
+
+function _activateSubtab(root, id) {
+  const prev = root.querySelector('.cc-assistant-subtab.active');
+  const wasActive = prev?.dataset?.subtab === id;
+  root.querySelectorAll('.cc-assistant-subtab').forEach(b => {
+    const on = b.dataset.subtab === id;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  root.querySelectorAll('.cc-assistant-subpanel').forEach(p => {
+    p.style.display = p.dataset.panel === id ? '' : 'none';
+  });
+  if (wasActive) {
+    _refreshPanel(root, id);
+  } else if (!_loadedPanels.has(id)) {
+    _refreshPanel(root, id);
+    _loadedPanels.add(id);
+  }
+}
+
+function _refreshPanel(root, id) {
+  if (id === 'profile') { _loadOpProfile(root); return; }
+  const fn = _PANEL_LOADERS[id];
+  if (fn) fn(root);
+}
+
 // ---- Build HTML ----
 
 export function buildAssistantTab() {
   return `<div class="cc-assistant-tab">
-    <section class="cc-op-profile" id="cc-op-profile" aria-label="Operator profile">
-      <header class="cc-op-profile-head">
-        <span class="cc-op-profile-title">// OPERATOR PROFILE</span>
-        <button class="cc-op-profile-edit" id="cc-op-profile-edit" type="button">EDIT</button>
-      </header>
-      <div class="cc-op-profile-body" id="cc-op-profile-body">
-        <div class="cc-empty">Loading profile…</div>
-      </div>
-    </section>
-    ${buildDocsPanel()}
-    ${buildChangelogPanel()}
-    ${buildNotesPanel()}
-    ${buildResearchPanel()}
-    ${buildContactsPanel()}
-    ${buildMemoryTimelinePanel()}
     <div class="cc-chat-history" id="cc-chat-history">
       <div class="cc-empty" style="margin-top:32px;">
         Cerberus Operations Assistant ready. Ask about tasks, agents, or system state.
@@ -112,6 +137,43 @@ export function buildAssistantTab() {
         placeholder="Send directive to Cerberus..." rows="1"></textarea>
       <button class="cc-chat-send-btn" id="cc-chat-send">SEND</button>
     </div>
+    <nav class="cc-assistant-subnav" aria-label="Assistant panels" role="tablist">
+      <button class="cc-assistant-subtab active" data-subtab="profile" type="button" role="tab" aria-selected="true">PROFILE</button>
+      <button class="cc-assistant-subtab" data-subtab="notes" type="button" role="tab" aria-selected="false">NOTES</button>
+      <button class="cc-assistant-subtab" data-subtab="docs" type="button" role="tab" aria-selected="false">DOCS</button>
+      <button class="cc-assistant-subtab" data-subtab="contacts" type="button" role="tab" aria-selected="false">CONTACTS</button>
+      <button class="cc-assistant-subtab" data-subtab="memory" type="button" role="tab" aria-selected="false">MEMORY</button>
+      <button class="cc-assistant-subtab" data-subtab="more" type="button" role="tab" aria-selected="false">MORE</button>
+    </nav>
+    <div class="cc-assistant-subcontent">
+      <div class="cc-assistant-subpanel" data-panel="profile">
+        <section class="cc-op-profile" id="cc-op-profile" aria-label="Operator profile">
+          <header class="cc-op-profile-head">
+            <span class="cc-op-profile-title">// OPERATOR PROFILE</span>
+            <button class="cc-op-profile-edit" id="cc-op-profile-edit" type="button">EDIT</button>
+          </header>
+          <div class="cc-op-profile-body" id="cc-op-profile-body">
+            <div class="cc-empty">Loading profile…</div>
+          </div>
+        </section>
+      </div>
+      <div class="cc-assistant-subpanel" data-panel="notes" style="display:none">
+        ${buildNotesPanel()}
+      </div>
+      <div class="cc-assistant-subpanel" data-panel="docs" style="display:none">
+        ${buildDocsPanel()}
+      </div>
+      <div class="cc-assistant-subpanel" data-panel="contacts" style="display:none">
+        ${buildContactsPanel()}
+      </div>
+      <div class="cc-assistant-subpanel" data-panel="memory" style="display:none">
+        ${buildMemoryTimelinePanel()}
+      </div>
+      <div class="cc-assistant-subpanel" data-panel="more" style="display:none">
+        ${buildResearchPanel()}
+        ${buildChangelogPanel()}
+      </div>
+    </div>
   </div>`;
 }
 
@@ -119,6 +181,7 @@ export function buildAssistantTab() {
 
 export function initAssistant(root) {
   _loadTtsState();
+  _loadedPanels.clear();
   initVoice();
 
   const input     = root.querySelector('#cc-chat-input');
@@ -128,25 +191,27 @@ export function initAssistant(root) {
   const errDiv    = root.querySelector('#cc-voice-error');
   if (!input || !btn) return;
 
-  // Apply persisted TTS state
   _applySpeakState(speakBtn);
 
-  // OPERATOR PROFILE — load + wire edit toggle.
-  _loadOpProfile(root);
-  // NOTES — wire search / pin / preview / editor / word count.
-  loadNotes(root);
-  // RESEARCH — recent + saved searches (re-run, save, delete).
-  loadResearch(root);
-  // CONTACTS — CardDAV-backed list / search / edit / export.
-  loadContacts(root);
-  // MEMORY TIMELINE — week-grouped recap, category filter, click-to-expand.
-  loadMemoryTimeline(root);
-  // DOCUMENTS — library list, viewer, PDF import, new + delete.
-  loadDocs(root);
-  // CHANGELOG — collapsible // WHAT'S NEW panel, lazy-loaded on expand.
-  loadChangelog(root);
-  // Re-render when the onboarding wizard reports a successful save so the
-  // panel reflects the latest state immediately.
+  // Wire sub-nav clicks
+  root.querySelectorAll('.cc-assistant-subtab').forEach(tab => {
+    tab.addEventListener('click', () => _activateSubtab(root, tab.dataset.subtab));
+  });
+
+  // Activate default (loads profile)
+  _activateSubtab(root, 'profile');
+
+  // Alt+1..6 to switch sub-tabs when ASSISTANT is active
+  _altKeyHandler = (e) => {
+    if (!e.altKey || e.metaKey || e.ctrlKey) return;
+    const idx = '123456'.indexOf(e.key);
+    if (idx === -1) return;
+    const tabs = root.querySelectorAll('.cc-assistant-subtab');
+    if (tabs[idx]) { e.preventDefault(); _activateSubtab(root, tabs[idx].dataset.subtab); }
+  };
+  document.addEventListener('keydown', _altKeyHandler);
+
+  // Re-render profile when onboarding wizard saves
   const _profileBus = () => _loadOpProfile(root);
   document.addEventListener('cerberus:onboarded', _profileBus);
   root.addEventListener('DOMNodeRemoved', () => {
@@ -196,7 +261,6 @@ export function initAssistant(root) {
       micBtn.classList.remove('recording');
       _animateWave(root, false);
       stopRecording();
-      // voiceRecorder inserts transcript into #message; transfer then auto-send
       setTimeout(() => {
         _transferTranscript(input);
         setTimeout(() => { if (input.value.trim()) send(); }, 80);
@@ -236,10 +300,15 @@ function _transferTranscript(input) {
 
 export function destroyAssistant() {
   if (_abortCtrl) { _abortCtrl.abort(); _abortCtrl = null; }
+  if (_altKeyHandler) {
+    document.removeEventListener('keydown', _altKeyHandler);
+    _altKeyHandler = null;
+  }
   cancelAnimationFrame(_waveAnimId);
   _waveAnimId = null;
   _messages = [];
   _streaming = false;
+  _loadedPanels.clear();
 }
 
 // ---- Send / Stream ----
@@ -307,7 +376,6 @@ async function _sendMessage(root, text) {
   _setStreaming(root, false);
   if (history) history.scrollTop = history.scrollHeight;
 
-  // TTS playback
   if (_ttsOn && assembled && assembled !== '(cancelled)') {
     const mgr = window.aiTTSManager;
     if (mgr && mgr.available) {
@@ -344,11 +412,6 @@ function _esc(s) {
 }
 
 // ─── Operator profile panel ────────────────────────────────────────────────
-//
-// Renders /api/profile inside the ASSISTANT tab. EDIT toggles an inline form
-// (display_name, role, bio with 280-char counter, location, interest chips,
-// avatar upload). Save is optimistic: the read-only view repaints immediately
-// from local state and the PATCH error reverts on failure.
 
 const _opProfileState = {
   loaded: false,
@@ -366,7 +429,7 @@ async function _loadOpProfile(root) {
     _opProfileState.data = { ..._opProfileState.data, ...(await res.json()) };
     _opProfileState.loaded = true;
   } catch (_) {
-    _opProfileState.loaded = true; // render the placeholder once
+    _opProfileState.loaded = true;
   }
   _renderOpProfile(root);
 }
@@ -505,7 +568,6 @@ function _wireOpProfileEdit(root) {
     const saveBtn = root.querySelector('#cc-op-save');
     if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
     const previous = { ..._opProfileState.data };
-    // Optimistic update: paint the new values immediately.
     _opProfileState.data = {
       ..._opProfileState.data,
       display_name: root.querySelector('#cc-op-name').value.trim(),
@@ -544,7 +606,6 @@ function _wireOpProfileEdit(root) {
       _opProfileState.data = { ..._opProfileState.data, ...(await res.json()) };
       _renderOpProfile(root);
     } catch (e) {
-      // Revert on error.
       _opProfileState.data = previous;
       _opProfileState.editing = true;
       _renderOpProfile(root);
@@ -564,3 +625,12 @@ function _readChips(chipsEl) {
     .map(el => el.dataset.interest)
     .filter((v, i, a) => v && a.indexOf(v) === i);
 }
+
+// ── Testables ──────────────────────────────────────────────────────────────
+
+export const __testables = {
+  activateSubtab: _activateSubtab,
+  refreshPanel:   _refreshPanel,
+  loadedPanels:   () => _loadedPanels,
+  panelLoaders:   _PANEL_LOADERS,
+};
