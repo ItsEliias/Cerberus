@@ -7,7 +7,7 @@
  *   Esc       Close any open overlay / form / detail panel
  *   /         Focus the active tab's filter input (if present)
  *   1–8       Switch CC tabs by index
- *   Cmd+K     Open the quick-search overlay (agents + rooms)
+ *   Cmd+K     Open the command palette (agents, rooms, tabs, actions)
  *
  * Expansion (this PR):
  *   r         In ROOMS tab — focus the room filter input
@@ -40,11 +40,13 @@ const STATE = {
 
 const HELP_ID   = 'cc-shortcuts-help';
 const SEARCH_ID = 'cc-quick-search';
+const LS_RECENT = 'cerberus.palette.recent';
+const MAX_RECENT = 10;
 
 const SHORTCUTS_LIST = [
   ['?',         'Toggle this help overlay'],
   ['Cmd+/',     'Toggle this help overlay (works in inputs)'],
-  ['Cmd+K',     'Quick search agents and rooms'],
+  ['Cmd+K',     'Command palette — search agents, rooms, tabs & run actions'],
   ['Cmd+Enter', 'Submit the active tab\'s primary action'],
   ['Esc',       'Close overlay / form / panel'],
   ['n',         'Click "+ New" in active tab'],
@@ -98,7 +100,7 @@ function _activeTabId() {
 function _onKeyDown(e) {
   // ── Always-on combos (fire even while typing) ──
 
-  // Cmd+K / Ctrl+K — quick search
+  // Cmd+K / Ctrl+K — command palette
   if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
     e.preventDefault();
     _toggleSearch();
@@ -123,20 +125,17 @@ function _onKeyDown(e) {
     if (STATE.searchOpen) { _closeSearch(); e.preventDefault(); return; }
     if (STATE.helpOpen)   { _closeHelp();   e.preventDefault(); return; }
     if (_closeAnyOpenChrome()) { e.preventDefault(); return; }
-    return; // nothing to close — let other handlers see Esc
+    return;
   }
 
   // ── From here on, only fire when not typing and no modifier (except shift) ──
   if (_isTypingTarget(e.target)) return;
   if (e.altKey || e.metaKey || e.ctrlKey) return;
 
-  // Shift+R — reset the active tab's primary form. Check before the
-  // letter-key switch so the bare 'R' / 'r' branches don't swallow it.
   if (e.shiftKey && (e.key === 'R' || e.key === 'r')) {
     if (_resetActiveTab()) e.preventDefault();
     return;
   }
-  // Any other shift+letter combo is owned by the browser — don't fight it.
   if (e.shiftKey && e.key !== '?') return;
 
   switch (e.key) {
@@ -224,7 +223,7 @@ function _focusResearchQuery() {
 function _dispatchOpenProfile() {
   try {
     document.dispatchEvent(new CustomEvent('cerberus:open-profile'));
-  } catch (_) { /* old browsers — non-fatal */ }
+  } catch (_) {}
 }
 
 function _switchTabById(id) {
@@ -232,8 +231,10 @@ function _switchTabById(id) {
   btn?.click();
 }
 
-// Primary action per active tab. Looks first for a known submit class,
-// then falls back to a [data-cc-submit] hook so other modules can opt in.
+function _dispatch(event, detail = {}) {
+  try { document.dispatchEvent(new CustomEvent(event, { detail, bubbles: true })); } catch (_) {}
+}
+
 const _SUBMIT_SELECTORS_BY_TAB = {
   research:  '.cc-research-start-btn',
   compare:   '.cc-compare-run-btn',
@@ -243,7 +244,6 @@ const _SUBMIT_SELECTORS_BY_TAB = {
 };
 
 function _submitActiveForm(target) {
-  // 1. Closest form-aware submit hook on the focused element's ancestors.
   if (target && typeof target.closest === 'function') {
     const explicit = target.closest('[data-cc-submit]');
     if (explicit) {
@@ -254,7 +254,6 @@ function _submitActiveForm(target) {
       if (btn && !btn.disabled) { btn.click(); return true; }
     }
   }
-  // 2. Tab-specific defaults
   const content = _activeContent();
   if (!content) return false;
   const sel = _SUBMIT_SELECTORS_BY_TAB[_activeTabId()];
@@ -262,7 +261,6 @@ function _submitActiveForm(target) {
     const btn = content.querySelector(sel);
     if (btn && !btn.disabled) { btn.click(); return true; }
   }
-  // 3. Last resort — any primary-looking button in the active tab
   const fallback = content.querySelector(
     '[data-cc-submit-fallback], .cc-research-start-btn, .cc-compare-run-btn'
   );
@@ -289,7 +287,6 @@ function _resetActiveTab() {
 
 function _closeAnyOpenChrome() {
   let closed = false;
-  // Hide visible inline forms that follow the show/hide-by-style pattern
   document.querySelectorAll(
     '.cc-room-new-form, #cc-ag-create-form, .cc-ag-invoke-form'
   ).forEach(el => {
@@ -298,7 +295,6 @@ function _closeAnyOpenChrome() {
       closed = true;
     }
   });
-  // Collapse expanded detail panels
   document.querySelectorAll('.cc-agent-row.expanded').forEach(row => {
     row.classList.remove('expanded');
     closed = true;
@@ -308,7 +304,6 @@ function _closeAnyOpenChrome() {
     d.classList.remove('open');
     closed = true;
   });
-  // Free-floating CC overlays (built by agents.js, etc.)
   document.querySelectorAll('.cc-agent-overlay').forEach(o => {
     o.remove();
     closed = true;
@@ -334,7 +329,7 @@ function _openHelp() {
 <div class="cc-shortcuts-panel" role="document">
   <div class="cc-shortcuts-header">
     <span class="cc-shortcuts-title">KEYBOARD SHORTCUTS</span>
-    <button class="cc-shortcuts-close" aria-label="Close">×</button>
+    <button class="cc-shortcuts-close" aria-label="Close" type="button" style="-webkit-appearance:none;appearance:none;">×</button>
   </div>
   <table class="cc-shortcuts-table">
     <tbody>
@@ -357,7 +352,78 @@ function _closeHelp() {
   STATE.helpOpen = false;
 }
 
-// ── Quick-search overlay ──────────────────────────────────────────────
+// ── Command palette ───────────────────────────────────────────────────
+
+function _getRecent() {
+  try { return JSON.parse(localStorage.getItem(LS_RECENT) || '[]'); } catch (_) { return []; }
+}
+
+function _addRecent(id) {
+  try {
+    const r = _getRecent().filter(x => x !== id);
+    r.unshift(id);
+    localStorage.setItem(LS_RECENT, JSON.stringify(r.slice(0, MAX_RECENT)));
+  } catch (_) {}
+}
+
+function _fuzzyScore(haystack, q) {
+  if (!q) return 1;
+  const h = haystack.toLowerCase();
+  const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!tokens.every(t => h.includes(t))) return 0;
+  if (h === q) return 10;
+  if (h.startsWith(q)) return 6;
+  if (h.includes(q)) return 3;
+  return 1;
+}
+
+function _buildCommands() {
+  return [
+    { id: 'new-note', kind: 'command', label: 'New note', desc: 'Create a new note', haystack: 'new note create note', action: () => _dispatch('cerberus:new-note') },
+    { id: 'new-scheduled-task', kind: 'command', label: 'New scheduled task', desc: 'Open the task scheduler', haystack: 'new scheduled task create schedule', action: () => _dispatch('cerberus:new-scheduled-task') },
+    { id: 'create-room', kind: 'command', label: 'Create room', desc: 'Open the new room form', haystack: 'create room new conference', action: () => { _switchTabById('rooms'); setTimeout(() => document.querySelector('#cc-rooms-new-btn, [data-cc-new]')?.click(), 80); } },
+    { id: 'run-research', kind: 'command', label: 'Run research', desc: 'Switch to Research and focus query', haystack: 'run research search query', action: () => { _switchTabById('research'); setTimeout(_focusResearchQuery, 80); } },
+    { id: 'open-settings', kind: 'command', label: 'Open settings', desc: 'Open the settings panel', haystack: 'open settings preferences config', action: () => _dispatch('cerberus:open-settings') },
+    { id: 'toggle-wake-word', kind: 'command', label: 'Toggle wake word', desc: 'Enable / disable wake-word detection', haystack: 'toggle wake word voice activation hotword', action: () => _dispatch('cerberus:toggle-wake-word') },
+    { id: 'export-thread', kind: 'command', label: 'Export current thread', desc: 'Export the active chat thread', haystack: 'export thread download chat session', action: () => _dispatch('cerberus:export-thread') },
+    { id: 'summarise-thread', kind: 'command', label: 'Summarise current thread', desc: 'Ask the assistant to summarise', haystack: 'summarise summarize thread chat tldr', action: () => _dispatch('cerberus:summarise-thread') },
+    { id: 'clear-search-history', kind: 'command', label: 'Clear search history', desc: 'Wipe the research search history', haystack: 'clear search history research wipe', action: () => _dispatch('cerberus:clear-search-history') },
+    { id: 'view-changelog', kind: 'command', label: 'View changelog', desc: "Open the What's New panel", haystack: "view changelog what's new updates releases", action: () => _dispatch('cerberus:view-changelog') },
+  ];
+}
+
+function _renderPalette(matches, selected) {
+  if (!matches.length) return '<li class="cc-palette-empty">No matches.</li>';
+  const ORDER  = ['agent', 'room', 'tab', 'command'];
+  const LABELS = { agent: 'AGENTS', room: 'ROOMS', tab: 'TABS', command: 'ACTIONS' };
+  const groups = {};
+  matches.forEach((it, i) => { (groups[it.kind] = groups[it.kind] || []).push({ it, i }); });
+  let html = '';
+  for (const kind of ORDER) {
+    const items = groups[kind];
+    if (!items?.length) continue;
+    html += `<li class="cc-palette-group-header" aria-hidden="true">// ${LABELS[kind]}</li>`;
+    for (const { it, i } of items) {
+      const text = _esc(it.label || it.name || '');
+      const sub  = _esc(it.desc  || it.sub  || '');
+      if (it.kind === 'agent' || it.kind === 'room') {
+        html += `<li class="cc-quick-search-item${i === selected ? ' selected' : ''}"
+            data-palette-idx="${i}" role="option" aria-selected="${i === selected}">
+          <span class="cc-sr-tag cc-sr-tag--${_esc(it.kind)}">${it.kind === 'agent' ? 'AG' : 'RM'}</span>
+          <span class="cc-sr-name">${text}</span>
+          ${sub ? `<span class="cc-sr-sub">${sub}</span>` : ''}
+        </li>`;
+      } else {
+        html += `<li class="cc-palette-item${i === selected ? ' selected' : ''}"
+            data-palette-idx="${i}" role="option" aria-selected="${i === selected}">
+          <span class="cc-pr-name">${text}</span>
+          ${sub ? `<span class="cc-pr-desc">${sub}</span>` : ''}
+        </li>`;
+      }
+    }
+  }
+  return html;
+}
 
 function _toggleSearch() {
   if (STATE.searchOpen) _closeSearch(); else _openSearch();
@@ -370,19 +436,19 @@ function _openSearch() {
   overlay.className = 'cc-quick-search-overlay';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
-  overlay.setAttribute('aria-label', 'Quick search');
+  overlay.setAttribute('aria-label', 'Command palette');
   overlay.innerHTML = `
 <div class="cc-quick-search-panel" role="document">
   <input class="cc-quick-search-input" id="cc-quick-search-input"
          type="search" autocomplete="off" spellcheck="false"
-         placeholder="Search agents and rooms…"
-         aria-label="Search agents and rooms" />
+         placeholder="Search agents, rooms, tabs, commands…"
+         aria-label="Command palette" style="-webkit-appearance:none;appearance:none;" />
   <ul class="cc-quick-search-results" id="cc-quick-search-results"
-      role="listbox" aria-label="Search results"></ul>
-  <div class="cc-quick-search-hint" id="cc-quick-search-hint" aria-hidden="true">
+      role="listbox" aria-label="Results"></ul>
+  <div class="cc-quick-search-hint" aria-hidden="true">
     <span><kbd>↑↓</kbd> navigate</span>
     <span class="cc-quick-search-hint-dot">·</span>
-    <span><kbd>↵</kbd> select</span>
+    <span><kbd>↵</kbd> execute</span>
     <span class="cc-quick-search-hint-dot">·</span>
     <span><kbd>Esc</kbd> close</span>
   </div>
@@ -399,22 +465,27 @@ function _openSearch() {
 
   function render() {
     const q = (input.value || '').trim().toLowerCase();
-    matches = q
-      ? pool.filter(it => it.haystack.includes(q)).slice(0, 12)
-      : pool.slice(0, 12);
-    selected = Math.max(0, Math.min(selected, matches.length - 1));
-    if (!matches.length) {
-      results.innerHTML = '<li class="cc-quick-search-empty">No matches.</li>';
-      return;
+    if (q) {
+      matches = pool
+        .map(it => ({ ...it, _score: _fuzzyScore(it.haystack, q) }))
+        .filter(it => it._score > 0)
+        .sort((a, b) => b._score - a._score)
+        .slice(0, 20);
+    } else {
+      const recent = _getRecent();
+      matches = pool
+        .filter(it => it.kind === 'command' || it.kind === 'tab')
+        .sort((a, b) => {
+          const ra = recent.indexOf(a.id), rb = recent.indexOf(b.id);
+          if (ra === -1 && rb === -1) return 0;
+          if (ra === -1) return 1;
+          if (rb === -1) return -1;
+          return ra - rb;
+        })
+        .slice(0, 12);
     }
-    results.innerHTML = matches.map((it, i) => `
-<li class="cc-quick-search-item${i === selected ? ' selected' : ''}"
-    data-kind="${_esc(it.kind)}" data-id="${_esc(it.id)}"
-    role="option" aria-selected="${i === selected ? 'true' : 'false'}">
-  <span class="cc-sr-tag cc-sr-tag--${_esc(it.kind)}">${it.kind === 'agent' ? 'AG' : 'RM'}</span>
-  <span class="cc-sr-name">${_esc(it.name)}</span>
-  ${it.sub ? `<span class="cc-sr-sub">${_esc(it.sub)}</span>` : ''}
-</li>`).join('');
+    selected = Math.max(0, Math.min(selected, matches.length - 1));
+    results.innerHTML = _renderPalette(matches, selected);
   }
 
   input.addEventListener('input', () => { selected = 0; render(); });
@@ -427,19 +498,17 @@ function _openSearch() {
       e.preventDefault(); render();
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const item = matches[selected];
-      if (item) _activate(item);
+      if (matches[selected]) _activate(matches[selected]);
     }
   });
   results.addEventListener('click', (e) => {
-    const li = e.target.closest('.cc-quick-search-item');
+    const li = e.target.closest('[data-palette-idx]');
     if (!li) return;
-    const item = matches.find(it => it.kind === li.dataset.kind && it.id === li.dataset.id);
-    if (item) _activate(item);
+    const idx = parseInt(li.dataset.paletteIdx, 10);
+    if (!isNaN(idx) && matches[idx]) _activate(matches[idx]);
   });
 
   render();
-  // Defer focus until the overlay is in the layout
   setTimeout(() => { try { input.focus(); } catch (_) {} }, 0);
 }
 
@@ -451,33 +520,52 @@ function _closeSearch() {
 
 function _gatherSearchPool() {
   const pool = [];
+  const recent = _getRecent();
+
   document.querySelectorAll('.cc-agent-row').forEach(row => {
-    const name = (row.dataset.agentName
-      || row.querySelector('.cc-row-name')?.textContent || '').trim();
+    const name = (row.dataset.agentName || row.querySelector('.cc-row-name')?.textContent || '').trim();
     const id   = row.dataset.id || '';
     const role = row.querySelector('.cc-row-role')?.textContent?.trim() || '';
     if (!id || !name) return;
-    pool.push({
-      kind: 'agent', id, name, sub: role,
-      haystack: (name + ' ' + role).toLowerCase(),
-    });
+    pool.push({ kind: 'agent', id, name, sub: role, haystack: `new chat with ${name} ${role}`.toLowerCase() });
   });
+
   document.querySelectorAll('.cc-room-card').forEach(card => {
-    const name = (card.dataset.roomName
-      || card.querySelector('.cc-room-name')?.textContent || '').trim();
+    const name = (card.dataset.roomName || card.querySelector('.cc-room-name')?.textContent || '').trim();
     const id   = card.dataset.roomId || '';
     const cnt  = card.querySelector('.cc-room-count')?.textContent?.trim() || '';
     if (!id || !name) return;
+    pool.push({ kind: 'room', id, name, sub: cnt, haystack: (name + ' ' + cnt).toLowerCase() });
+  });
+
+  STATE.tabs.forEach(tab => {
+    const label = `Switch to ${tab.label || tab.id}`;
     pool.push({
-      kind: 'room', id, name, sub: cnt,
-      haystack: (name + ' ' + cnt).toLowerCase(),
+      kind: 'tab', id: `switch-tab-${tab.id}`, label, desc: tab.desc || '',
+      haystack: label.toLowerCase(),
+      action: () => _switchTabById(tab.id),
     });
   });
+
+  const commands = _buildCommands();
+  const recentIds = recent;
+  commands
+    .sort((a, b) => {
+      const ra = recentIds.indexOf(a.id), rb = recentIds.indexOf(b.id);
+      if (ra === -1 && rb === -1) return 0;
+      if (ra === -1) return 1;
+      if (rb === -1) return -1;
+      return ra - rb;
+    })
+    .forEach(c => pool.push(c));
+
   return pool;
 }
 
 function _activate(item) {
+  if (item.kind === 'command' || item.kind === 'tab') _addRecent(item.id);
   _closeSearch();
+  if (item.action) { item.action(); return; }
   if (item.kind === 'agent') {
     const row = document.querySelector(`.cc-agent-row[data-id="${CSS.escape(item.id)}"]`);
     const chatBtn = row?.querySelector('.cc-row-btn-chat');
@@ -494,7 +582,7 @@ function _esc(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// ── Testables (consumed by tests/test_cc_shortcuts.test.mjs) ───────────
+// ── Testables ─────────────────────────────────────────────────────────
 
 export const __testables = {
   STATE,
@@ -510,4 +598,11 @@ export const __testables = {
   submitActiveForm: _submitActiveForm,
   resetActiveTab:   _resetActiveTab,
   dispatchOpenProfile: _dispatchOpenProfile,
+  gatherSearchPool: _gatherSearchPool,
+  buildCommands:    _buildCommands,
+  fuzzyScore:       _fuzzyScore,
+  getRecent:        _getRecent,
+  addRecent:        _addRecent,
+  activate:         _activate,
+  renderPalette:    _renderPalette,
 };

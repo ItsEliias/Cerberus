@@ -2715,6 +2715,45 @@
   opacity: 0.5;
 }
 
+/* Palette group headers and command items */
+.cc-palette-group-header {
+  list-style: none;
+  padding: 6px 14px 2px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px; letter-spacing: 0.18em;
+  color: var(--cc-crimson, #c0392b); opacity: 0.8;
+  pointer-events: none; user-select: none;
+}
+.cc-palette-item {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 7px 14px; cursor: pointer;
+  border-left: 2px solid transparent;
+  list-style: none;
+}
+.cc-palette-item:hover { background: color-mix(in srgb, var(--cc-crimson, #c0392b) 8%, transparent); }
+.cc-palette-item.selected {
+  border-left-color: var(--cc-crimson, #c0392b);
+  background: color-mix(in srgb, var(--cc-crimson, #c0392b) 14%, transparent);
+}
+.cc-pr-name {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.06em;
+  color: var(--cc-fg, #c5c9d0);
+  flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cc-palette-item.selected .cc-pr-name { color: var(--cc-crimson, #c0392b); }
+.cc-pr-desc {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9.5px; letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--cc-fg, #c5c9d0) 40%, transparent);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cc-palette-empty {
+  list-style: none; padding: 14px; text-align: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: color-mix(in srgb, var(--cc-fg, #c5c9d0) 30%, transparent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cc-shortcuts-overlay,
   .cc-quick-search-overlay { animation: none; }
