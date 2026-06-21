@@ -294,14 +294,19 @@ function _groupAgents(agents) {
 // ---------------------------------------------------------------------------
 
 function _agentRow(agent) {
+  _ensureHealthStyles();
   const id     = _esc(agent.id);
   const status = agent.status || 'idle';
   const glyph  = _esc(agent.avatar || GLYPH_MAP[(agent.name || '').toUpperCase()] || (agent.name || '?')[0]);
   const score  = agent.score > 0 ? _esc(agent.score) : '—';
   const accent = CAT_ACCENT[_getCategory(agent.name)] || CAT_ACCENT.CUSTOM;
+  const health = String(agent.health_status || 'ok').toLowerCase();
+  const healthTitle = `Health: ${health.toUpperCase()}`
+                    + (agent.error_count ? ` (${agent.error_count} errors)` : '');
   return `
 <div class="cc-agent-row" data-id="${id}" data-status="${_esc(status)}" data-agent-name="${_esc(agent.name || '')}" data-agent-avatar="${_esc(agent.avatar || '')}" data-cat-accent="${_esc(accent)}" data-tts-voice="${_esc(agent.tts_voice || '')}">
   <span class="cc-status-pip ${_esc(status)}"></span>
+  <span class="cc-health-dot cc-health-dot--${_esc(health)}" title="${_esc(healthTitle)}" aria-label="${_esc(healthTitle)}"></span>
   <span class="cc-row-sigil">${glyph}</span>
   <span class="cc-row-name">${_esc(agent.name || agent.id)}</span>
   <span class="cc-row-role">${_esc(agent.role || agent.agent_type || '—')}</span>
@@ -334,6 +339,12 @@ function _agentDetail(agent) {
     ? new Date(agent.last_active_at + 'Z').toLocaleString() : null;
   const snip   = (agent.system_prompt || '').slice(0, 180);
   const more   = (agent.system_prompt || '').length > 180;
+  const health    = String(agent.health_status || 'ok').toLowerCase();
+  const errCount  = Number(agent.error_count || 0);
+  const lastErrAt = agent.last_error_at
+    ? new Date(agent.last_error_at + 'Z').toLocaleString() : '';
+  const lastErrTxt = String(agent.last_error || '').slice(0, 100);
+  const lastErrMore = String(agent.last_error || '').length > 100 ? '…' : '';
   return `
 <div class="cc-agent-detail" id="cc-detail-${id}">
   <div class="cc-detail-grid">
@@ -372,6 +383,19 @@ function _agentDetail(agent) {
           <div class="cc-invoke-hist-list" id="cc-invoke-hist-list-${id}"></div>
         </div>
       </div>
+    </div>
+    <div class="cc-detail-section cc-health-section" id="cc-health-${id}">
+      <div class="cc-detail-label">// HEALTH</div>
+      <div class="cc-health-row">
+        <span class="cc-health-dot cc-health-dot--${_esc(health)}"></span>
+        <span class="cc-health-label">Status: <strong>${_esc(health.toUpperCase())}</strong></span>
+        <span class="cc-health-counts">Errors: <strong>${errCount}</strong> lifetime</span>
+      </div>
+      ${lastErrTxt ? `<div class="cc-health-lasterr" title="${_esc(agent.last_error || '')}">Last error: ${_esc(lastErrTxt)}${lastErrMore}${lastErrAt ? ` <span class="cc-health-when">at ${_esc(lastErrAt)}</span>` : ''}</div>` : ''}
+      <div class="cc-health-actions">
+        <button class="cc-health-reset-btn" data-agent-id="${id}" type="button">[ RESET HEALTH ]</button>
+      </div>
+      <div class="cc-health-msg" id="cc-health-msg-${id}" hidden></div>
     </div>
   </div>
   <div class="cc-ag-memory-panel" id="cc-ag-memory-${id}" style="display:none">
@@ -599,6 +623,11 @@ function _wireRow(container, agentId) {
     _deleteAgent(agentId, row);
   });
 
+  // Health: reset button — POST /api/agents/{id}/reset-health.
+  detail.querySelector('.cc-health-reset-btn')?.addEventListener('click', () =>
+    _resetAgentHealth(agentId, row, detail),
+  );
+
   // Invoke form
   const invokeForm = detail.querySelector(`#cc-ag-invoke-${agentId}`);
   const textarea   = invokeForm?.querySelector('.cc-ag-invoke-input');
@@ -693,6 +722,144 @@ async function _saveAgent(agentId, row, detail, editForm) {
   } catch (e) {
     if (msgEl) msgEl.textContent = `Error: ${e.message}`;
   }
+}
+
+async function _resetAgentHealth(agentId, row, detail) {
+  const btn  = detail.querySelector('.cc-health-reset-btn');
+  const msg  = detail.querySelector(`#cc-health-msg-${agentId}`);
+  const dotRow = detail.querySelector('.cc-row .cc-health-dot, .cc-health-row .cc-health-dot');
+  const dotInRow = row?.querySelector('.cc-health-dot');
+  const sectionDot = detail.querySelector('.cc-health-row .cc-health-dot');
+  const original = btn?.textContent || '[ RESET HEALTH ]';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const res = await fetch(
+      `/api/agents/${encodeURIComponent(agentId)}/reset-health`,
+      { method: 'POST', credentials: 'same-origin' },
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // Flip the dot back to OK on both the row pip and the detail section
+    // so the user sees the change without a full re-render of the roster.
+    [dotInRow, sectionDot, dotRow].forEach(el => {
+      if (!el) return;
+      el.className = 'cc-health-dot cc-health-dot--ok';
+      el.title = 'Health: OK';
+    });
+    const label = detail.querySelector('.cc-health-label strong');
+    if (label) label.textContent = 'OK';
+    const counts = detail.querySelector('.cc-health-counts strong');
+    if (counts) counts.textContent = '0';
+    const lasterr = detail.querySelector('.cc-health-lasterr');
+    if (lasterr) lasterr.remove();
+    if (msg) {
+      msg.hidden = false;
+      msg.textContent = 'Health reset.';
+      setTimeout(() => { msg.hidden = true; }, 2000);
+    }
+  } catch (e) {
+    if (msg) {
+      msg.hidden = false;
+      msg.textContent = `Reset failed — ${e.message}`;
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = original; }
+  }
+}
+
+// Token-only styles for the health dot + section. Injected once at first
+// row render so each agent card lights up without us having to touch the
+// (frequently-locked) styles.css file.
+const _HEALTH_STYLE_ID = 'cc-agent-health-styles';
+function _ensureHealthStyles() {
+  if (typeof document === 'undefined') return;
+  if (!document.head || typeof document.head.appendChild !== 'function') return;
+  if (typeof document.getElementById === 'function'
+      && document.getElementById(_HEALTH_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = _HEALTH_STYLE_ID;
+  style.textContent = `
+.cc-health-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-right: 4px;
+  background: var(--cc-border, var(--border, #3a2a2a));
+}
+.cc-health-dot--ok {
+  background: var(--green, var(--cc-ok, #50fa7b));
+  box-shadow: 0 0 4px color-mix(in srgb, var(--green, var(--cc-ok, #50fa7b)) 50%, transparent);
+}
+.cc-health-dot--degraded {
+  background: color-mix(in srgb, var(--cc-crimson, var(--red, #c0392b)) 60%, transparent);
+}
+.cc-health-dot--error {
+  background: var(--cc-crimson, var(--red, #c0392b));
+  box-shadow: 0 0 5px color-mix(in srgb, var(--cc-crimson, var(--red, #c0392b)) 55%, transparent);
+  animation: cc-health-pulse 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-health-dot--error { animation: none; }
+}
+@keyframes cc-health-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+.cc-health-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--cc-border, var(--border, #3a2a2a));
+}
+.cc-health-row {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+}
+.cc-health-counts {
+  margin-left: auto;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 65%, transparent);
+}
+.cc-health-lasterr {
+  margin-top: 6px;
+  padding: 6px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px; line-height: 1.4;
+  border: 1px solid color-mix(in srgb, var(--cc-crimson, var(--red, #c0392b)) 35%, transparent);
+  background: color-mix(in srgb, var(--cc-crimson, var(--red, #c0392b)) 8%, transparent);
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+  word-break: break-word;
+}
+.cc-health-when {
+  opacity: 0.55;
+  letter-spacing: 0.04em;
+}
+.cc-health-actions { margin-top: 8px; }
+.cc-health-reset-btn {
+  -webkit-appearance: none; appearance: none;
+  background: transparent;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 70%, transparent);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.14em;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.cc-health-reset-btn:hover {
+  color: var(--cc-crimson, var(--red, #c0392b));
+  border-color: var(--cc-crimson, var(--red, #c0392b));
+}
+.cc-health-reset-btn:disabled { opacity: 0.5; cursor: wait; }
+.cc-health-msg {
+  margin-top: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 65%, transparent);
+}
+  `.trim();
+  document.head.appendChild(style);
 }
 
 async function _deleteAgent(agentId, row) {
