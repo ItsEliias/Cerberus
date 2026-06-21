@@ -1,6 +1,7 @@
 /**
  * shortcuts.js — Keyboard shortcuts for the Command Center shell.
  *
+ * Base set (PR #48):
  *   ?         Toggle the shortcuts help overlay
  *   n         Click the active tab's "+ New" button (if visible)
  *   Esc       Close any open overlay / form / detail panel
@@ -8,9 +9,20 @@
  *   1–8       Switch CC tabs by index
  *   Cmd+K     Open the quick-search overlay (agents + rooms)
  *
- * All keys are suppressed when focus is inside an input, textarea, select,
- * or contenteditable element (except for Cmd+K and Escape, which always
- * work so users can dismiss/open the search overlay from anywhere).
+ * Expansion (this PR):
+ *   r         In ROOMS tab — focus the room filter input
+ *   t         In RESEARCH tab — focus the query textarea
+ *   p         Dispatch `cerberus:open-profile` (assistant.js listens)
+ *   g         Jump to GATEWAY tab
+ *   Shift+R   Reset the active tab's primary form (COMPARE / RESEARCH)
+ *   Cmd+Enter Submit the active tab's primary action — fires even
+ *             while typing in an input/textarea
+ *   Cmd+/     Toggle the help overlay — fires from anywhere
+ *
+ * Suppression rules: keys are silenced when focus is inside an
+ * input/textarea/select/contenteditable EXCEPT Cmd+K, Cmd+Enter,
+ * Cmd+/, and Escape, which always work so users can dismiss/open
+ * overlays + submit forms from anywhere.
  *
  * Public API:
  *   initShortcuts(shell, tabs)  — wire global listener
@@ -30,12 +42,19 @@ const HELP_ID   = 'cc-shortcuts-help';
 const SEARCH_ID = 'cc-quick-search';
 
 const SHORTCUTS_LIST = [
-  ['?',       'Toggle this help overlay'],
-  ['Cmd+K',   'Quick search agents and rooms'],
-  ['Esc',     'Close overlay / form / panel'],
-  ['n',       'Click "+ New" in active tab'],
-  ['/',       'Focus filter input'],
-  ['1–8',     'Switch tabs by index'],
+  ['?',         'Toggle this help overlay'],
+  ['Cmd+/',     'Toggle this help overlay (works in inputs)'],
+  ['Cmd+K',     'Quick search agents and rooms'],
+  ['Cmd+Enter', 'Submit the active tab\'s primary action'],
+  ['Esc',       'Close overlay / form / panel'],
+  ['n',         'Click "+ New" in active tab'],
+  ['/',         'Focus filter input'],
+  ['r',         'ROOMS — focus the room filter'],
+  ['t',         'RESEARCH — focus the query'],
+  ['p',         'ASSISTANT — open profile editor'],
+  ['g',         'Jump to GATEWAY tab'],
+  ['Shift+R',   'Reset the active tab\'s form (COMPARE / RESEARCH)'],
+  ['1–8',       'Switch tabs by index'],
 ];
 
 // ── Lifecycle ─────────────────────────────────────────────────────────
@@ -71,11 +90,31 @@ function _isTypingTarget(t) {
   return false;
 }
 
+function _activeTabId() {
+  const btn = STATE.shell?.querySelector('.cc-tab-btn.active');
+  return btn?.dataset?.tab || '';
+}
+
 function _onKeyDown(e) {
-  // Cmd+K / Ctrl+K — quick search (always available, even from inputs)
+  // ── Always-on combos (fire even while typing) ──
+
+  // Cmd+K / Ctrl+K — quick search
   if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
     e.preventDefault();
     _toggleSearch();
+    return;
+  }
+
+  // Cmd+/ / Ctrl+/ — toggle help (works in inputs)
+  if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+    e.preventDefault();
+    _toggleHelp();
+    return;
+  }
+
+  // Cmd+Enter / Ctrl+Enter — submit the active tab's primary action
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    if (_submitActiveForm(e.target)) e.preventDefault();
     return;
   }
 
@@ -87,9 +126,18 @@ function _onKeyDown(e) {
     return; // nothing to close — let other handlers see Esc
   }
 
-  // From here on, only fire when not typing and no modifier (except shift)
+  // ── From here on, only fire when not typing and no modifier (except shift) ──
   if (_isTypingTarget(e.target)) return;
   if (e.altKey || e.metaKey || e.ctrlKey) return;
+
+  // Shift+R — reset the active tab's primary form. Check before the
+  // letter-key switch so the bare 'R' / 'r' branches don't swallow it.
+  if (e.shiftKey && (e.key === 'R' || e.key === 'r')) {
+    if (_resetActiveTab()) e.preventDefault();
+    return;
+  }
+  // Any other shift+letter combo is owned by the browser — don't fight it.
+  if (e.shiftKey && e.key !== '?') return;
 
   switch (e.key) {
     case '?':
@@ -102,6 +150,20 @@ function _onKeyDown(e) {
       return;
     case '/':
       if (_focusFilterInput()) e.preventDefault();
+      return;
+    case 'r':
+      if (_activeTabId() === 'rooms' && _focusFilterInput()) e.preventDefault();
+      return;
+    case 't':
+      if (_activeTabId() === 'research' && _focusResearchQuery()) e.preventDefault();
+      return;
+    case 'p':
+      _dispatchOpenProfile();
+      e.preventDefault();
+      return;
+    case 'g':
+      _switchTabById('gateway');
+      e.preventDefault();
       return;
     default: {
       const idx = '12345678'.indexOf(e.key);
@@ -141,12 +203,88 @@ function _focusFilterInput() {
   const content = _activeContent();
   if (!content) return false;
   const input = content.querySelector(
-    '[data-cc-filter], input[type="search"], .cc-filter-input'
+    '[data-cc-filter], input[type="search"], .cc-filter-input, .cc-rooms-filter-input'
   );
   if (!input) return false;
   input.focus();
   if (typeof input.select === 'function') input.select();
   return true;
+}
+
+function _focusResearchQuery() {
+  const content = _activeContent();
+  if (!content) return false;
+  const ta = content.querySelector('.cc-research-query');
+  if (!ta) return false;
+  ta.focus();
+  if (typeof ta.select === 'function') ta.select();
+  return true;
+}
+
+function _dispatchOpenProfile() {
+  try {
+    document.dispatchEvent(new CustomEvent('cerberus:open-profile'));
+  } catch (_) { /* old browsers — non-fatal */ }
+}
+
+function _switchTabById(id) {
+  const btn = STATE.shell?.querySelector(`.cc-tab-btn[data-tab="${id}"]`);
+  btn?.click();
+}
+
+// Primary action per active tab. Looks first for a known submit class,
+// then falls back to a [data-cc-submit] hook so other modules can opt in.
+const _SUBMIT_SELECTORS_BY_TAB = {
+  research:  '.cc-research-start-btn',
+  compare:   '.cc-compare-run-btn',
+  rooms:     '#cc-room-create-btn, .cc-room-send-btn, #cc-room-send-btn',
+  assistant: '.cc-chat-send-btn, #cc-chat-send, .cc-notes-save-btn',
+  agents:    '.cc-ag-submit-btn',
+};
+
+function _submitActiveForm(target) {
+  // 1. Closest form-aware submit hook on the focused element's ancestors.
+  if (target && typeof target.closest === 'function') {
+    const explicit = target.closest('[data-cc-submit]');
+    if (explicit) {
+      const sel = explicit.getAttribute('data-cc-submit') || '';
+      const btn = sel
+        ? (_activeContent()?.querySelector(sel) || document.querySelector(sel))
+        : null;
+      if (btn && !btn.disabled) { btn.click(); return true; }
+    }
+  }
+  // 2. Tab-specific defaults
+  const content = _activeContent();
+  if (!content) return false;
+  const sel = _SUBMIT_SELECTORS_BY_TAB[_activeTabId()];
+  if (sel) {
+    const btn = content.querySelector(sel);
+    if (btn && !btn.disabled) { btn.click(); return true; }
+  }
+  // 3. Last resort — any primary-looking button in the active tab
+  const fallback = content.querySelector(
+    '[data-cc-submit-fallback], .cc-research-start-btn, .cc-compare-run-btn'
+  );
+  if (fallback && !fallback.disabled) { fallback.click(); return true; }
+  return false;
+}
+
+function _resetActiveTab() {
+  const content = _activeContent();
+  if (!content) return false;
+  const id = _activeTabId();
+  if (id === 'compare') {
+    const resetBtn = content.querySelector('.cc-compare-reset-btn');
+    if (resetBtn) { resetBtn.click(); return true; }
+    return false;
+  }
+  if (id === 'research') {
+    const q = content.querySelector('.cc-research-query');
+    if (q) { q.value = ''; q.focus(); return true; }
+    return false;
+  }
+  return false;
 }
 
 function _closeAnyOpenChrome() {
@@ -241,6 +379,13 @@ function _openSearch() {
          aria-label="Search agents and rooms" />
   <ul class="cc-quick-search-results" id="cc-quick-search-results"
       role="listbox" aria-label="Search results"></ul>
+  <div class="cc-quick-search-hint" id="cc-quick-search-hint" aria-hidden="true">
+    <span><kbd>↑↓</kbd> navigate</span>
+    <span class="cc-quick-search-hint-dot">·</span>
+    <span><kbd>↵</kbd> select</span>
+    <span class="cc-quick-search-hint-dot">·</span>
+    <span><kbd>Esc</kbd> close</span>
+  </div>
 </div>`.trim();
   overlay.addEventListener('click', (e) => { if (e.target === overlay) _closeSearch(); });
   document.body.appendChild(overlay);
@@ -344,11 +489,6 @@ function _activate(item) {
   }
 }
 
-function _switchTabById(id) {
-  const btn = STATE.shell?.querySelector(`.cc-tab-btn[data-tab="${id}"]`);
-  btn?.click();
-}
-
 function _esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -358,6 +498,7 @@ function _esc(s) {
 
 export const __testables = {
   STATE,
+  SHORTCUTS_LIST,
   isTypingTarget: _isTypingTarget,
   onKeyDown: _onKeyDown,
   openHelp:   _openHelp,
@@ -366,4 +507,7 @@ export const __testables = {
   openSearch:  _openSearch,
   closeSearch: _closeSearch,
   toggleSearch: _toggleSearch,
+  submitActiveForm: _submitActiveForm,
+  resetActiveTab:   _resetActiveTab,
+  dispatchOpenProfile: _dispatchOpenProfile,
 };
