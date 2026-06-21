@@ -1200,6 +1200,11 @@ def _build_system_prompt(
                     _skills_text = "\n".join(lines)
                     if _skill_index_block:
                         _skills_text = _skill_index_block + "\n\n" + _skills_text
+                    try:
+                        from src.llmlingua_compressor import compress_tool_output as _compress
+                        _skills_text = _compress(_skills_text)
+                    except Exception:
+                        pass
                     _skills_message = untrusted_context_message("skills", _skills_text)
                 else:
                     _skills_message = None
@@ -1459,15 +1464,25 @@ def _append_tool_results(
             for j, tc in enumerate(native_tool_calls)
         ]
         messages.append(assistant_msg)
+        try:
+            from src.llmlingua_compressor import compress_tool_output as _compress
+        except Exception:
+            _compress = lambda t, **_: t
         for j, tc in enumerate(native_tool_calls):
             result_text = tool_result_texts[j] if j < len(tool_result_texts) else ""
+            result_text = _compress(result_text)
             messages.append({
                 "role": "tool",
                 "tool_call_id": tc.get("id", f"call_{round_num}_{j}"),
                 "content": result_text,
             })
     else:
-        tool_output_text = "\n\n".join(tool_results)
+        try:
+            from src.llmlingua_compressor import compress_tool_output as _compress
+        except Exception:
+            _compress = lambda t, **_: t
+        compressed_results = [_compress(r) for r in tool_results]
+        tool_output_text = "\n\n".join(compressed_results)
         msg = {"role": "assistant", "content": round_response}
         if round_reasoning:
             msg["reasoning_content"] = round_reasoning
