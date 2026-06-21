@@ -128,6 +128,16 @@
 .cc-refresh-btn:hover { opacity: 1; border-color: var(--cc-crimson); color: var(--cc-crimson); }
 .cc-refresh-btn:focus-visible { outline: 2px solid var(--cc-crimson); outline-offset: 2px; opacity: 1; }
 
+.cc-gear-btn {
+  background: transparent; border: 1px solid var(--cc-border); color: var(--cc-fg);
+  cursor: pointer; border-radius: 2px; padding: 3px 6px; opacity: 0.65;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+  -webkit-appearance: none; appearance: none;
+}
+.cc-gear-btn:hover { opacity: 1; border-color: var(--cc-crimson); color: var(--cc-crimson); }
+.cc-gear-btn:focus-visible { outline: 2px solid var(--cc-crimson); outline-offset: 2px; opacity: 1; }
+
 /* =====================================================================
    SUB-TAB NAV
    ===================================================================== */
@@ -4371,3 +4381,88 @@
 .cc-gw-msg-approved { color: color-mix(in srgb, #2ecc71 80%, var(--cc-fg)); }
 .cc-gw-msg-rejected { color: var(--cc-crimson-hot); }
 .cc-gw-msg-neutral  { opacity: 0.45; }
+
+/* ── CC Tour ──────────────────────────────────────────────────────────────── */
+
+.cc-tour-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  pointer-events: none;
+}
+.cc-tour-spotlight {
+  position: fixed; z-index: 9001; border-radius: 3px;
+  box-shadow: 0 0 0 9999px color-mix(in srgb, var(--cc-void, #060708) 80%, transparent);
+  transition: top 0.22s ease, left 0.22s ease, width 0.22s ease, height 0.22s ease;
+  pointer-events: none;
+}
+.cc-tour-spotlight.no-anim { transition: none; }
+.cc-tour-card {
+  position: fixed; z-index: 9002;
+  background: var(--cc-void-mid, #0d0f12);
+  border: 1px solid var(--cc-border, #3a2a2a);
+  border-top: 2px solid var(--cc-crimson, #c0392b);
+  border-radius: 3px;
+  padding: 14px 16px;
+  max-width: 280px; min-width: 200px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55),
+              0 0 0 1px color-mix(in srgb, var(--cc-crimson, #c0392b) 15%, transparent);
+  pointer-events: all;
+  font-family: 'JetBrains Mono', monospace;
+  transition: top 0.22s ease, left 0.22s ease;
+}
+.cc-tour-card.no-anim { transition: none; }
+.cc-tour-step-label {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.16em;
+  color: var(--cc-crimson, #c0392b); margin-bottom: 8px;
+}
+.cc-tour-card-body {
+  font-size: 11px; line-height: 1.6;
+  color: var(--cc-fg, #c5c9d0); opacity: 0.85;
+  margin: 0 0 12px;
+}
+.cc-tour-card-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.cc-tour-dots {
+  display: flex; gap: 4px; align-items: center; flex-shrink: 0;
+}
+.cc-tour-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: color-mix(in srgb, var(--cc-crimson, #c0392b) 35%, transparent);
+  transition: background 0.15s;
+}
+.cc-tour-dot.active { background: var(--cc-crimson, #c0392b); }
+.cc-tour-card-btns { display: flex; gap: 6px; }
+.cc-tour-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.08em;
+  padding: 4px 10px; cursor: pointer;
+  border: 1px solid var(--cc-border, #3a2a2a);
+  background: transparent;
+  color: var(--cc-fg, #c5c9d0);
+  opacity: 0.7; border-radius: 2px;
+  -webkit-appearance: none; appearance: none;
+  transition: opacity 0.12s, border-color 0.12s, color 0.12s;
+}
+.cc-tour-btn:hover { opacity: 1; }
+.cc-tour-next {
+  background: var(--cc-crimson, #c0392b); border-color: var(--cc-crimson, #c0392b);
+  color: #fff; opacity: 1;
+}
+.cc-tour-next:hover { opacity: 0.85; }
+.cc-tour-btn:focus-visible { outline: 2px solid var(--cc-crimson, #c0392b); outline-offset: 2px; }
+.cc-tour-help-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.06em;
+  padding: 2px 8px; cursor: pointer;
+  border: 1px solid var(--cc-border, #3a2a2a);
+  background: transparent; color: var(--cc-fg, #c5c9d0);
+  opacity: 0.45; -webkit-appearance: none; appearance: none;
+  transition: opacity 0.12s; border-radius: 2px;
+}
+.cc-tour-help-btn:hover { opacity: 1; border-color: var(--cc-crimson, #c0392b); color: var(--cc-crimson, #c0392b); }
+.cc-tour-help-btn:focus-visible { outline: 2px solid var(--cc-crimson, #c0392b); outline-offset: 2px; opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-tour-spotlight, .cc-tour-card, .cc-tour-btn, .cc-tour-help-btn { transition: none; }
+}
