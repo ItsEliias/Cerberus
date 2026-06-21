@@ -122,6 +122,14 @@ export function buildGatewayTab() {
     </div>
   </div>
 
+  <!-- MESSAGE LOG — inbound gateway messages audit trail -->
+  <div class="cc-gw-section" id="gw-msg-log-section">
+    <div class="cc-section-label">// MESSAGE LOG</div>
+    <div class="cc-gw-msg-list" id="gw-msg-list">
+      <div class="cc-gw-empty" id="gw-msg-empty">No messages yet.</div>
+    </div>
+  </div>
+
   <!-- Add job form (hidden by default) -->
   <div class="cc-gw-form" id="gw-form" style="display:none">
     <div class="cc-section-label">NEW CRON JOB</div>
@@ -161,6 +169,7 @@ export function loadGateway(root) {
   _initEmailCompose(root);
   _loadPlatforms(root);
   _loadJobs(root);
+  _loadMessageLog(root);
 
   // Replace any previous interval owned by an earlier tab build. The single
   // 30s tick refreshes BOTH the status snapshot and the approvals list so
@@ -171,6 +180,7 @@ export function loadGateway(root) {
     root[_STATUS_POLL_KEY] = setInterval(() => {
       _loadGatewayStatus(root);
       _loadApprovals(root);
+      _loadMessageLog(root);
     }, _STATUS_POLL_MS);
   }
 
@@ -702,4 +712,57 @@ async function _readEmailErrDetail(resp) {
     }
   } catch (_) {}
   return '';
+}
+
+// ---- MESSAGE LOG (audit trail of inbound gateway messages) ----------------
+
+async function _loadMessageLog(root) {
+  const list  = root && root.querySelector('#gw-msg-list');
+  const empty = root && root.querySelector('#gw-msg-empty');
+  if (!list) return;
+  try {
+    const r = await fetch(`${BASE}/api/gateway/messages?limit=50`, { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const data = await r.json();
+    const msgs = Array.isArray(data.messages) ? data.messages : [];
+    if (!msgs.length) {
+      list.innerHTML = '';
+      const e = document.createElement('div');
+      e.className = 'cc-gw-empty';
+      e.textContent = 'No messages yet.';
+      list.appendChild(e);
+      return;
+    }
+    list.innerHTML = msgs.map(_buildMsgRow).join('');
+  } catch (_) {
+    // Never break the gateway tab on log fetch failure
+  }
+}
+
+function _buildMsgRow(m) {
+  const platform   = _esc((m.platform || '').toUpperCase());
+  const sender     = _esc(m.sender || '—');
+  const msgPrev    = _esc(m.message_preview || '');
+  const respPrev   = _esc(m.agent_response_preview || '');
+  const ts         = _relTime(m.timestamp);
+  const tools      = Array.isArray(m.tool_calls_triggered) ? m.tool_calls_triggered : [];
+  const toolChips  = tools.map(t => `<span class="cc-gw-msg-chip">${_esc(String(t))}</span>`).join('');
+  const approval   = m.was_approved === true  ? '✓ approved'
+                   : m.was_approved === false ? '✕ rejected'
+                   : '— none';
+  const approvalCls = m.was_approved === true  ? 'cc-gw-msg-approved'
+                    : m.was_approved === false ? 'cc-gw-msg-rejected'
+                    : 'cc-gw-msg-neutral';
+  return `
+<div class="cc-gw-msg-row">
+  <div class="cc-gw-msg-header">
+    <span class="cc-gw-msg-platform">${platform}</span>
+    <span class="cc-gw-msg-sender">${sender}</span>
+    <span class="cc-gw-msg-ts">${_esc(ts)}</span>
+  </div>
+  ${msgPrev ? `<div class="cc-gw-msg-preview cc-gw-msg-in">// IN: ${msgPrev}</div>` : ''}
+  ${respPrev ? `<div class="cc-gw-msg-preview cc-gw-msg-out">// OUT: ${respPrev}</div>` : ''}
+  ${toolChips ? `<div class="cc-gw-msg-chips">${toolChips}</div>` : ''}
+  <div class="cc-gw-msg-status ${approvalCls}">${_esc(approval)}</div>
+</div>`.trim();
 }

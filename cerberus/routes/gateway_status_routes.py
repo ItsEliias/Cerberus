@@ -11,12 +11,14 @@ section degrades to a safe default rather than 500ing the dashboard.
 from __future__ import annotations
 
 import datetime as _dt
+import json as _json
 import logging
 import os
+import re
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 
 from src.auth_helpers import require_user
 
@@ -109,6 +111,20 @@ def _serialize_pending(entries: List[dict]) -> List[Dict[str, Any]]:
     return items
 
 
+def _mask_channel_id(raw: Optional[str]) -> str:
+    """Replace the middle portion of a channel/chat ID with asterisks.
+
+    Keeps the first 3 and last 3 characters visible so the log is useful
+    for cross-referencing without exposing the full numeric ID.
+    """
+    if not raw:
+        return ""
+    s = str(raw)
+    if len(s) <= 6:
+        return "*" * len(s)
+    return s[:3] + "*" * (len(s) - 6) + s[-3:]
+
+
 def setup_gateway_status_routes() -> APIRouter:
     """Factory for the gateway-status router. Mounted on /api/gateway/status."""
 
@@ -161,5 +177,54 @@ def setup_gateway_status_routes() -> APIRouter:
             logger.warning("gateway_approvals: approval store read failed: %s", exc)
             pending = []
         return {"pending": pending}
+
+    @router.get("/messages")
+    def gateway_messages(
+        request: Request,
+        limit: int = Query(default=50, ge=1, le=200),
+    ) -> Dict[str, Any]:
+        """Recent inbound gateway messages, owner-scoped, newest first.
+
+        channel_id is masked in the response (middle digits replaced with *)
+        so raw platform IDs are never returned over the API.
+        """
+        require_user(request)
+        owner = require_user(request)
+        try:
+            from core.database import SessionLocal, GatewayMessage
+            db = SessionLocal()
+            try:
+                rows = (
+                    db.query(GatewayMessage)
+                    .filter(GatewayMessage.owner == owner)
+                    .order_by(GatewayMessage.timestamp.desc())
+                    .limit(limit)
+                    .all()
+                )
+                messages = []
+                for row in rows:
+                    try:
+                        tool_calls = _json.loads(row.tool_calls_triggered or "[]")
+                    except Exception:
+                        tool_calls = []
+                    ts = row.timestamp
+                    iso = (ts.isoformat() + "Z") if ts else ""
+                    messages.append({
+                        "id": row.id,
+                        "platform": row.platform or "",
+                        "channel_id": _mask_channel_id(row.channel_id),
+                        "sender": row.sender or "",
+                        "message_preview": row.message_preview or "",
+                        "agent_response_preview": row.agent_response_preview or "",
+                        "tool_calls_triggered": tool_calls,
+                        "was_approved": row.was_approved,
+                        "timestamp": iso,
+                    })
+            finally:
+                db.close()
+        except Exception as exc:
+            logger.warning("gateway_messages: read failed: %s", exc)
+            messages = []
+        return {"messages": messages}
 
     return router

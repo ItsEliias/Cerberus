@@ -20,6 +20,46 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+def _record_gateway_message(
+    *,
+    platform: str,
+    channel_id: str,
+    sender: str,
+    message_text: str,
+    response_text: str,
+    tool_calls: Optional[list] = None,
+    was_approved: Optional[bool] = None,
+) -> None:
+    """Write a GatewayMessage audit row. Never raises — logging must not break message handling.
+
+    message_text and response_text are stored as previews (first 200 chars) only.
+    They are stored as-is for audit purposes; never executed.
+    """
+    try:
+        import json as _json
+        from core.database import SessionLocal, GatewayMessage
+        db = SessionLocal()
+        try:
+            row = GatewayMessage(
+                platform=platform,
+                channel_id=channel_id,
+                sender=(sender or "")[:200],
+                message_preview=(message_text or "")[:200],
+                agent_response_preview=(response_text or "")[:200],
+                tool_calls_triggered=_json.dumps(tool_calls or []),
+                was_approved=was_approved,
+            )
+            db.add(row)
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            logger.warning("gateway: audit log write failed: %s", exc)
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.warning("gateway: audit log unavailable: %s", exc)
+
+
 @dataclass
 class IncomingMessage:
     """Normalised inbound message from any platform."""
@@ -88,6 +128,14 @@ class BasePlatformAdapter(abc.ABC):
         except CerberusClientError as exc:
             logger.error("cerberus error for %s/%s: %s", self.platform_name, msg.chat_id, exc)
             response = "Cerberus is unavailable right now. Please try again shortly."
+
+        _record_gateway_message(
+            platform=self.platform_name,
+            channel_id=str(msg.chat_id),
+            sender=str(msg.username or ""),
+            message_text=msg.text,
+            response_text=response,
+        )
 
         await self.send_message(OutgoingMessage(
             platform=self.platform_name,
