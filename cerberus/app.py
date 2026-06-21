@@ -819,6 +819,15 @@ app.include_router(setup_room_template_routes())
 from routes.conference_room_routes import setup_conference_room_routes
 app.include_router(setup_conference_room_routes())
 
+# Owner-saved conference-room compositions (council presets) — sit alongside
+# the hardcoded /api/rooms/templates and conference_room_routes.
+from routes.council_preset_routes import setup_council_preset_routes
+app.include_router(setup_council_preset_routes())
+
+# What's-new feed — reads CHANGELOG.md when present, falls back to git log.
+from routes.changelog_routes import setup_changelog_routes
+app.include_router(setup_changelog_routes())
+
 from routes.cyberapps_routes import router as cyberapps_router
 app.include_router(cyberapps_router)
 

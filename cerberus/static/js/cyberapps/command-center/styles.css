@@ -4096,3 +4096,191 @@
 @media (prefers-reduced-motion: reduce) {
   .cc-voice-wake-btn--on .cc-voice-wake-dot { animation: none; }
 }
+
+/* ── COUNCIL PRESETS (rooms.js MY PRESETS section) ────────────────────── */
+.cc-room-presets {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cc-room-preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.cc-room-preset-empty {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  opacity: 0.45;
+  padding: 6px 4px;
+}
+.cc-room-preset-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: color-mix(in srgb, var(--cc-void) 50%, var(--cc-surface));
+  border: 1px solid color-mix(in srgb, var(--cc-border) 70%, transparent);
+  border-radius: 4px;
+  padding: 6px 12px;
+  transition: border-color 0.2s;
+}
+.cc-room-preset-card:hover {
+  border-color: color-mix(in srgb, var(--cc-crimson) 30%, var(--cc-border));
+}
+.cc-room-preset-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cc-room-preset-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--cc-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-room-preset-count {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  color: color-mix(in srgb, var(--cc-fg) 55%, transparent);
+  letter-spacing: 0.04em;
+}
+.cc-room-preset-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.cc-room-preset-launch,
+.cc-room-preset-delete,
+.cc-room-save-preset-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cc-room-preset-launch {
+  border: 1px solid var(--cc-crimson);
+  color: var(--cc-crimson-hot);
+}
+.cc-room-preset-launch:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red, #c0392b) 12%, transparent);
+  box-shadow: 0 0 8px var(--cc-crimson-glow);
+}
+.cc-room-preset-delete {
+  border: 1px solid var(--cc-border);
+  color: color-mix(in srgb, var(--cc-fg) 75%, transparent);
+}
+.cc-room-preset-delete:hover:not(:disabled) {
+  border-color: var(--cc-crimson);
+  color: var(--cc-crimson-hot);
+}
+.cc-room-save-preset-btn {
+  border: 1px solid var(--cc-crimson);
+  color: var(--cc-crimson-hot);
+  margin-left: 4px;
+}
+.cc-room-save-preset-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red, #c0392b) 12%, transparent);
+  box-shadow: 0 0 8px var(--cc-crimson-glow);
+}
+
+/* ── CHANGELOG panel (cc-changelog.js) ────────────────────────────────── */
+.cc-changelog-panel {
+  margin: 8px 12px 4px;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  background: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 3%, transparent);
+  border-radius: 4px;
+}
+.cc-changelog-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.cc-changelog-head:focus-visible {
+  outline: 2px solid var(--cc-crimson, var(--red, #c0392b));
+  outline-offset: 1px;
+}
+.cc-changelog-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--cc-crimson-hot, var(--cc-crimson, var(--red, #c0392b)));
+  flex: 1;
+}
+.cc-changelog-gen-badge {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  padding: 2px 6px;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--cc-fg) 35%, transparent);
+  color: color-mix(in srgb, var(--cc-fg) 75%, transparent);
+}
+.cc-changelog-gen-badge[hidden] { display: none; }
+.cc-changelog-chevron {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--cc-fg) 65%, transparent);
+}
+.cc-changelog-body {
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 10px;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--cc-fg) 80%, transparent);
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 4px 12px 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  border-top: 1px solid color-mix(in srgb, var(--cc-border) 60%, transparent);
+}
+.cc-changelog-body[hidden] { display: none; }
+
+/* ── Language picker in the brand bar (i18n.js) ───────────────────────── */
+.cc-locale-picker {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 2px 18px 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--cc-border);
+  background: transparent;
+  color: color-mix(in srgb, var(--cc-fg) 75%, transparent);
+  cursor: pointer;
+  text-transform: uppercase;
+  outline: none;
+  transition: border-color 0.15s, color 0.15s;
+  /* tiny chevron via SVG data URI so we don't need an icon font */
+  background-image: linear-gradient(45deg, transparent 50%, color-mix(in srgb, var(--cc-fg) 60%, transparent) 50%),
+                    linear-gradient(135deg, color-mix(in srgb, var(--cc-fg) 60%, transparent) 50%, transparent 50%);
+  background-position: calc(100% - 10px) 50%, calc(100% - 6px) 50%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+}
+.cc-locale-picker:hover,
+.cc-locale-picker:focus-visible {
+  border-color: var(--cc-crimson);
+  color: var(--cc-crimson-hot);
+  outline: none;
+}
+.cc-locale-picker option {
+  background: var(--cc-void-mid);
+  color: var(--cc-fg);
+}

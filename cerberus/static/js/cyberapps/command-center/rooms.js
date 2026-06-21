@@ -199,6 +199,7 @@ function _buildRoomChatView(room) {
     <button class="cc-room-mode-toggle cc-room-mode-badge ${modeClass}" data-room-id="${_esc(room.id)}" data-current-mode="${_esc(room.mode || 'routed')}" title="Click to toggle mode">${_esc(modeLabel)}</button>
     ${_tokenMeter(room)}
     <button class="cc-room-call-btn" title="Start group voice call">📞 Call</button>
+    <button class="cc-room-save-preset-btn" title="Save this room composition as a preset">// SAVE CURRENT</button>
     <button class="cc-room-chat-clear-btn" title="Clear messages">Clear</button>
   </div>
   <div class="cc-chat-messages" id="cc-room-messages">
@@ -345,6 +346,12 @@ async function _openRoom(container, room) {
   const clearBtn   = container.querySelector('.cc-room-chat-clear-btn');
   const modeBtn    = container.querySelector('.cc-room-mode-toggle');
   const callBtn    = container.querySelector('.cc-room-call-btn');
+  const saveBtn    = container.querySelector('.cc-room-save-preset-btn');
+
+  // SAVE CURRENT — turn this room's participants into a named preset.
+  // Uses prompt() so we don't have to render a modal; the preset save is
+  // a low-frequency action so the UX cost is acceptable.
+  saveBtn?.addEventListener('click', () => _saveRoomAsPreset(room));
 
   modeBtn?.addEventListener('click', () => _toggleMode(modeBtn, container));
 
@@ -609,6 +616,7 @@ export function buildRoomsTab() {
     <button class="cc-ag-new-btn" id="cc-rooms-new-btn">+ New Room</button>
   </div>
   <div id="cc-room-templates-mount"></div>
+  <div id="cc-room-presets-mount"></div>
   <div id="cc-room-new-form-mount"></div>
   <div class="cc-rooms-filter-row">
     <input id="cc-rooms-filter" class="cc-rooms-filter-input"
@@ -632,8 +640,139 @@ export async function loadRooms(container) {
 
   _wireRoomFilter(container);
   await _renderTemplates(container);
+  await _renderPresets(container);
   await _loadRoomList(container);
 }
+
+// ---- MY PRESETS — owner-saved compositions (CouncilPreset) -------------
+//
+// Sits below the hardcoded TEMPLATES strip. List comes from
+// /api/council/presets; each card can LAUNCH (POST .../create-room) or
+// DELETE (DELETE /api/council/presets/{id}). The SAVE CURRENT button on
+// the room chat header (added in _buildRoomChatView) prompts for a name
+// and POSTs the current room's participant names.
+
+async function _renderPresets(container) {
+  const mount = container.querySelector('#cc-room-presets-mount');
+  if (!mount) return;
+  try {
+    const res = await fetch('/api/council/presets', { credentials: 'same-origin' });
+    if (!res.ok) {
+      // Hide the section entirely on 401/etc so a half-rendered shell
+      // doesn't sit there.
+      mount.innerHTML = '';
+      return;
+    }
+    const data = await res.json();
+    const presets = Array.isArray(data.presets) ? data.presets : [];
+    mount.innerHTML = `
+<div class="cc-room-presets">
+  <div class="cc-section-label">// MY PRESETS</div>
+  ${presets.length
+    ? `<div class="cc-room-preset-list">
+        ${presets.map(p => _presetCard(p)).join('')}
+      </div>`
+    : `<div class="cc-room-preset-empty">// NO SAVED PRESETS — launch a room and save it.</div>`}
+</div>`.trim();
+    mount.querySelectorAll('.cc-room-preset-launch').forEach(btn => {
+      btn.addEventListener('click', () => _launchPreset(container, btn.dataset.id));
+    });
+    mount.querySelectorAll('.cc-room-preset-delete').forEach(btn => {
+      btn.addEventListener('click', () => _deletePreset(container, btn.dataset.id, btn.dataset.name));
+    });
+  } catch (_) {
+    mount.innerHTML = '';
+  }
+}
+
+function _presetCard(p) {
+  const name  = String(p.name || '(unnamed)');
+  const count = Number(p.agent_count || 0);
+  const desc  = String(p.description || '');
+  const id    = String(p.id || '');
+  return `
+    <div class="cc-room-preset-card" data-id="${_esc(id)}">
+      <div class="cc-room-preset-info">
+        <span class="cc-room-preset-name" title="${_esc(desc || name)}">${_esc(name)}</span>
+        <span class="cc-room-preset-count">${count} agent${count === 1 ? '' : 's'}</span>
+      </div>
+      <div class="cc-room-preset-actions">
+        <button type="button" class="cc-room-preset-launch" data-id="${_esc(id)}">LAUNCH</button>
+        <button type="button" class="cc-room-preset-delete" data-id="${_esc(id)}" data-name="${_esc(name)}">DELETE</button>
+      </div>
+    </div>
+  `.trim();
+}
+
+async function _launchPreset(container, presetId) {
+  if (!presetId) return;
+  try {
+    const res = await fetch(`/api/council/presets/${encodeURIComponent(presetId)}/create-room`, {
+      method: 'POST', credentials: 'same-origin',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    await _loadRoomList(container);
+    if (data.room) await _openRoom(container, data.room);
+  } catch (e) {
+    alert(`Failed to launch preset: ${e.message}`);
+  }
+}
+
+async function _deletePreset(container, presetId, name) {
+  if (!presetId) return;
+  if (!confirm(`Delete preset "${name}"?`)) return;
+  try {
+    const res = await fetch(`/api/council/presets/${encodeURIComponent(presetId)}`, {
+      method: 'DELETE', credentials: 'same-origin',
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await _renderPresets(container);
+  } catch (e) {
+    alert(`Failed to delete preset: ${e.message}`);
+  }
+}
+
+async function _saveRoomAsPreset(room) {
+  if (!room) return;
+  // Resolve participant ids → agent names via the cache loaded by loadRooms.
+  // Agents present in the cache get their .name; unknown ids fall back to
+  // the id string so the preset still saves (server skips at create-room
+  // time if the name doesn't resolve for the current owner).
+  const names = (room.participant_ids || []).map(id => {
+    const a = _agentById(id);
+    return (a && a.name) ? a.name : String(id);
+  }).filter(Boolean);
+  if (!names.length) {
+    alert('Cannot save preset: room has no participants.');
+    return;
+  }
+  const suggested = (room.name || '').split(' — ')[0] || room.name || 'My Preset';
+  const presetName = prompt('Name for this preset:', suggested);
+  if (!presetName || !presetName.trim()) return;
+
+  try {
+    const res = await fetch('/api/council/presets', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: presetName.trim(),
+        description: `Saved from room: ${room.name}`,
+        agent_names: names,
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || `HTTP ${res.status}`);
+    }
+    // Best-effort UI hint — there's no toast surface in the room chat view.
+    alert(`// PRESET SAVED — ${presetName.trim()}`);
+  } catch (e) {
+    alert(`Failed to save preset: ${e.message}`);
+  }
+}
+
 
 // Helpers exported only for tests. Keep this at the bottom so import-time
 // side effects on the rest of the module stay minimal.

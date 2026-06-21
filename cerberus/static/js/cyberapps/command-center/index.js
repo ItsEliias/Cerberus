@@ -19,6 +19,7 @@ import { buildObservabilityTab, loadObservability } from './observability.js';
 import { buildCompareTab, loadCompareTab } from './cc-compare.js';
 import { initShortcuts, destroyShortcuts } from './shortcuts.js';
 import * as Poll from './poll.js';
+import { t, setLocale, getLocale, AVAILABLE_LOCALES } from '/static/js/i18n.js';
 
 // Inject CC stylesheet once — version param busts browser/SW cache on updates
 (function injectCSS() {
@@ -32,6 +33,10 @@ import * as Poll from './poll.js';
 
 // ---- Tab config ----
 
+// `label` is the English fallback (also what shortcuts.js / older
+// callers expect on the object). Display now goes through
+// `t("nav.<id>")`; CSS upper-cases at the leaf so the translated
+// title-case strings ("Command", "Comando") render uppercased.
 const TABS = [
   { id: 'command',       label: 'COMMAND'   },
   { id: 'council',       label: 'COUNCIL'   },
@@ -44,6 +49,20 @@ const TABS = [
   { id: 'compare',       label: 'COMPARE'   },
   { id: 'observability', label: 'OBSERVE'   },
 ];
+
+function _tabLabel(tab) {
+  // t() falls back to en, then the key itself; safe even when no
+  // translation exists. Older code-paths can still read tab.label.
+  return t(`nav.${tab.id}`) || tab.label;
+}
+
+function _renderTabNavHTML(activeTab) {
+  // Local var named `tab` so it doesn't shadow the imported `t()` helper.
+  return TABS.map(tab => `
+    <button class="cc-tab-btn${tab.id === activeTab ? ' active' : ''}"
+      data-tab="${tab.id}">${_tabLabel(tab)}
+    </button>`).join('');
+}
 
 // ---- Module state ----
 
@@ -90,14 +109,15 @@ function _render() {
       </div>
       <span class="cc-brand-spacer"></span>
       <span class="cc-clock" id="cc-clock">--:--:--</span>
+      <select class="cc-locale-picker" id="cc-locale-picker"
+        title="Interface language" aria-label="Interface language">
+        ${AVAILABLE_LOCALES.map(loc => `
+          <option value="${loc}"${loc === getLocale() ? ' selected' : ''}>${loc.toUpperCase()}</option>
+        `).join('')}
+      </select>
       <button class="cc-refresh-btn" id="cc-refresh">REFRESH</button>
     </div>
-    <nav class="cc-tab-nav" id="cc-tab-nav">
-      ${TABS.map(t => `
-        <button class="cc-tab-btn${t.id === _activeTab ? ' active' : ''}"
-          data-tab="${t.id}">${t.label}
-        </button>`).join('')}
-    </nav>
+    <nav class="cc-tab-nav" id="cc-tab-nav">${_renderTabNavHTML(_activeTab)}</nav>
     <div class="cc-tab-content" id="cc-tab-content"></div>
   `.trim();
 
@@ -116,6 +136,30 @@ function _render() {
       Poll.start(_pollCallbacks(shell));
     });
   }
+
+  // Language picker — setLocale() persists + dispatches the event the
+  // listener below picks up to re-render the nav. We don't need to
+  // listen here because setLocale fires synchronously.
+  const localePicker = shell.querySelector('#cc-locale-picker');
+  if (localePicker) {
+    localePicker.addEventListener('change', () => setLocale(localePicker.value));
+  }
+
+  // Re-render the tab nav when the locale changes. Other modules can
+  // subscribe to the same event for their own labels — keeping the
+  // listener at the shell level means tab content also gets refreshed
+  // via _mountTab(_activeTab) so newly-mounted children see the new locale.
+  const _onLocaleChanged = () => {
+    const nav = shell.querySelector('#cc-tab-nav');
+    if (nav) {
+      nav.innerHTML = _renderTabNavHTML(_activeTab);
+      nav.querySelectorAll('.cc-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => _switchTab(btn.dataset.tab, shell));
+      });
+    }
+    if (localePicker) localePicker.value = getLocale();
+  };
+  document.addEventListener('cerberus:locale-changed', _onLocaleChanged);
 
   _startClock(shell);
   _mountTab('command', shell);

@@ -16,6 +16,7 @@ import { buildNotesPanel, loadNotes } from './cc-notes.js';
 import { buildResearchPanel, loadResearch } from './cc-research.js';
 import { buildContactsPanel, loadContacts } from './cc-contacts.js';
 import { buildMemoryTimelinePanel, loadMemoryTimeline } from './cc-memory-timeline.js';
+import { buildChangelogPanel, loadChangelog } from './cc-changelog.js';
 
 const SYSTEM_PROMPT = 'You are the Cerberus operations assistant. Answer concisely about the Cerberus system state, tasks, agents, and operations. Be direct and informative.';
 const API = '/api/chat_stream';
@@ -83,6 +84,7 @@ export function buildAssistantTab() {
       </div>
     </section>
     ${buildDocsPanel()}
+    ${buildChangelogPanel()}
     ${buildNotesPanel()}
     ${buildResearchPanel()}
     ${buildContactsPanel()}
@@ -141,6 +143,8 @@ export function initAssistant(root) {
   loadMemoryTimeline(root);
   // DOCUMENTS — library list, viewer, PDF import, new + delete.
   loadDocs(root);
+  // CHANGELOG — collapsible // WHAT'S NEW panel, lazy-loaded on expand.
+  loadChangelog(root);
   // Re-render when the onboarding wizard reports a successful save so the
   // panel reflects the latest state immediately.
   const _profileBus = () => _loadOpProfile(root);
