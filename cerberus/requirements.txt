@@ -61,3 +61,7 @@ psutil
 # Wrapped by services/docs/markitdown_converter.py with lazy init so the
 # heavy optional deps load only on first use.
 markitdown>=0.1.5
+# LLMLingua-2 token compression for tool outputs and RAG chunks.
+# Pulls in PyTorch — large install; operators can skip and the fallback
+# identity path keeps everything working without it.
+llmlingua
