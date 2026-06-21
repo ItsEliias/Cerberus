@@ -1739,6 +1739,7 @@ async def stream_agent_loop(
     tool_policy: Optional[ToolPolicy] = None,
     _is_teacher_run: bool = False,
     agent_id: Optional[str] = None,
+    always_include: Optional[frozenset] = None,
 ) -> AsyncGenerator[str, None]:
     """Streaming agent loop generator.
 
@@ -1826,17 +1827,8 @@ async def stream_agent_loop(
                         )
                 if _retrieval_query:
                     try:
-                        # TODO: wire in Phase 4a — gateway-origin sessions
-                        # (Discord/Telegram/Slack) should pass
-                        # always_include=ASSISTANT_ALWAYS_AVAILABLE here so
-                        # personal-assistant tools (manage_calendar,
-                        # manage_notes, manage_tasks, list_emails, …) survive
-                        # any retrieval miss. Requires threading a gateway
-                        # flag from chat_routes.chat_stream into this loop;
-                        # ToolIndex.get_tools_for_query already accepts the
-                        # always_include kwarg.
                         _relevant_tools = await asyncio.wait_for(
-                            asyncio.to_thread(tool_idx.get_tools_for_query, _retrieval_query, 8),
+                            asyncio.to_thread(tool_idx.get_tools_for_query, _retrieval_query, 8, always_include),
                             timeout=_TOOL_SELECTION_TIMEOUT_SECONDS,
                         )
                         logger.info(f"[tool-rag] Retrieved tools for query: {sorted(_relevant_tools - ALWAYS_AVAILABLE)}")
