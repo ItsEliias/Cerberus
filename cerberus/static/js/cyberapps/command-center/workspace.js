@@ -73,6 +73,61 @@ export function buildWorkspaceTab() {
       </form>
     </div>
 
+    <!-- WEBHOOKS — backed by /api/webhooks (see routes/webhook_routes.py) -->
+    <div class="cc-section cc-webhook-section" id="cc-webhook-section">
+      <div class="cc-section-label cc-webhook-header">
+        <span>// WEBHOOKS</span>
+        <button class="cc-webhook-new-btn" id="cc-webhook-new-btn" type="button">+ ADD WEBHOOK</button>
+      </div>
+
+      <div class="cc-webhook-list" id="cc-webhook-list">
+        <div class="cc-webhook-empty">Loading…</div>
+      </div>
+
+      <div class="cc-webhook-toast" id="cc-webhook-toast" hidden></div>
+
+      <form class="cc-webhook-form" id="cc-webhook-form" hidden>
+        <div class="cc-webhook-form-grid">
+          <label class="cc-webhook-form-wide">
+            <span>NAME</span>
+            <input class="cc-webhook-input" id="cc-webhook-f-name" type="text" maxlength="100" required>
+          </label>
+          <label class="cc-webhook-form-wide">
+            <span>URL</span>
+            <input class="cc-webhook-input" id="cc-webhook-f-url" type="url" maxlength="2048" required>
+          </label>
+          <fieldset class="cc-webhook-form-wide cc-webhook-events-fieldset">
+            <legend>EVENTS</legend>
+            <!-- Event names hardcoded from src/webhook_manager.py
+                 ALLOWED_EVENTS (minus the internal "webhook.test"). No
+                 list endpoint exists, so this stays in lock-step with
+                 the server-side constant. -->
+            <label class="cc-webhook-event-check">
+              <input type="checkbox" name="event" value="session.created">
+              <span>session.created</span>
+            </label>
+            <label class="cc-webhook-event-check">
+              <input type="checkbox" name="event" value="chat.completed">
+              <span>chat.completed</span>
+            </label>
+            <label class="cc-webhook-event-check">
+              <input type="checkbox" name="event" value="chat.message">
+              <span>chat.message</span>
+            </label>
+          </fieldset>
+          <label class="cc-webhook-form-wide">
+            <span>SECRET (OPTIONAL)</span>
+            <input class="cc-webhook-input" id="cc-webhook-f-secret" type="password" maxlength="256" autocomplete="off">
+          </label>
+        </div>
+        <div class="cc-webhook-form-actions">
+          <button type="button" class="cc-webhook-cancel-btn" id="cc-webhook-cancel-btn">CANCEL</button>
+          <button type="submit" class="cc-webhook-submit-btn" id="cc-webhook-submit-btn">CREATE WEBHOOK</button>
+        </div>
+        <div class="cc-webhook-form-error" id="cc-webhook-form-error" hidden></div>
+      </form>
+    </div>
+
     <div class="cc-section-header">Workspace</div>
     <div id="cc-ws-body"><div class="cc-empty">Loading workspace...</div></div>
   </div>`;
@@ -82,6 +137,9 @@ export async function loadWorkspace(root) {
   // 1. SCHEDULED TASKS section — wire FIRST so it's responsive even if the
   //    aggregate grid below is slow.
   _initScheduledTasksSection(root);
+
+  // 1b. WEBHOOKS section — same lifecycle pattern as scheduler.
+  _initWebhooksSection(root);
 
   // 2. Aggregate grid (notes/tasks/chats/library) — preserved verbatim.
   const body = root.querySelector('#cc-ws-body');
@@ -508,4 +566,297 @@ function _esc(s) {
   const d = document.createElement('div');
   d.textContent = String(s || '');
   return d.innerHTML;
+}
+
+
+// ── WEBHOOKS section ────────────────────────────────────────────────────────
+//
+// Backed by /api/webhooks (routes/webhook_routes.py). Endpoints used:
+//   GET    /api/webhooks                  → [{ id, name, url, has_secret,
+//                                              events: [], is_active,
+//                                              last_triggered_at,
+//                                              last_status_code,
+//                                              last_error, created_at }]
+//   POST   /api/webhooks                  → Form: name, url, secret, events
+//                                            (CSV) → { id, name }
+//   PATCH  /api/webhooks/{id}             → toggles is_active → { id, is_active }
+//   DELETE /api/webhooks/{id}             → { status: "deleted" }
+//   POST   /api/webhooks/{id}/test        → { status: "sent" }
+//
+// All require admin auth (require_admin). The CC is mounted under the
+// browser session cookie, so this works transparently for the operator.
+// Event names are hardcoded — see comment in buildWorkspaceTab().
+
+const _WEBHOOK_POLL_MS = 30_000;
+const _WEBHOOK_POLL_KEY = '__webhookPollId';
+const _WEBHOOK_URL_MAX = 40;
+
+function _initWebhooksSection(root) {
+  if (!root || !root.querySelector) return;
+
+  const prev = root[_WEBHOOK_POLL_KEY];
+  if (prev) clearInterval(prev);
+  root[_WEBHOOK_POLL_KEY] = setInterval(() => _loadWebhooks(root), _WEBHOOK_POLL_MS);
+
+  _loadWebhooks(root);
+
+  const newBtn   = root.querySelector('#cc-webhook-new-btn');
+  const cancelBt = root.querySelector('#cc-webhook-cancel-btn');
+  const form     = root.querySelector('#cc-webhook-form');
+  const list     = root.querySelector('#cc-webhook-list');
+
+  if (newBtn)   newBtn.addEventListener('click', () => _showWebhookForm(root));
+  if (cancelBt) cancelBt.addEventListener('click', () => _hideWebhookForm(root));
+  if (form)     form.addEventListener('submit', (e) => _submitWebhookForm(root, e));
+  if (list)     list.addEventListener('click', (e) => _onWebhookListClick(root, e));
+}
+
+async function _loadWebhooks(root) {
+  const list = root.querySelector('#cc-webhook-list');
+  if (!list) return;
+  try {
+    const r = await fetch('/api/webhooks', { credentials: 'same-origin' });
+    if (!r.ok) {
+      // Soft-fail — leave the last-known list visible so a transient hiccup
+      // doesn't wipe pending Test/Delete confirms the user just clicked.
+      // BUT a 401/403 means we shouldn't keep blank-rendering "Loading…".
+      if ((r.status === 401 || r.status === 403) && /Loading…/.test(list.textContent)) {
+        list.innerHTML = '<div class="cc-webhook-empty">Admin access required.</div>';
+      }
+      return;
+    }
+    const data = await r.json();
+    _renderWebhooks(root, Array.isArray(data) ? data : []);
+  } catch (_) {}
+}
+
+function _renderWebhooks(root, hooks) {
+  const list = root.querySelector('#cc-webhook-list');
+  if (!list) return;
+  if (!hooks.length) {
+    list.innerHTML = '<div class="cc-webhook-empty">No webhooks configured.</div>';
+    return;
+  }
+  list.innerHTML = hooks.map(_buildWebhookRow).join('');
+}
+
+function _buildWebhookRow(h) {
+  const id    = String(h.id || '');
+  const name  = String(h.name || '(unnamed)');
+  const url   = String(h.url || '');
+  const isOn  = !!h.is_active;
+  const togglAction = isOn ? 'deactivate' : 'activate';
+  const togglLabel  = isOn ? 'PAUSE' : 'ACTIVATE';
+
+  const urlDisplay = url.length > _WEBHOOK_URL_MAX
+    ? url.slice(0, _WEBHOOK_URL_MAX) + '…'
+    : url;
+
+  const events = Array.isArray(h.events) ? h.events : [];
+  const chips = events.length
+    ? events.map(e => `<span class="cc-webhook-chip">${_esc(e)}</span>`).join('')
+    : '<span class="cc-webhook-chip cc-webhook-chip--muted">(no events)</span>';
+
+  return `
+    <div class="cc-webhook-row" data-id="${_esc(id)}" data-active="${isOn ? '1' : '0'}">
+      <div class="cc-webhook-row-main">
+        <div class="cc-webhook-row-name" title="${_esc(name)}">${_esc(name)}</div>
+        <div class="cc-webhook-row-url" title="${_esc(url)}">${_esc(urlDisplay)}</div>
+        <div class="cc-webhook-row-chips">${chips}</div>
+      </div>
+      <div class="cc-webhook-row-side">
+        <span class="cc-webhook-row-status cc-webhook-row-status--${isOn ? 'on' : 'off'}">
+          ${isOn ? 'ACTIVE' : 'INACTIVE'}
+        </span>
+        <button type="button" class="cc-webhook-test-btn"  data-action="test"   data-id="${_esc(id)}">TEST</button>
+        <button type="button" class="cc-webhook-toggle-btn" data-action="${_esc(togglAction)}" data-id="${_esc(id)}">${togglLabel}</button>
+        <button type="button" class="cc-webhook-delete-btn" data-action="delete" data-id="${_esc(id)}">DELETE</button>
+      </div>
+    </div>
+  `.trim();
+}
+
+function _onWebhookListClick(root, e) {
+  const btn = e.target && e.target.closest && e.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+  if (!id) return;
+  if (action === 'activate' || action === 'deactivate') {
+    _toggleWebhook(root, id, btn);
+  } else if (action === 'test') {
+    _testWebhook(root, id, btn);
+  } else if (action === 'delete') {
+    _startWebhookDeleteConfirm(root, id, btn);
+  } else if (action === 'confirm-delete') {
+    _confirmWebhookDelete(root, id, btn);
+  } else if (action === 'cancel-delete') {
+    _cancelWebhookDeleteConfirm(btn);
+  }
+}
+
+async function _toggleWebhook(root, id, btn) {
+  // PATCH /api/webhooks/{id} flips is_active server-side; the next list
+  // refresh swaps the row's polarity.
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/webhooks/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      credentials: 'same-origin',
+    });
+    if (!r.ok) {
+      _flashWebhookToast(root, '// TOGGLE FAILED');
+      btn.disabled = false;
+      return;
+    }
+    _loadWebhooks(root);
+  } catch (_) {
+    _flashWebhookToast(root, '// NETWORK ERROR');
+    btn.disabled = false;
+  }
+}
+
+async function _testWebhook(root, id, btn) {
+  btn.disabled = true;
+  const prevLabel = btn.textContent;
+  btn.textContent = 'TESTING…';
+  try {
+    const r = await fetch(`/api/webhooks/${encodeURIComponent(id)}/test`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
+    if (!r.ok) {
+      const detail = await _readErrDetail(r);
+      _flashWebhookToast(root, detail ? `// TEST FAILED: ${detail}` : '// TEST FAILED');
+      return;
+    }
+    _flashWebhookToast(root, '// TEST PING SENT');
+    // Server records last_triggered_at / last_status_code asynchronously;
+    // refresh shortly to pick the updated badge state up.
+    setTimeout(() => _loadWebhooks(root), 1000);
+  } catch (_) {
+    _flashWebhookToast(root, '// NETWORK ERROR');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = prevLabel;
+  }
+}
+
+function _startWebhookDeleteConfirm(root, id, btn) {
+  const row = btn.closest('.cc-webhook-row');
+  if (!row) return;
+  const side = row.querySelector('.cc-webhook-row-side');
+  if (!side) return;
+  side.dataset.preConfirm = side.innerHTML;
+  side.innerHTML = `
+    <span class="cc-webhook-confirm-label">// CONFIRM?</span>
+    <button type="button" class="cc-webhook-confirm-btn"        data-action="confirm-delete" data-id="${_esc(String(id))}">YES</button>
+    <button type="button" class="cc-webhook-confirm-cancel-btn" data-action="cancel-delete"  data-id="${_esc(String(id))}">NO</button>
+  `;
+}
+
+function _cancelWebhookDeleteConfirm(btn) {
+  const side = btn.closest('.cc-webhook-row-side');
+  if (!side) return;
+  const prior = side.dataset.preConfirm;
+  if (prior !== undefined) {
+    side.innerHTML = prior;
+    delete side.dataset.preConfirm;
+  }
+}
+
+async function _confirmWebhookDelete(root, id, btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/webhooks/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+    });
+    if (!r.ok) {
+      _flashWebhookToast(root, '// DELETE FAILED');
+      btn.disabled = false;
+      return;
+    }
+    _flashWebhookToast(root, '// WEBHOOK DELETED');
+    _loadWebhooks(root);
+  } catch (_) {
+    _flashWebhookToast(root, '// NETWORK ERROR');
+    btn.disabled = false;
+  }
+}
+
+function _showWebhookForm(root) {
+  const form   = root.querySelector('#cc-webhook-form');
+  const err    = root.querySelector('#cc-webhook-form-error');
+  const newBtn = root.querySelector('#cc-webhook-new-btn');
+  if (form)   form.hidden = false;
+  if (err)    { err.hidden = true; err.textContent = ''; }
+  if (newBtn) newBtn.disabled = true;
+}
+
+function _hideWebhookForm(root) {
+  const form   = root.querySelector('#cc-webhook-form');
+  const newBtn = root.querySelector('#cc-webhook-new-btn');
+  if (form) {
+    form.hidden = true;
+    form.reset();
+  }
+  if (newBtn) newBtn.disabled = false;
+}
+
+async function _submitWebhookForm(root, e) {
+  e.preventDefault();
+  const form   = root.querySelector('#cc-webhook-form');
+  const name   = (root.querySelector('#cc-webhook-f-name')?.value || '').trim();
+  const url    = (root.querySelector('#cc-webhook-f-url')?.value || '').trim();
+  const secret = (root.querySelector('#cc-webhook-f-secret')?.value || '').trim();
+  const errEl  = root.querySelector('#cc-webhook-form-error');
+  const showErr = (msg) => { if (errEl) { errEl.hidden = false; errEl.textContent = msg; } };
+
+  if (!name) return showErr('Name is required.');
+  if (!url)  return showErr('URL is required.');
+
+  // Collect checked event names; webhook_routes expects a comma-separated string.
+  const events = Array.from(form ? form.querySelectorAll('input[name="event"]:checked') : [])
+    .map(input => input.value);
+  if (!events.length) return showErr('Pick at least one event.');
+
+  const body = new FormData();
+  body.append('name', name);
+  body.append('url', url);
+  body.append('secret', secret);
+  body.append('events', events.join(','));
+
+  const submitBtn = root.querySelector('#cc-webhook-submit-btn');
+  if (submitBtn) submitBtn.disabled = true;
+  if (errEl) errEl.hidden = true;
+
+  try {
+    const r = await fetch('/api/webhooks', {
+      method: 'POST',
+      credentials: 'same-origin',
+      body,
+    });
+    if (!r.ok) {
+      const detail = await _readErrDetail(r);
+      showErr(detail || `Error ${r.status}`);
+      return;
+    }
+    _hideWebhookForm(root);
+    _flashWebhookToast(root, '// WEBHOOK CREATED');
+    _loadWebhooks(root);
+  } catch (_) {
+    showErr('Network error. Please try again.');
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
+function _flashWebhookToast(root, message) {
+  const toast = root.querySelector('#cc-webhook-toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.hidden = false;
+  clearTimeout(toast.__hideId);
+  toast.__hideId = setTimeout(() => { toast.hidden = true; }, 2500);
 }
