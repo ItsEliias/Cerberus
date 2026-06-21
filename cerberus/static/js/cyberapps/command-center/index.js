@@ -18,6 +18,8 @@ import { buildRoomsTab, loadRooms } from './rooms.js';
 import { buildObservabilityTab, loadObservability } from './observability.js';
 import { buildCompareTab, loadCompareTab } from './cc-compare.js';
 import { initShortcuts, destroyShortcuts } from './shortcuts.js';
+import { initTour } from './cc-tour.js';
+import { openSettings, closeSettings, isSettingsOpen } from './cc-settings.js';
 import * as Poll from './poll.js';
 import { t, setLocale, getLocale, AVAILABLE_LOCALES } from '/static/js/i18n.js';
 
@@ -116,6 +118,21 @@ function _render() {
         `).join('')}
       </select>
       <button class="cc-refresh-btn" id="cc-refresh">REFRESH</button>
+      <button class="cc-gear-btn" id="cc-settings-gear" aria-label="Settings (,)" title="Settings (,)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06
+            a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09
+            A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83
+            l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09
+            A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83
+            l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09
+            a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83
+            l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09
+            a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
     </div>
     <nav class="cc-tab-nav" id="cc-tab-nav">${_renderTabNavHTML(_activeTab)}</nav>
     <div class="cc-tab-content" id="cc-tab-content"></div>
@@ -136,6 +153,19 @@ function _render() {
       Poll.start(_pollCallbacks(shell));
     });
   }
+
+  // Wire settings gear button
+  const gearBtn = shell.querySelector('#cc-settings-gear');
+  if (gearBtn) {
+    gearBtn.addEventListener('click', () => openSettings(shell));
+  }
+
+  // cerberus:open-settings — dispatched by shortcuts.js , key and command palette
+  const _onOpenSettings = () => {
+    if (isSettingsOpen()) closeSettings();
+    else openSettings(shell);
+  };
+  document.addEventListener('cerberus:open-settings', _onOpenSettings);
 
   // Language picker — setLocale() persists + dispatches the event the
   // listener below picks up to re-render the nav. We don't need to
@@ -166,6 +196,7 @@ function _render() {
   Poll.start(_pollCallbacks(shell));
   _startGatewayBadgePoll(shell);
   initShortcuts(shell, TABS);
+  initTour(shell);
 }
 
 // ---- GATEWAY tab pending-approval badge ----

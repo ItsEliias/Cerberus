@@ -269,7 +269,7 @@ function _renderTasks(root, tasks) {
   const list = root.querySelector('#cc-sched-list');
   if (!list) return;
   if (!tasks.length) {
-    list.innerHTML = '<div class="cc-sched-empty">No scheduled tasks yet.</div>';
+    list.innerHTML = '<div class="cc-sched-empty">// NO SCHEDULED TASKS YET — click + NEW above to create one.</div>';
     return;
   }
   list.innerHTML = tasks.map(t => _buildTaskRow(t)).join('');
@@ -646,7 +646,7 @@ function _renderWebhooks(root, hooks) {
   const list = root.querySelector('#cc-webhook-list');
   if (!list) return;
   if (!hooks.length) {
-    list.innerHTML = '<div class="cc-webhook-empty">No webhooks configured.</div>';
+    list.innerHTML = '<div class="cc-webhook-empty">// NO WEBHOOKS YET — click + ADD WEBHOOK above to create one.</div>';
     return;
   }
   list.innerHTML = hooks.map(_buildWebhookRow).join('');

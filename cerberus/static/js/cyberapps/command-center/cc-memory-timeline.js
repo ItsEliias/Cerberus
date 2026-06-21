@@ -245,7 +245,7 @@ export async function loadMemoryTimeline(container) {
   function _renderBody() {
     const filtered = _filterByCategory(entries, category);
     if (!filtered.length) {
-      body.innerHTML = '<div class="cc-empty">No memories in this view.</div>';
+      body.innerHTML = '<div class="cc-empty">// NO MEMORIES YET — chat with the assistant to start building your timeline.</div>';
       return;
     }
     const grouped = _groupByWeek(filtered);
