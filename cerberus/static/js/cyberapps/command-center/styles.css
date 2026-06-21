@@ -4284,3 +4284,41 @@
   background: var(--cc-void-mid);
   color: var(--cc-fg);
 }
+
+/* ── Gateway message log ──────────────────────────────────────────── */
+.cc-gw-msg-list { display: flex; flex-direction: column; gap: 8px; }
+.cc-gw-msg-row {
+  border: 1px solid var(--cc-border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--cc-fg);
+}
+.cc-gw-msg-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.cc-gw-msg-platform {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.08em;
+  padding: 1px 5px; border-radius: 3px;
+  background: color-mix(in srgb, var(--cc-crimson) 20%, transparent);
+  color: var(--cc-crimson-hot);
+}
+.cc-gw-msg-sender { opacity: 0.75; flex: 1; }
+.cc-gw-msg-ts { font-size: 9px; opacity: 0.45; white-space: nowrap; }
+.cc-gw-msg-preview {
+  font-size: 10px; opacity: 0.7; white-space: pre-wrap; word-break: break-word;
+  margin-bottom: 2px;
+}
+.cc-gw-msg-in  { color: var(--cc-fg); }
+.cc-gw-msg-out { opacity: 0.55; }
+.cc-gw-msg-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; }
+.cc-gw-msg-chip {
+  font-size: 9px; padding: 1px 5px; border-radius: 3px;
+  background: color-mix(in srgb, var(--cc-fg) 8%, transparent);
+  border: 1px solid var(--cc-border);
+  color: var(--cc-fg); opacity: 0.8;
+}
+.cc-gw-msg-status { font-size: 10px; margin-top: 3px; }
+.cc-gw-msg-approved { color: color-mix(in srgb, #2ecc71 80%, var(--cc-fg)); }
+.cc-gw-msg-rejected { color: var(--cc-crimson-hot); }
+.cc-gw-msg-neutral  { opacity: 0.45; }

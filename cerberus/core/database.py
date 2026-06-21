@@ -916,6 +916,68 @@ class PushToken(Base):
     )
 
 
+class GatewayMessage(Base):
+    """Audit log of inbound gateway messages (Discord/Telegram/Slack).
+
+    Stores previews only — full message/response content is never persisted to
+    limit exposure of untrusted inbound data. channel_id is masked in the API
+    response (middle digits replaced with *) so raw IDs are never returned.
+    """
+    __tablename__ = "gateway_messages"
+
+    id                      = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    owner                   = Column(String, nullable=True, index=True)
+    platform                = Column(String, nullable=False)           # "discord" | "telegram" | "slack"
+    channel_id              = Column(String, nullable=True)            # raw channel/chat ID — masked on read
+    sender                  = Column(String, nullable=True)            # display name only (no numeric IDs)
+    message_preview         = Column(String, nullable=True)            # first 200 chars of inbound message
+    agent_response_preview  = Column(String, nullable=True)            # first 200 chars of Cerberus reply
+    tool_calls_triggered    = Column(Text, nullable=True)              # JSON list of tool names
+    was_approved            = Column(Boolean, nullable=True)           # True/False/None
+    timestamp               = Column(DateTime, default=utcnow_naive, index=True)
+
+    __table_args__ = (
+        Index("ix_gateway_messages_owner_ts", "owner", "timestamp"),
+    )
+
+
+def _migrate_add_gateway_messages_table():
+    """Create the gateway_messages audit table if it doesn't exist (idempotent)."""
+    import sqlite3
+    db_path = DATABASE_URL.replace("sqlite:///", "")
+    if not os.path.exists(db_path):
+        return
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS gateway_messages (
+                id                     TEXT PRIMARY KEY,
+                owner                  TEXT,
+                platform               TEXT NOT NULL,
+                channel_id             TEXT,
+                sender                 TEXT,
+                message_preview        TEXT,
+                agent_response_preview TEXT,
+                tool_calls_triggered   TEXT,
+                was_approved           BOOLEAN,
+                timestamp              DATETIME
+            )
+        """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS ix_gateway_messages_owner_ts "
+            "ON gateway_messages (owner, timestamp)"
+        )
+        conn.commit()
+    except Exception as e:
+        logging.getLogger(__name__).warning("Migration gateway_messages failed: %s", e)
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
 def _migrate_add_routing_events_table():
     """Create the routing_events table if it doesn't yet exist.
 
@@ -2257,6 +2319,7 @@ def init_db():
     _migrate_drop_ping_notes_tasks()
     _migrate_add_crew_member_id()
     _migrate_add_assistant_columns()
+    _migrate_add_gateway_messages_table()
     _migrate_add_email_smtp_security()
     _migrate_seed_email_account()
     _migrate_add_calendar_metadata()
