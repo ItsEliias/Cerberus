@@ -840,6 +840,9 @@ app.include_router(setup_cerberus_routes())
 from routes.workspace_routes import setup_workspace_routes
 app.include_router(setup_workspace_routes())
 
+from routes.finance_routes import setup_finance_routes
+app.include_router(setup_finance_routes())
+
 # ========= ROUTES (kept in app.py) =========
 
 def _serve_html_with_nonce(request: Request, file_path: str) -> HTMLResponse:
