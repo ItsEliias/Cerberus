@@ -46,6 +46,7 @@ from src.tool_security import (
     GATEWAY_TOOL_ALLOWLIST,
     is_gateway_session,
 )
+from src.tool_index import ASSISTANT_ALWAYS_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -1162,6 +1163,7 @@ def setup_chat_routes(
                         fallbacks=_fallback_candidates,
                         plan_mode=plan_mode,
                         approved_plan=approved_plan or None,
+                        always_include=ASSISTANT_ALWAYS_AVAILABLE if _is_gateway else None,
                     ):
                         if chunk.startswith("data: ") and not chunk.startswith("data: [DONE]"):
                             try:
