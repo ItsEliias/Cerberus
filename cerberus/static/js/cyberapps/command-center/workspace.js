@@ -73,6 +73,15 @@ export function buildWorkspaceTab() {
       </form>
     </div>
 
+    <!-- GIT SUMMARY — POST /api/git/summarise (see routes/git_routes.py) -->
+    <div class="cc-section cc-git-section" id="cc-git-section">
+      <div class="cc-section-label cc-git-header">
+        <span>// GIT CHANGES</span>
+        <button class="cc-git-summarise-btn" id="cc-git-summarise-btn" type="button">// SUMMARISE LAST PUSH</button>
+      </div>
+      <div class="cc-git-result" id="cc-git-result" hidden></div>
+    </div>
+
     <!-- WEBHOOKS — backed by /api/webhooks (see routes/webhook_routes.py) -->
     <div class="cc-section cc-webhook-section" id="cc-webhook-section">
       <div class="cc-section-label cc-webhook-header">
@@ -140,6 +149,9 @@ export async function loadWorkspace(root) {
 
   // 1b. WEBHOOKS section — same lifecycle pattern as scheduler.
   _initWebhooksSection(root);
+
+  // 1c. GIT summary button — single click, in-place result panel.
+  _initGitSummarySection(root);
 
   // 2. Aggregate grid (notes/tasks/chats/library) — preserved verbatim.
   const body = root.querySelector('#cc-ws-body');
@@ -859,4 +871,49 @@ function _flashWebhookToast(root, message) {
   toast.hidden = false;
   clearTimeout(toast.__hideId);
   toast.__hideId = setTimeout(() => { toast.hidden = true; }, 2500);
+}
+
+// ─── GIT SUMMARY section ──────────────────────────────────────────────────
+// Single button + inline result panel. The summary itself is also saved as
+// a Note (see routes/git_routes.py), so this panel is just for in-context
+// feedback — fading after each click would lose the result before the user
+// reads it, so the panel sticks until the next click.
+
+function _initGitSummarySection(root) {
+  const btn = root.querySelector('#cc-git-summarise-btn');
+  const out = root.querySelector('#cc-git-result');
+  if (!btn || !out) return;
+  btn.addEventListener('click', async () => {
+    if (btn.disabled) return;
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '// SUMMARISING…';
+    out.hidden = false;
+    out.textContent = '…';
+    try {
+      const res = await fetch('/api/git/summarise', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`;
+        try {
+          const e = await res.json();
+          if (e?.detail) detail = String(e.detail);
+        } catch (_) { /* keep HTTP code */ }
+        throw new Error(detail);
+      }
+      const data = await res.json();
+      const summary = (data?.summary || '').trim()
+        || '(empty summary returned)';
+      out.textContent = summary;
+    } catch (e) {
+      out.textContent = `// SUMMARY FAILED — ${e.message}`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  });
 }

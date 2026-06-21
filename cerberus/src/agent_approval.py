@@ -44,7 +44,52 @@ def store_pending(
             "result": None,
             "created_at": time.time(),
         }
+    # Best-effort mobile push so the operator hears about the pending
+    # approval when they're away from the desktop. Resolution + dispatch
+    # are wrapped — every failure path is swallowed so the approval store
+    # write (the only thing the caller actually needs) never breaks.
+    _notify_owner_of_pending_approval(agent_id, tool_name, preview)
     return request_id
+
+
+def _notify_owner_of_pending_approval(
+    agent_id: str, tool_name: str, preview: str,
+) -> None:
+    try:
+        from core.database import CerberusAgent, SessionLocal
+        from src.push_notifications import send_push_notification
+
+        owner = None
+        db = SessionLocal()
+        try:
+            agent = (
+                db.query(CerberusAgent)
+                .filter(CerberusAgent.id == agent_id)
+                .first()
+            )
+            if agent is not None:
+                owner = agent.owner
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+        if not owner:
+            return
+        body_preview = (preview or "").strip()
+        if len(body_preview) > 140:
+            body_preview = body_preview[:139] + "…"
+        send_push_notification(
+            owner,
+            title="Cerberus — approval needed",
+            body=f"{tool_name}: {body_preview}",
+            data={"kind": "approval", "tool_name": tool_name},
+        )
+    except Exception:
+        # Notifications are auxiliary — never let a logging blip break the
+        # approval store. No re-raise, no log noise from here either; the
+        # push helper logs its own warnings already.
+        pass
 
 
 def get_pending(request_id: str) -> Optional[dict]:

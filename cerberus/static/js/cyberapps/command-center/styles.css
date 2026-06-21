@@ -3932,3 +3932,73 @@
   text-shadow: 0 0 6px var(--cc-crimson-glow);
 }
 .cc-email-status--err { color: var(--cc-crit); }
+
+/* ── Chat header: summarise button + result panel ──────────────
+ * Token-only. The result panel sits between the chat header and
+ * the message list; it fades out after 5s via a CSS opacity
+ * transition the click handler toggles. */
+.cc-chat-summarise-btn {
+  -webkit-appearance: none; appearance: none;
+  background: transparent;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 70%, transparent);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 4px 9px;
+  margin-left: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.cc-chat-summarise-btn:hover {
+  color: var(--cc-crimson, var(--red, #c0392b));
+  border-color: var(--cc-crimson, var(--red, #c0392b));
+  background: color-mix(in srgb, var(--cc-crimson, var(--red, #c0392b)) 8%, transparent);
+}
+.cc-chat-summarise-btn:disabled { opacity: 0.5; cursor: wait; }
+.cc-chat-summary {
+  margin: 0 12px 4px;
+  padding: 8px 12px;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  background: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 4%, transparent);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px; line-height: 1.5;
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+  white-space: pre-wrap;
+  opacity: 1;
+  transition: opacity 0.4s ease-out;
+}
+.cc-chat-summary--fade { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .cc-chat-summary { transition: none; }
+}
+
+/* ── Workspace: git summary section ───────────────────────────── */
+.cc-git-section { padding-top: 6px; }
+.cc-git-header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.cc-git-summarise-btn {
+  -webkit-appearance: none; appearance: none;
+  background: transparent;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  color: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 70%, transparent);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.cc-git-summarise-btn:hover {
+  color: var(--cc-crimson, var(--red, #c0392b));
+  border-color: var(--cc-crimson, var(--red, #c0392b));
+  background: color-mix(in srgb, var(--cc-crimson, var(--red, #c0392b)) 8%, transparent);
+}
+.cc-git-summarise-btn:disabled { opacity: 0.5; cursor: wait; }
+.cc-git-result {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--cc-border, var(--border, #3a2a2a));
+  background: color-mix(in srgb, var(--cc-fg, var(--fg, #c5c9d0)) 4%, transparent);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px; line-height: 1.5;
+  color: var(--cc-fg, var(--fg, #c5c9d0));
+  white-space: pre-wrap;
+}

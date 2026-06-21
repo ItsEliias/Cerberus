@@ -863,6 +863,25 @@ class SavedSearch(Base):
     timestamp = Column(DateTime, default=utcnow_naive)
 
 
+class PushToken(Base):
+    """Mobile push-notification target. One row per device — upserted by
+    (owner, device_id). The raw token is sensitive; it's never returned
+    over the API (see routes/mobile_routes.py)."""
+    __tablename__ = "push_tokens"
+
+    id           = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    owner        = Column(String, nullable=True, index=True)
+    token        = Column(String, nullable=False)
+    platform     = Column(String, nullable=False)  # "android" | "ios"
+    device_id    = Column(String, nullable=False)
+    created_at   = Column(DateTime, default=utcnow_naive)
+    last_seen_at = Column(DateTime, default=utcnow_naive)
+
+    __table_args__ = (
+        Index("ix_push_tokens_owner_device", "owner", "device_id", unique=True),
+    )
+
+
 def _migrate_add_routing_events_table():
     """Create the routing_events table if it doesn't yet exist.
 
@@ -980,6 +999,52 @@ def _migrate_add_search_history_table():
             )
     except Exception as e:
         logging.getLogger(__name__).warning(f"search_history migration failed: {e}")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+def _migrate_add_push_tokens_table():
+    """Create the push_tokens table if missing. Idempotent."""
+    import sqlite3
+    db_path = DATABASE_URL.replace("sqlite:///", "")
+    if not os.path.exists(db_path):
+        return
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='push_tokens'"
+        )
+        if cursor.fetchone():
+            return
+        conn.execute(
+            """
+            CREATE TABLE push_tokens (
+                id           TEXT PRIMARY KEY,
+                owner        TEXT,
+                token        TEXT NOT NULL,
+                platform     TEXT NOT NULL,
+                device_id    TEXT NOT NULL,
+                created_at   DATETIME,
+                last_seen_at DATETIME
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS ix_push_tokens_owner "
+            "ON push_tokens(owner)"
+        )
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_push_tokens_owner_device "
+            "ON push_tokens(owner, device_id)"
+        )
+        conn.commit()
+        logging.getLogger(__name__).info("Migrated: created 'push_tokens' table")
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"push_tokens migration failed: {e}")
     finally:
         try:
             conn.close()
@@ -2107,6 +2172,7 @@ def init_db():
     _migrate_add_last_message_at_column()
     _migrate_add_routing_events_table()
     _migrate_add_search_history_table()
+    _migrate_add_push_tokens_table()
     _migrate_add_folder_column()
     _migrate_add_token_columns()
     _migrate_add_mode_column()

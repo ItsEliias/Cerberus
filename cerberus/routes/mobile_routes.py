@@ -29,13 +29,32 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import desc, nullslast
 
+import uuid
+from datetime import datetime, timezone
+
+from pydantic import BaseModel
+
 from core.database import (
     AgentMessage,
     AgentThread,
     CerberusAgent,
+    PushToken,
     SessionLocal,
 )
 from src.auth_helpers import require_user
+
+
+def _utcnow_naive() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+_VALID_PLATFORMS = {"android", "ios"}
+
+
+class PushTokenBody(BaseModel):
+    token: str
+    platform: str
+    device_id: str
 
 logger = logging.getLogger(__name__)
 
@@ -309,6 +328,127 @@ def setup_mobile_routes() -> APIRouter:
                 "has_more": has_more,
                 "next_before": next_before,
             }
+        finally:
+            db.close()
+
+    # ── Push notification tokens ──────────────────────────────────────────
+    # The raw FCM/APNs token is sensitive — we accept it on POST, persist
+    # it, and NEVER return it on the GET list endpoint. Upsert is keyed by
+    # (owner, device_id) so a device that rotates its token (Android does
+    # this every ~30 days) updates in place instead of stacking rows.
+
+    @router.post("/push-token")
+    def upsert_push_token(
+        request: Request, body: PushTokenBody,
+    ) -> Dict[str, Any]:
+        owner = require_user(request)
+        token = (body.token or "").strip()
+        platform = (body.platform or "").strip().lower()
+        device_id = (body.device_id or "").strip()
+        if not token or not device_id:
+            raise HTTPException(400, "token and device_id are required")
+        if platform not in _VALID_PLATFORMS:
+            raise HTTPException(
+                400, f"platform must be one of: {', '.join(sorted(_VALID_PLATFORMS))}",
+            )
+
+        now = _utcnow_naive()
+        db = SessionLocal()
+        try:
+            existing = (
+                db.query(PushToken)
+                .filter(
+                    PushToken.owner == owner,
+                    PushToken.device_id == device_id,
+                )
+                .first()
+            )
+            if existing:
+                existing.token = token
+                existing.platform = platform
+                existing.last_seen_at = now
+                db.commit()
+                return {
+                    "id": existing.id,
+                    "device_id": existing.device_id,
+                    "platform": existing.platform,
+                    "created_at": existing.created_at.isoformat()
+                                  if existing.created_at else None,
+                    "last_seen_at": now.isoformat(),
+                    "updated": True,
+                }
+            row = PushToken(
+                id=str(uuid.uuid4()),
+                owner=owner,
+                token=token,
+                platform=platform,
+                device_id=device_id,
+                created_at=now,
+                last_seen_at=now,
+            )
+            db.add(row)
+            db.commit()
+            db.refresh(row)
+            return {
+                "id": row.id,
+                "device_id": row.device_id,
+                "platform": row.platform,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "last_seen_at": now.isoformat(),
+                "updated": False,
+            }
+        finally:
+            db.close()
+
+    @router.get("/push-tokens")
+    def list_push_tokens(request: Request) -> Dict[str, Any]:
+        """List owner's registered devices. Raw `token` field is never
+        returned — only `device_id`, `platform`, `last_seen_at`."""
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(PushToken)
+                .filter(PushToken.owner == owner)
+                .order_by(PushToken.last_seen_at.desc().nullslast())
+                .all()
+            )
+            return {
+                "tokens": [
+                    {
+                        "device_id": r.device_id,
+                        "platform": r.platform,
+                        "last_seen_at": r.last_seen_at.isoformat()
+                                        if r.last_seen_at else None,
+                    }
+                    for r in rows
+                ],
+            }
+        finally:
+            db.close()
+
+    @router.delete("/push-token/{device_id}")
+    def delete_push_token(
+        device_id: str, request: Request,
+    ) -> Dict[str, Any]:
+        owner = require_user(request)
+        device_id = (device_id or "").strip()
+        if not device_id:
+            raise HTTPException(400, "device_id is required")
+        db = SessionLocal()
+        try:
+            removed = (
+                db.query(PushToken)
+                .filter(
+                    PushToken.owner == owner,
+                    PushToken.device_id == device_id,
+                )
+                .delete(synchronize_session=False)
+            )
+            db.commit()
+            if not removed:
+                raise HTTPException(404, "device not registered")
+            return {"deleted": device_id}
         finally:
             db.close()
 
