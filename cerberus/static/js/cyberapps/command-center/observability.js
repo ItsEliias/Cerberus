@@ -212,7 +212,7 @@ export function buildObservabilityTab() {
   return `
 <div class="cc-obs-tab">
   <div class="cc-obs-header">
-    <span class="cc-obs-title">TOKEN OBSERVABILITY</span>
+    <span class="cc-section-label">TOKEN OBSERVABILITY</span>
   </div>
 
   <div class="cc-obs-counters">
@@ -245,49 +245,49 @@ export function buildObservabilityTab() {
   </div>
 
   <div class="cc-obs-spark-section">
-    <div class="cc-obs-spark-label">DAILY USAGE — LAST 30 DAYS</div>
+    <div class="cc-section-label">DAILY USAGE — LAST 30 DAYS</div>
     <div id="cc-obs-spark-wrap" class="cc-obs-spark-wrap">
       <div class="cc-empty">Loading…</div>
     </div>
   </div>
 
   <div class="cc-obs-spark-section">
-    <div class="cc-obs-spark-label">DAILY COST — LAST 30 DAYS (EST.)</div>
+    <div class="cc-section-label">DAILY COST — LAST 30 DAYS (EST.)</div>
     <div id="cc-obs-cost-spark-wrap" class="cc-obs-spark-wrap">
       <div class="cc-empty">Loading…</div>
     </div>
   </div>
 
   <div class="cc-obs-spark-section">
-    <div class="cc-obs-spark-label">PER-AGENT BREAKDOWN — TOP ${BREAKDOWN_CAP} (COST ESTIMATED)</div>
+    <div class="cc-section-label">PER-AGENT BREAKDOWN — TOP ${BREAKDOWN_CAP} (COST ESTIMATED)</div>
     <div id="cc-obs-per-agent" class="cc-obs-breakdown">
       <div class="cc-empty">Loading…</div>
     </div>
   </div>
 
   <div class="cc-obs-spark-section">
-    <div class="cc-obs-spark-label">PER-MODEL BREAKDOWN — TOP ${BREAKDOWN_CAP}</div>
+    <div class="cc-section-label">PER-MODEL BREAKDOWN — TOP ${BREAKDOWN_CAP}</div>
     <div id="cc-obs-per-model" class="cc-obs-breakdown">
       <div class="cc-empty">Loading…</div>
     </div>
   </div>
 
   <div class="cc-obs-spark-section cc-diag-section">
-    <div class="cc-obs-spark-label">// SYSTEM DIAGNOSTICS</div>
+    <div class="cc-section-label">SYSTEM DIAGNOSTICS</div>
     <div id="cc-diag-services" class="cc-diag-services">
       <div class="cc-empty">Loading…</div>
     </div>
   </div>
 
   <div class="cc-obs-spark-section cc-diag-section">
-    <div class="cc-obs-spark-label">// DATABASE</div>
+    <div class="cc-section-label">DATABASE</div>
     <div id="cc-diag-db" class="cc-diag-chips">
       <div class="cc-empty">Loading…</div>
     </div>
   </div>
 
   <div class="cc-obs-spark-section cc-diag-section">
-    <div class="cc-obs-spark-label">// RAG INDEX</div>
+    <div class="cc-section-label">RAG INDEX</div>
     <div id="cc-diag-rag" class="cc-diag-chips">
       <div class="cc-empty">Loading…</div>
     </div>
