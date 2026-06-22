@@ -303,25 +303,33 @@ function _agentRow(agent) {
   const health = String(agent.health_status || 'ok').toLowerCase();
   const healthTitle = `Health: ${health.toUpperCase()}`
                     + (agent.error_count ? ` (${agent.error_count} errors)` : '');
+  const roleLower  = (agent.role || agent.agent_type || '').toLowerCase();
+  const modelAlias = agent.model_alias || '—';
+  const isDupModel = modelAlias !== '—' && modelAlias.toLowerCase() === roleLower;
+  const modelClass = isDupModel ? 'cc-row-model cc-row-model--dup' : 'cc-row-model';
   return `
 <div class="cc-agent-row" data-id="${id}" data-status="${_esc(status)}" data-agent-name="${_esc(agent.name || '')}" data-agent-avatar="${_esc(agent.avatar || '')}" data-cat-accent="${_esc(accent)}" data-tts-voice="${_esc(agent.tts_voice || '')}">
   <span class="cc-status-pip ${_esc(status)}"></span>
-  <span class="cc-health-dot cc-health-dot--${_esc(health)}" title="${_esc(healthTitle)}" aria-label="${_esc(healthTitle)}"></span>
-  <span class="cc-row-sigil">${glyph}</span>
-  <span class="cc-row-name">${_esc(agent.name || agent.id)}</span>
+  <span class="cc-row-sigil-cell">
+    <span class="cc-health-dot cc-health-dot--${_esc(health)}" title="${_esc(healthTitle)}" aria-label="${_esc(healthTitle)}"></span>
+    <span class="cc-row-sigil">${glyph}</span>
+  </span>
+  <span class="cc-row-name-cell">
+    <span class="cc-row-name">${_esc(agent.name || agent.id)}</span>
+    ${agent.is_custom ? '<span class="cc-row-custom-badge" title="Custom agent">CUSTOM</span>' : ''}
+    ${(agent.pinned_skills && agent.pinned_skills.length)
+        ? `<span class="cc-row-skills-chip" title="Pinned skills: ${_esc(agent.pinned_skills.join(', '))}">📎 ${agent.pinned_skills.length}</span>`
+        : ''}
+  </span>
   <span class="cc-row-role">${_esc(agent.role || agent.agent_type || '—')}</span>
-  <span class="cc-row-model">${_esc(agent.model_alias || '—')}</span>
+  <span class="${modelClass}">${_esc(modelAlias)}</span>
   <span class="cc-row-score">${score}</span>
-  ${agent.is_custom ? '<span class="cc-row-custom-badge" title="Custom agent">CUSTOM</span>' : ''}
-  ${(agent.pinned_skills && agent.pinned_skills.length)
-      ? `<span class="cc-row-skills-chip" title="Pinned skills: ${_esc(agent.pinned_skills.join(', '))}">📎 ${agent.pinned_skills.length} skill${agent.pinned_skills.length === 1 ? '' : 's'}</span>`
-      : ''}
-  <span class="cc-ag-invoke-count" title="Total invocations">↑ ${_esc(agent.invocation_count || 0)}</span>
   <span class="cc-row-actions">
-    <button class="cc-row-btn cc-row-btn-chat">Chat</button>
-    <button class="cc-row-btn cc-row-btn-invoke">Run</button>
+    <span class="cc-ag-invoke-count" title="Total invocations">↑${_esc(agent.invocation_count || 0)}</span>
+    <button class="cc-row-btn cc-row-btn-chat" -webkit-appearance="none">Chat</button>
+    <button class="cc-row-btn cc-row-btn-invoke" -webkit-appearance="none">Run</button>
     <div class="cc-overflow-wrap">
-      <button class="cc-row-btn cc-row-btn-overflow">···</button>
+      <button class="cc-row-btn cc-row-btn-overflow" -webkit-appearance="none">···</button>
       <div class="cc-overflow-menu" id="cc-ov-${id}">
         <button class="cc-overflow-item cc-ov-call">📞 Call</button>
         <button class="cc-overflow-item cc-ov-memory">◎ Memory</button>
@@ -381,7 +389,7 @@ function _agentDetail(agent) {
         <div class="cc-ag-result" id="cc-ag-result-${id}"></div>
         <div class="cc-invoke-history" id="cc-invoke-history-${id}">
           <div class="cc-invoke-hist-head">
-            <span class="cc-section-label">// RECENT INVOCATIONS</span>
+            <span class="cc-section-label">RECENT INVOCATIONS</span>
             <button class="cc-invoke-hist-clear" data-agent-id="${id}" type="button">// CLEAR HISTORY</button>
           </div>
           <div class="cc-invoke-hist-list" id="cc-invoke-hist-list-${id}"></div>
@@ -474,8 +482,8 @@ function _createForm() {
   <label>System prompt <span class="cc-req">*</span></label>
   <textarea id="cc-create-prompt" rows="5" placeholder="You are …"></textarea>
   <div class="cc-ag-invoke-actions">
-    <button id="cc-create-submit">Create</button>
-    <button id="cc-create-cancel">Cancel</button>
+    <button id="cc-create-submit" class="cc-detail-btn cc-detail-btn-primary">Create</button>
+    <button id="cc-create-cancel" class="cc-detail-btn cc-detail-btn-secondary">Cancel</button>
   </div>
   <div id="cc-create-msg" class="cc-ag-edit-msg"></div>
 </div>`.trim();
@@ -692,12 +700,12 @@ function _wireRow(container, agentId) {
   const cancelBtn  = invokeForm?.querySelector('.cc-ag-cancel-btn');
   const exportBtn  = invokeForm?.querySelector('.cc-invoke-export-btn');
   const clearBtn   = invokeForm?.querySelector('.cc-invoke-hist-clear');
-  submitBtn?.addEventListener('click', () => _invokeAgentWithHistory(agentId, agent?.name, textarea, result, submitBtn, detail));
+  submitBtn?.addEventListener('click', () => _invokeAgentWithHistory(agentId, row.dataset.agentName, textarea, result, submitBtn, detail));
   cancelBtn?.addEventListener('click', () => {
     if (invokeForm) invokeForm.style.display = 'none';
     if (result)     result.textContent = '';
   });
-  exportBtn?.addEventListener('click', () => _exportInvokeHistory(agentId, agent?.name));
+  exportBtn?.addEventListener('click', () => _exportInvokeHistory(agentId, row.dataset.agentName));
   clearBtn?.addEventListener('click', () => {
     if (typeof confirm === 'function'
         && !confirm('Clear invocation history for this agent?')) return;

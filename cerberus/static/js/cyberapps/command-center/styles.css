@@ -1590,7 +1590,7 @@
 
 /* Column header — same grid as agent rows */
 .cc-roster-col-header {
-  display: grid; grid-template-columns: 14px 32px 1fr 150px 90px 44px 148px;
+  display: grid; grid-template-columns: 14px 32px 1fr 150px 90px 44px 172px;
   gap: 10px; padding: 5px 16px 4px;
   font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
   color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent);
@@ -1617,7 +1617,7 @@
 
 /* Agent row — scoped to .cc-agents-tab to avoid conflict with command.js mini-list */
 .cc-agents-tab .cc-agent-row {
-  display: grid; grid-template-columns: 14px 32px 1fr 150px 90px 44px 148px;
+  display: grid; grid-template-columns: 14px 32px 1fr 150px 90px 44px 172px;
   gap: 10px; align-items: center; padding: 8px 16px; cursor: pointer;
   border-bottom: 1px solid rgba(255,255,255,0.025);
   border-left: 2px solid transparent; transition: background 0.1s, border-left-color 0.15s;
@@ -1635,29 +1635,37 @@
 @keyframes cc-pip-pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
 
 /* Row cells */
-.cc-row-sigil { width: 30px; height: 30px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; justify-self: center; background: color-mix(in srgb, var(--fg, #c5c9d0) 8%, transparent); }
-.cc-row-name { font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cc-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cc-row-role { font-size: 12px; color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cc-row-model { font-size: 10px; padding: 2px 6px; border-radius: 2px; background: rgba(52,152,219,0.1); color: rgba(52,152,219,0.8); white-space: nowrap; display: inline-block; align-self: center; }
+/* Sigil cell: health dot + avatar icon in one 32px column */
+.cc-row-sigil-cell { width: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.cc-row-sigil { width: 28px; height: 28px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 14px; background: color-mix(in srgb, var(--fg, #c5c9d0) 8%, transparent); }
+/* Name cell: name + optional CUSTOM badge + skills chip in one 1fr column */
+.cc-row-name-cell { min-width: 0; display: flex; align-items: center; gap: 5px; overflow: hidden; }
+.cc-row-name { font-size: 13px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--cc-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
+.cc-row-custom-badge { flex-shrink: 0; font-size: 8px; font-weight: 700; letter-spacing: 0.08em; padding: 1px 5px; border-radius: 2px; background: color-mix(in srgb, var(--cc-crimson, #c0392b) 15%, transparent); color: var(--cc-crimson, #c0392b); border: 1px solid color-mix(in srgb, var(--cc-crimson, #c0392b) 30%, transparent); }
+.cc-row-skills-chip { flex-shrink: 0; font-size: 9px; opacity: 0.5; }
+.cc-row-role { font-size: 11px; color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cc-row-model { font-size: 10px; padding: 2px 6px; border-radius: 2px; background: rgba(52,152,219,0.1); color: rgba(52,152,219,0.8); white-space: nowrap; align-self: center; }
+.cc-row-model--dup { opacity: 0.35; }
 .cc-row-score { font-size: 12px; text-align: right; color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); font-variant-numeric: tabular-nums; }
 
-/* Row action cluster */
-.cc-row-actions { display: flex; gap: 4px; align-items: center; justify-content: flex-end; }
-.cc-row-btn { font-size: 10px; letter-spacing: 0.07em; padding: 3px 9px; border-radius: 2px; text-transform: uppercase; font-family: inherit; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+/* Row action cluster — invoke count + buttons in the rightmost column */
+.cc-row-actions { display: flex; gap: 4px; align-items: center; justify-content: flex-end; overflow: visible; }
+.cc-ag-invoke-count { font-size: 9px; letter-spacing: 0.04em; white-space: nowrap; opacity: 0.38; margin-right: 2px; font-family: 'JetBrains Mono', monospace; }
+.cc-row-btn { font-size: 10px; letter-spacing: 0.07em; padding: 3px 8px; border-radius: 2px; text-transform: uppercase; font-family: inherit; cursor: pointer; transition: all 0.15s; white-space: nowrap; -webkit-appearance: none; appearance: none; }
 .cc-row-btn-chat { background: rgba(192,57,43,0.1); border: 1px solid rgba(192,57,43,0.32); color: var(--cc-brand-red-300, #f06b5a); }
 .cc-row-btn-chat:hover { background: rgba(192,57,43,0.18); }
 .cc-row-btn-invoke { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); }
 .cc-row-btn-invoke:hover { border-color: rgba(255,255,255,0.25); color: color-mix(in srgb, var(--fg, #c5c9d0) 55%, transparent); }
-.cc-row-btn-overflow { background: transparent; border: 1px solid rgba(255,255,255,0.08); color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); padding: 2px 5px; font-size: 10px; line-height: 1; letter-spacing: 0; }
+.cc-row-btn-overflow { background: transparent; border: 1px solid rgba(255,255,255,0.08); color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); padding: 2px 5px; font-size: 10px; line-height: 1; letter-spacing: 0; -webkit-appearance: none; appearance: none; }
 .cc-row-btn-overflow:hover { border-color: rgba(255,255,255,0.2); color: color-mix(in srgb, var(--fg, #c5c9d0) 55%, transparent); }
 
-/* Overflow menu */
+/* Overflow menu — wide enough for full labels, opens inward from right edge */
 .cc-overflow-wrap { position: relative; }
-.cc-overflow-menu { position: absolute; right: 0; top: calc(100% + 2px); z-index: 50; background: var(--cc-void-mid, #0d0f12); border: 1px solid rgba(255,255,255,0.12); border-radius: 3px; min-width: 110px; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+.cc-overflow-menu { position: absolute; right: 0; top: calc(100% + 2px); z-index: 100; background: var(--cc-void-mid, #0d0f12); border: 1px solid rgba(255,255,255,0.12); border-radius: 3px; min-width: 140px; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
 .cc-overflow-menu.open { display: block; }
-.cc-overflow-item { display: block; width: 100%; text-align: left; padding: 6px 12px; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.04); color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent); font-family: inherit; cursor: pointer; transition: background 0.1s, color 0.1s; }
+.cc-overflow-item { display: block; width: 100%; text-align: left; padding: 7px 14px; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.04); color: color-mix(in srgb, var(--fg, #c5c9d0) 45%, transparent); font-family: inherit; cursor: pointer; transition: background 0.1s, color 0.1s; white-space: nowrap; -webkit-appearance: none; appearance: none; }
 .cc-overflow-item:last-child { border-bottom: none; }
-.cc-overflow-item:hover { background: rgba(255,255,255,0.05); color: color-mix(in srgb, var(--fg, #c5c9d0) 55%, transparent); }
+.cc-overflow-item:hover { background: rgba(255,255,255,0.05); color: color-mix(in srgb, var(--fg, #c5c9d0) 70%, transparent); }
 .cc-overflow-item.danger:hover { color: var(--cc-crit, #e74c3c); }
 
 /* Expand detail panel */
@@ -2455,18 +2463,7 @@
   opacity: 0.7;
 }
 
-/* ── Agents tab: invocation-count HUD chip ─────────────────── */
-/* Lives next to the score on each agent card. Rendering work in agents.js
-   is tracked separately (concurrent-session lock); the chip class is
-   shipped here so styling lands ahead of the markup. */
-.cc-ag-invoke-count {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-muted);
-  margin-left: 8px;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
+/* .cc-ag-invoke-count is now styled inline with .cc-row-actions (see above) */
 
 /* ── Agent memory viewer (extends .cc-ag-memory-panel) ─────────────────────
  * The spec named --surface-raise / --text-primary / --text-muted; this

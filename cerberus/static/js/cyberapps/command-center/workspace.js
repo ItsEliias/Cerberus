@@ -362,7 +362,10 @@ function _showSchedForm(root) {
   const form = root.querySelector('#cc-sched-form');
   const err  = root.querySelector('#cc-sched-form-error');
   const newBtn = root.querySelector('#cc-sched-new-btn');
-  if (form) form.hidden = false;
+  if (form) {
+    form.hidden = false;
+    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
   if (err)  { err.hidden = true; err.textContent = ''; }
   if (newBtn) newBtn.disabled = true;
 }
