@@ -1,0 +1,218 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/email-hud.css
+ * Nexus HUD Stage 2 Batch 2 — Email surface chrome.
+ * Scope: body.jx2-active
+ *
+ * HUD rule: chrome (folder bar, list chrome, reader header, toolbars)
+ * gets full HUD treatment. Email body content stays calm and readable —
+ * system-ui, NOT tiny mono, NOT scanlined.
+ *
+ * Email list items: 2px left border stripe; crimson on hover/unread,
+ * brighter crimson on active. Tag semantic colors preserved.
+ * Email reader body: 12px system-ui — NOT touched.
+ * ==================================================================== */
+
+/* ── Email folder bar ────────────────────────────────────────────────── */
+body.jx2-active .email-folder-bar {
+  background: var(--jx2-hud-surface) !important;
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+  padding: 5px 8px !important;
+}
+
+body.jx2-active .email-folder-select {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.08em !important;
+  background: color-mix(in srgb, var(--fg, #c5c9d0) 4%, transparent) !important;
+  border: 1px solid var(--jx2-hud-border) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: color-mix(in srgb, var(--fg, #c5c9d0) 70%, transparent) !important;
+}
+
+/* ── Email active filter chip ────────────────────────────────────────── */
+body.jx2-active .email-filter-chip {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.08em !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  border: 1px solid var(--jx2-crimson-600) !important;
+  background: color-mix(in srgb, var(--jx2-crimson-500) 10%, transparent) !important;
+  color: var(--jx2-crimson-300) !important;
+  margin: 3px 8px !important;
+}
+
+/* ── Email list items ────────────────────────────────────────────────── */
+body.jx2-active .email-item {
+  border-left: 2px solid transparent;
+  transition: background 150ms, border-left-color 150ms;
+}
+
+body.jx2-active .email-item:hover {
+  background: var(--jx2-hud-hover-bg) !important;
+  border-left-color: var(--jx2-hud-hover-border) !important;
+}
+
+/* Unread emails: crimson left border + slightly lighter sender */
+body.jx2-active .email-item.email-unread {
+  border-left-color: var(--jx2-crimson-500) !important;
+}
+
+body.jx2-active .email-item.email-unread .email-sender {
+  color: var(--jx2-crimson-300) !important;
+}
+
+/* Active/opened email: full crimson glow treatment */
+body.jx2-active .email-item.active,
+body.jx2-active .email-item.email-item-active {
+  border-left-color: var(--jx2-hud-active-border) !important;
+  background: var(--jx2-hud-active-bg) !important;
+  box-shadow: var(--jx2-hud-active-glow) !important;
+}
+
+/* ── Email item typography ───────────────────────────────────────────── */
+/* Sender: JetBrains Mono — it's metadata, not message content */
+body.jx2-active .email-sender {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.03em !important;
+}
+
+/* Date: mono, muted, 8px */
+body.jx2-active .email-date {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* Subject: keep readable system-ui, just increase legibility slightly */
+body.jx2-active .email-subject {
+  font-size: 11px !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+/* Spam tag: keep bright but slim it to match HUD chip style */
+body.jx2-active .email-tag-spam {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 7px !important;
+  letter-spacing: 0.06em !important;
+  border-radius: var(--jx2-radius-sm) !important;
+}
+
+/* ── Email load-more button ──────────────────────────────────────────── */
+body.jx2-active .email-load-more-btn {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  border: 1px solid var(--jx2-hud-chip-border) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  background: var(--jx2-hud-chip-bg) !important;
+  color: var(--jx2-hud-chip-text) !important;
+  transition: border-color 150ms, color 150ms;
+}
+
+body.jx2-active .email-load-more-btn:hover {
+  border-color: var(--jx2-crimson-500) !important;
+  color: var(--jx2-crimson-300) !important;
+}
+
+/* ── Email reader modal — header ─────────────────────────────────────── */
+body.jx2-active .email-reader-header {
+  background: var(--jx2-hud-surface) !important;
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+}
+
+/* Reader meta labels (From, To, Date) — mono */
+body.jx2-active .email-reader-meta {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.04em !important;
+}
+
+body.jx2-active .email-reader-meta-row strong {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-crimson-500) !important;
+  opacity: 1 !important;
+}
+
+/* Recipient chips — keep existing crimson hover but add HUD shape */
+body.jx2-active .recipient-chip {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.04em !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  border-color: var(--jx2-hud-chip-border) !important;
+}
+
+/* ── Email reader action buttons ─────────────────────────────────────── */
+body.jx2-active .email-reader-actions .memory-toolbar-btn,
+body.jx2-active .email-reader-actions .reader-icon-btn {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.06em !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  transition: background 150ms, color 150ms, border-color 150ms;
+}
+
+body.jx2-active .email-reader-actions .memory-toolbar-btn:hover,
+body.jx2-active .email-reader-actions .reader-icon-btn:hover {
+  color: var(--jx2-crimson-300) !important;
+  background: var(--jx2-hud-hover-bg) !important;
+  border-color: var(--jx2-hud-hover-border) !important;
+}
+
+/* ── Email reader body — calm, do NOT mono-ify ───────────────────────── */
+/* This section intentionally left blank — .email-reader-body already uses
+   12px system-ui which is correct per HUD content-split rule. */
+
+/* ── Compose fields ──────────────────────────────────────────────────── */
+body.jx2-active .email-field label {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-crimson-500) !important;
+  opacity: 1 !important;
+  min-width: 40px;
+}
+
+body.jx2-active .email-field input {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 10px !important;
+  border-color: var(--jx2-hud-border) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  background: color-mix(in srgb, var(--fg, #c5c9d0) 3%, transparent) !important;
+}
+
+body.jx2-active .email-field input:focus {
+  border-color: var(--jx2-crimson-500) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--jx2-crimson-500) 18%, transparent) !important;
+}
+
+/* Draft/send buttons — HUD chip */
+body.jx2-active .email-draft-btn {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  border-color: var(--jx2-hud-chip-border) !important;
+  color: var(--jx2-hud-chip-text) !important;
+  transition: border-color 150ms, color 150ms, background 150ms;
+}
+
+body.jx2-active .email-draft-btn:hover {
+  border-color: var(--jx2-crimson-500) !important;
+  color: var(--jx2-crimson-200) !important;
+  background: var(--jx2-hud-hover-bg) !important;
+}
+
+/* ── Reduced-motion killswitch ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  body.jx2-active .email-item {
+    transition: none !important;
+  }
+}
