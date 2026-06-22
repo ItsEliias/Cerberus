@@ -1,0 +1,272 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/notes-hud.css
+ * Nexus HUD Stage 2 Batch 2 — Notes surface chrome.
+ * Scope: body.jx2-active .notes-pane  (dynamically created by notes.js)
+ *
+ * HUD rule: chrome (header, search bar, filter chips, footer) gets full
+ * HUD treatment. Note body text (card titles, previews, editor content)
+ * stays calm and readable — system-ui, NOT tiny mono, NOT scanlined.
+ *
+ * Pinned cards: amber (--jx2-status-idle) left border.
+ * Active/selected: crimson left border.
+ * Card body text: 13px system-ui fw-600 title, 12px preview, unchanged.
+ * Note editor (note-form): 20px/15px system-ui — NOT touched.
+ * ==================================================================== */
+
+/* ── Pane container ──────────────────────────────────────────────────── */
+body.jx2-active .notes-pane {
+  background: var(--jx2-surface-base) !important;
+  border-left: 1px solid var(--jx2-hud-border) !important;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+body.jx2-active .notes-pane-header {
+  background: var(--jx2-hud-surface) !important;
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+}
+
+/* // prefix + mono on the title */
+body.jx2-active .notes-pane-title {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  color: var(--jx2-crimson-500) !important;
+  text-shadow: var(--jx2-hud-prefix-glow) !important;
+  position: relative !important;
+  top: 0 !important;
+}
+
+body.jx2-active .notes-pane-title::before {
+  content: "// ";
+  color: var(--jx2-hud-prefix-color);
+  font-family: var(--jx2-font-mono);
+  font-size: 1em;
+  letter-spacing: 0.02em;
+  font-weight: 400;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+
+/* Suppress SVG icon (replaced by // notation) */
+body.jx2-active .notes-pane-title svg {
+  display: none !important;
+}
+
+/* Header action buttons — HUD hover */
+body.jx2-active .notes-pane-header .doc-action-icon-btn,
+body.jx2-active .notes-pane-header .notes-header-text-btn,
+body.jx2-active #notes-minimize-btn {
+  font-family: var(--jx2-font-mono);
+  font-size: 9px !important;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--fg, #c5c9d0) 55%, transparent);
+  border-radius: var(--jx2-radius-sm) !important;
+  transition: background 150ms, color 150ms, border-color 150ms;
+}
+
+body.jx2-active .notes-pane-header .doc-action-icon-btn:hover,
+body.jx2-active .notes-pane-header .notes-header-text-btn:hover,
+body.jx2-active #notes-minimize-btn:hover {
+  color: var(--jx2-crimson-300) !important;
+  background: var(--jx2-hud-hover-bg) !important;
+}
+
+/* ── Search bar ──────────────────────────────────────────────────────── */
+body.jx2-active .notes-search-bar {
+  background: var(--jx2-hud-surface);
+  border-bottom: 1px solid var(--jx2-hud-border);
+  padding: 5px 8px;
+}
+
+body.jx2-active .notes-search-bar .memory-search-input {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.04em !important;
+  background: color-mix(in srgb, var(--fg, #c5c9d0) 4%, transparent) !important;
+  border: 1px solid var(--jx2-hud-border) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--fg, #c5c9d0) !important;
+}
+
+body.jx2-active .notes-search-bar .memory-search-input:focus {
+  border-color: var(--jx2-crimson-500) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--jx2-crimson-500) 20%, transparent) !important;
+}
+
+body.jx2-active .notes-select-trigger {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.08em !important;
+  border: 1px solid var(--jx2-hud-border) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  background: color-mix(in srgb, var(--fg, #c5c9d0) 4%, transparent) !important;
+  color: color-mix(in srgb, var(--fg, #c5c9d0) 55%, transparent) !important;
+}
+
+body.jx2-active .notes-select-trigger:hover,
+body.jx2-active .notes-select-trigger.active {
+  border-color: var(--jx2-crimson-500) !important;
+  color: var(--jx2-crimson-300) !important;
+  background: var(--jx2-hud-hover-bg) !important;
+}
+
+/* ── Filter chips (label bar) ────────────────────────────────────────── */
+body.jx2-active .notes-label-chip {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  border: 1px solid var(--jx2-hud-chip-border) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  background: var(--jx2-hud-chip-bg) !important;
+  color: var(--jx2-hud-chip-text) !important;
+  padding: 2px 7px !important;
+  transition: border-color 150ms, color 150ms, background 150ms;
+}
+
+body.jx2-active .notes-label-chip:hover {
+  border-color: var(--jx2-hud-hover-border) !important;
+  color: var(--fg, #c5c9d0) !important;
+  background: var(--jx2-hud-hover-bg) !important;
+}
+
+body.jx2-active .notes-label-chip.active {
+  border-color: var(--jx2-crimson-400) !important;
+  color: var(--jx2-crimson-200) !important;
+  background: var(--jx2-hud-active-bg) !important;
+  font-weight: 600 !important;
+}
+
+body.jx2-active .notes-label-chip-count {
+  background: color-mix(in srgb, var(--jx2-crimson-500) 18%, transparent) !important;
+  color: inherit !important;
+}
+
+/* Reminder chip negated state (hiding reminders) — keep red tint */
+body.jx2-active .notes-label-chip-reminders.active.negated {
+  border-color: var(--jx2-crimson-600) !important;
+  color: var(--jx2-crimson-300) !important;
+  background: color-mix(in srgb, var(--jx2-crimson-500) 8%, transparent) !important;
+}
+
+/* ── Note cards ──────────────────────────────────────────────────────── */
+body.jx2-active .notes-pane .note-card {
+  border-left: 2px solid transparent !important;
+  border-radius: 0 var(--jx2-radius-sm) var(--jx2-radius-sm) 0 !important;
+  transition: background 150ms, border-left-color 150ms, box-shadow 150ms;
+}
+
+body.jx2-active .notes-pane .note-card:hover:not([class*="note-color-"]) {
+  border-left-color: color-mix(in srgb, var(--jx2-crimson-600) 50%, transparent) !important;
+}
+
+/* Pinned cards: amber left border */
+body.jx2-active .notes-pane .note-card.note-card-pinned {
+  border-top: none !important;
+  border-left-color: var(--jx2-status-idle) !important;
+}
+
+/* Selected cards: crimson left border */
+body.jx2-active .notes-pane .note-card.note-card-selected {
+  border-left-color: var(--jx2-crimson-400) !important;
+  background: var(--jx2-hud-active-bg) !important;
+}
+
+/* Card title — 13px fw-600, system-ui (calm content, no mono) */
+body.jx2-active .notes-pane .note-card-title {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+/* Card preview — 12px, system-ui */
+body.jx2-active .notes-pane .note-content-preview {
+  font-size: 12px !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+/* Checklist items — done text line-through, muted */
+body.jx2-active .notes-pane .note-checkbox.done .note-check-text {
+  text-decoration: line-through !important;
+  color: color-mix(in srgb, var(--fg, #c5c9d0) 35%, transparent) !important;
+}
+
+/* Done check dot — crimson fill */
+body.jx2-active .notes-pane .note-checkbox.done .note-check-dot,
+body.jx2-active .notes-pane .note-cl-row.done .note-cl-dot {
+  background: var(--jx2-crimson-700) !important;
+  border-color: var(--jx2-crimson-600) !important;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+body.jx2-active .notes-pane-footer {
+  background: var(--jx2-hud-surface) !important;
+  border-top: 1px solid var(--jx2-hud-border) !important;
+}
+
+body.jx2-active .notes-new-btn {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  border: 1px solid var(--jx2-hud-chip-border) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  color: var(--jx2-hud-chip-text) !important;
+  background: var(--jx2-hud-chip-bg) !important;
+  transition: border-color 150ms, color 150ms, background 150ms;
+}
+
+body.jx2-active .notes-new-btn:hover {
+  border-color: var(--jx2-crimson-400) !important;
+  color: var(--jx2-crimson-300) !important;
+  background: var(--jx2-hud-hover-bg) !important;
+}
+
+/* ── Note form (inline editor / quick-add) ───────────────────────────── */
+/* Title input: 20px system-ui fw-600 (calm, readable) */
+body.jx2-active .notes-pane .note-form-title {
+  font-size: 18px !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  font-weight: 600 !important;
+}
+
+/* Content textarea: 14px system-ui, readable */
+body.jx2-active .notes-pane .note-form-content {
+  font-size: 14px !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  line-height: 1.7 !important;
+}
+
+/* Form save/cancel buttons — HUD chip style */
+body.jx2-active .notes-pane .note-form-save {
+  font-family: var(--jx2-font-mono) !important;
+  font-size: 8px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  border-radius: var(--jx2-radius-sm) !important;
+}
+
+/* ── Archive mode: keep sepia tint, suppress conflicting border ──────── */
+body.jx2-active .notes-pane.notes-pane-archive {
+  border-left-color: color-mix(in srgb, #b48a4a 35%, var(--jx2-hud-border)) !important;
+}
+
+body.jx2-active .notes-pane.notes-pane-archive .notes-pane-header {
+  border-bottom-color: color-mix(in srgb, #b48a4a 35%, var(--jx2-hud-border)) !important;
+}
+
+/* ── Mobile: relax panel-level padding overrides on small screens ─────── */
+@media (max-width: 768px) {
+  body.jx2-active .notes-pane-header {
+    padding-top: 6px;
+    padding-bottom: 4px;
+  }
+}
+
+/* ── Reduced-motion killswitch ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  body.jx2-active .notes-pane .note-card {
+    transition: none !important;
+  }
+}
