@@ -9,6 +9,7 @@ Routes:
   POST /api/trader/paper/start    — log a new paper session start
   POST /api/trader/paper/order    — place a simulated paper order (pre-trade gated)
   POST /api/trader/paper/close    — close an open paper position
+  GET  /api/trader/paper/stats    — aggregate paper performance (win rate, P&L, CLV)
   GET  /api/trader/ledger         — recent audit-ledger entries
 """
 from __future__ import annotations
@@ -161,6 +162,70 @@ def setup_trader_paper_routes() -> APIRouter:
                 return sim.close_position(body.trade_id, body.exit_price_cents)
         except GateRejection as exc:
             raise HTTPException(422, exc.reason)
+
+    @router.get("/paper/stats")
+    def paper_stats(request: Request) -> Dict[str, Any]:
+        """Aggregate paper-trading performance for the PAPER PERFORMANCE panel.
+
+        Metrics:
+          total_trades       — all paper trades ever placed
+          closed_trades      — trades that have been closed
+          win_rate_pct       — % of closed trades with pnl_cents > 0
+          total_pnl_cents    — sum of realised P&L (cents); negative = net loss
+          daily_loss_cents   — today's realised losses (absolute value, cents)
+          today_fills        — trades placed today
+          clv_equivalent_pct — % closed trades with positive P&L (proxy for CLV:
+                               true CLV needs closing-line data; positive P&L is
+                               the available surrogate for Phase 2 paper trades)
+          mandate_cap        — max trades/day from loaded mandate (0 if mandate missing)
+        """
+        require_admin(request)
+        owner = get_current_user(request) or "admin"
+
+        from core.database import PaperTrade
+        from datetime import date, datetime, timezone
+
+        today = datetime.now(timezone.utc).date()
+
+        with SessionLocal() as db:
+            all_trades = (
+                db.query(PaperTrade)
+                .filter(PaperTrade.owner == owner)
+                .all()
+            )
+
+        total  = len(all_trades)
+        closed = [t for t in all_trades if t.closed_at is not None and t.pnl_cents is not None]
+        wins   = [t for t in closed if t.pnl_cents > 0]
+        today_all  = [t for t in all_trades if t.created_at and t.created_at.date() == today]
+        today_loss = [
+            t for t in closed
+            if t.closed_at and t.closed_at.date() == today and t.pnl_cents < 0
+        ]
+
+        win_rate   = round(len(wins) / len(closed) * 100, 1) if closed else 0.0
+        total_pnl  = sum(t.pnl_cents for t in closed)
+        daily_loss = sum(abs(t.pnl_cents) for t in today_loss)
+        clv_pct    = win_rate  # proxy: positive-P&L rate as CLV surrogate
+
+        mandate_cap = 0
+        try:
+            from trading.mandate import load_mandate
+            m = load_mandate()
+            mandate_cap = m.max_trades_per_day
+        except Exception:
+            pass
+
+        return {
+            "total_trades":       total,
+            "closed_trades":      len(closed),
+            "win_rate_pct":       win_rate,
+            "total_pnl_cents":    total_pnl,
+            "daily_loss_cents":   daily_loss,
+            "today_fills":        len(today_all),
+            "clv_equivalent_pct": clv_pct,
+            "mandate_cap":        mandate_cap,
+        }
 
     @router.get("/ledger")
     def trader_ledger(request: Request, limit: int = 50) -> Dict[str, Any]:

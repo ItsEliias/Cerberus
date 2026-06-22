@@ -252,10 +252,15 @@ def test_no_order_code_in_trader_routes():
     """trader_routes.py must not expose any order-placement endpoints."""
     import inspect
     import routes.trader_routes as mod
-    src = inspect.getsource(mod)
-    forbidden = ["place_order", "submit_order", "approve_and_execute", "/order", "POST.*order"]
     import re
+    src = inspect.getsource(mod)
+    # Strip docstrings before checking — Phase 2 docstring references
+    # /api/trader/paper/order as the human-submission endpoint, which would
+    # otherwise trigger the /order pattern against non-code text.
+    code = re.sub(r'""".*?"""', '', src, flags=re.DOTALL)
+    code = re.sub(r"'''.*?'''", '', code, flags=re.DOTALL)
+    forbidden = ["place_order", "submit_order", "approve_and_execute", "/order", "POST.*order"]
     for frag in forbidden:
-        assert not re.search(frag, src, re.IGNORECASE), (
+        assert not re.search(frag, code, re.IGNORECASE), (
             f"Phase 1 invariant violated: '{frag}' found in trader_routes.py"
         )

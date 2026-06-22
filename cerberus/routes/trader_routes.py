@@ -1,11 +1,17 @@
 """
-trader_routes.py — Phase 1 TRADER API: market data + research briefs.
+trader_routes.py — Phase 1+2 TRADER API: market data, research briefs, candidates.
 
 Phase 1 invariant (APPROVAL GATE):
   All routes in this file are READ-ONLY or trigger RESEARCH generation.
   No route places, modifies, or cancels an order. No route reads or writes
   exchange credentials. Adding order endpoints here is a Phase 3 task.
   Ref: docs/TRADER_AGENT_RISK_AND_PHASING.md §2 / docs/TRADER_AGENT_ARCHITECTURE.md §6
+
+Phase 2 addition:
+  GET /api/trader/briefs/{id}/candidates — surface a brief's contract as a
+    paper-trade candidate with live Kalshi price. SURFACING ONLY: this route
+    cannot place, trigger, or auto-approve a paper order. A human must read the
+    candidate and explicitly submit /api/trader/paper/order to place it.
 
 Routes:
   GET  /api/trader/markets              — all active Kalshi markets (paginated)
@@ -14,6 +20,7 @@ Routes:
   POST /api/trader/brief                — trigger a Council brief cycle (async)
   GET  /api/trader/briefs               — list persisted briefs for this owner
   GET  /api/trader/briefs/{id}          — single brief detail
+  GET  /api/trader/briefs/{id}/candidates — paper-trade candidates from one brief
 """
 
 import logging
@@ -162,7 +169,87 @@ def setup_trader_routes() -> APIRouter:
         finally:
             db.close()
 
+    @router.get("/briefs/{brief_id}/candidates")
+    async def get_brief_candidates(request: Request, brief_id: str):
+        """Surface a brief's contract as a paper-trade candidate with live price.
+
+        SURFACING ONLY — this route cannot place, trigger, or auto-approve any
+        paper order. Every order requires explicit human action via
+        POST /api/trader/paper/order. A brief, market data, or any untrusted
+        content MUST NOT auto-trigger a paper order (Phase 2 forward-test
+        invariant per docs/TRADER_AGENT_RISK_AND_PHASING.md §5).
+        """
+        owner = require_user(request)
+        db = SessionLocal()
+        try:
+            row = (
+                db.query(TraderBrief)
+                .filter(TraderBrief.id == brief_id, TraderBrief.owner == owner)
+                .first()
+            )
+            if not row:
+                raise HTTPException(404, detail="Brief not found")
+
+            if row.direction == "PASS" or not row.contract_ticker:
+                return {"candidates": [], "reason": "brief direction is PASS"}
+
+            side = "buy" if row.direction == "YES" else "sell"
+
+            live_price_cents: int | None = None
+            live_mid: float | None = None
+            market_data: dict | None = None
+            try:
+                market_data = await get_contract(row.contract_ticker)
+                mid = _extract_midpoint(market_data)
+                if mid is not None:
+                    live_mid = round(mid, 4)
+                    live_price_cents = int(mid * 100)
+            except Exception as e:
+                logger.warning(
+                    "Candidate price fetch failed for %s: %s", row.contract_ticker, e
+                )
+
+            candidate = {
+                "brief_id": row.id,
+                "ticker": row.contract_ticker,
+                "title": row.contract_title or row.contract_ticker,
+                "direction": row.direction,
+                "side": side,
+                "confidence": row.confidence,
+                "rationale": row.rationale,
+                "brief_midpoint": float(row.midpoint) if row.midpoint else None,
+                "live_midpoint": live_mid,
+                "live_price_cents": live_price_cents,
+                "market": market_data,
+            }
+            return {"candidates": [candidate]}
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("get_brief_candidates failed: %s", e)
+            raise HTTPException(500, detail="Candidate resolution failed")
+        finally:
+            db.close()
+
     return router
+
+
+def _extract_midpoint(market: dict) -> float | None:
+    """Best-available midpoint from a Kalshi market dict (cents, 0–100)."""
+    yes_bid = market.get("yes_bid")
+    yes_ask = market.get("yes_ask")
+    if yes_bid is not None and yes_ask is not None:
+        try:
+            return (float(yes_bid) + float(yes_ask)) / 2.0
+        except (TypeError, ValueError):
+            pass
+    last = market.get("last_price") or market.get("yes_bid") or market.get("yes_ask")
+    if last is not None:
+        try:
+            return float(last)
+        except (TypeError, ValueError):
+            pass
+    return None
 
 
 def _brief_summary(b: dict) -> dict:
