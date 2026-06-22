@@ -198,6 +198,15 @@
       window.JX = window.JX || {};
 
       const { init } = await import('/static/js/cyberapps/command-center/index.js');
+
+      // Resolve admin flag before init. parent window._isAdmin doesn't cross
+      // the iframe boundary (same-origin JS globals are per-window), so fetch
+      // the same endpoint app.js uses and set it on THIS window.
+      try {
+        const _as = await fetch('/api/auth/status', { credentials: 'same-origin' });
+        if (_as.ok) { const _ad = await _as.json(); window._isAdmin = !!_ad.is_admin; }
+      } catch (_) { /* fail open — adminOnly tabs stay hidden */ }
+
       init(document.getElementById('cc-root'), {});
 
       // Dismiss loader after init
