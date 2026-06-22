@@ -210,7 +210,7 @@ export function buildMemoryTimelinePanel() {
   _injectStyles();
   return `
 <section class="cc-mem-timeline" aria-label="Memory timeline">
-  <div class="cc-section-label">// MEMORY TIMELINE</div>
+  <div class="cc-section-label">MEMORY TIMELINE</div>
   <div class="cc-mem-cat-chips" id="cc-mem-cat-chips"></div>
   <div class="cc-mem-timeline-body" id="cc-mem-timeline-body">
     <div class="cc-empty">Loading memories…</div>

@@ -531,7 +531,7 @@ async function _renderTemplates(container) {
     const templates = data.templates || [];
     mount.innerHTML = `
 <div class="cc-room-templates">
-  <div class="cc-section-label">// TEMPLATES</div>
+  <div class="cc-section-label">TEMPLATES</div>
   <div class="cc-room-template-grid">
     ${templates.map(t => `
       <button class="cc-room-template-card" data-id="${_esc(t.id)}"
@@ -667,7 +667,7 @@ async function _renderPresets(container) {
     const presets = Array.isArray(data.presets) ? data.presets : [];
     mount.innerHTML = `
 <div class="cc-room-presets">
-  <div class="cc-section-label">// MY PRESETS</div>
+  <div class="cc-section-label">MY PRESETS</div>
   ${presets.length
     ? `<div class="cc-room-preset-list">
         ${presets.map(p => _presetCard(p)).join('')}

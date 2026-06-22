@@ -26,6 +26,14 @@ body.jx2-active .cc-section-label::before {
   font-weight: 400;
 }
 
+/* Flex row containing a .cc-section-label + an action button.
+   Keeps ::before on the label, not the layout container. */
+body.jx2-active .cc-section-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 /* ── Gateway — section card backgrounds ──────────────────────────── */
 
 body.jx2-active .cc-gw-section,
