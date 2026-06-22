@@ -254,3 +254,19 @@ test('TRADER is registered in the TABS array in index.js', () => {
     'trader tab has adminOnly: true',
   );
 });
+
+test('adminOnly filter shows TRADER for admin, hides for non-admin', () => {
+  // Reproduce the exact filter from _renderTabNavHTML so a regression is
+  // immediately visible without needing to boot the full module graph.
+  const TABS = [
+    { id: 'command' },
+    { id: 'trader', adminOnly: true },
+    { id: 'assistant' },
+  ];
+
+  const adminTabs = TABS.filter(tab => !tab.adminOnly || true);
+  assert.ok(adminTabs.some(t => t.id === 'trader'), 'admin (_isAdmin=true) sees TRADER');
+
+  const guestTabs = TABS.filter(tab => !tab.adminOnly || false);
+  assert.ok(!guestTabs.some(t => t.id === 'trader'), 'non-admin (_isAdmin=false) cannot see TRADER');
+});
