@@ -1,15 +1,15 @@
 /**
- * trader.js — TRADER tab: Phase 1 data + research briefs.
+ * trader.js — TRADER tab: Phase 1 data + briefs (T1) + Phase 2 paper-sim panels (T2).
  *
  * Phase 1 live panels (T1):
  *   MARKET DATA — live Kalshi ≥50¢ contracts from /api/trader/markets/threshold
  *   RESEARCH BRIEFS — Council-generated briefs from /api/trader/briefs
  *
- * Static panels owned by T2 (paper-trading phase):
- *   WALLET · POSITIONS & P&L
- *
- * Static informational panels (unchanged):
- *   MODE · KILL SWITCH · STRATEGY · APPROVAL GATE · AUDIT LEDGER
+ * Phase 2 live panels (T2):
+ *   WALLET — paper balance, exposure, fills from /api/trader/status
+ *   POSITIONS & P&L — open paper trades from /api/trader/status
+ *   KILL SWITCH — real file state + circuit breaker from /api/trader/status
+ *   AUDIT LEDGER — hash-chained events from /api/trader/ledger
  *
  * Admin-only: loadTrader() shows access-denied for non-admins.
  * Activation path: docs/TRADER_AGENT_RISK_AND_PHASING.md
@@ -153,6 +153,49 @@ function _ensureStyles() {
 }
 .cc-trader-btn:hover { opacity: 1; }
 .cc-trader-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+/* Kill switch armed state (Phase 2) */
+.cc-trader-kill-dot--armed { background: color-mix(in srgb, var(--cc-crimson) 70%, transparent); }
+
+/* Paper-sim live stat rows (Phase 2) */
+.cc-trader-stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  padding: 3px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--cc-border) 40%, transparent);
+}
+.cc-trader-stat-row:last-child { border-bottom: none; }
+.cc-trader-stat-label { opacity: 0.5; letter-spacing: 0.06em; }
+.cc-trader-stat-value { font-weight: 700; }
+.cc-trader-stat-value--loss { color: var(--cc-crimson); }
+
+/* Ledger feed (Phase 2) */
+.cc-trader-ledger-entry {
+  font-size: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--cc-border) 30%, transparent);
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+.cc-trader-ledger-entry:last-child { border-bottom: none; }
+.cc-trader-ledger-ts { opacity: 0.45; font-size: 9px; }
+
+/* Circuit breaker bar (Phase 2) */
+.cc-trader-circuit-bar-wrap {
+  margin-top: 8px;
+  height: 4px;
+  background: color-mix(in srgb, var(--cc-border) 40%, transparent);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.cc-trader-circuit-bar {
+  height: 100%;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--cc-fg) 30%, transparent);
+  transition: width 0.4s ease;
+}
+.cc-trader-circuit-bar--warn { background: color-mix(in srgb, var(--cc-crimson) 60%, transparent); }
 `;
   document.head.appendChild(s);
 }
@@ -183,14 +226,18 @@ export function buildTraderTab() {
     <div class="cc-trader-empty">PHASE 1 — SIM &nbsp;·&nbsp; DATA + BRIEFS ONLY &nbsp;·&nbsp; NO ORDER CODE</div>
   </div>
 
-  <!-- KILL SWITCH — KillSwitchCard -->
+  <!-- KILL SWITCH — live state from /api/trader/status (Phase 2) -->
   <div class="cc-trader-card">
     <div class="cc-section-label">KILL SWITCH</div>
     <div class="cc-trader-kill-row">
-      <span class="cc-trader-kill-dot"></span>
-      <span class="cc-trader-kill-label">ARMED &nbsp;·&nbsp; NO ACTIVE TRADING</span>
+      <span class="cc-trader-kill-dot" id="cc-trader-kill-dot"></span>
+      <span class="cc-trader-kill-label" id="cc-trader-kill-label">ARMED &nbsp;·&nbsp; NO ACTIVE TRADING</span>
     </div>
     <div class="cc-trader-empty">Drop data/trader/KILL to halt any future session immediately.</div>
+    <div class="cc-trader-circuit-bar-wrap">
+      <div class="cc-trader-circuit-bar" id="cc-trader-circuit-bar" style="width:0%"></div>
+    </div>
+    <div class="cc-trader-empty" id="cc-trader-circuit-label"></div>
   </div>
 
   <!-- MARKET DATA — Phase 1 live panel (T1) -->
@@ -201,11 +248,13 @@ export function buildTraderTab() {
     </div>
   </div>
 
-  <!-- WALLET — T2 panel, do not modify -->
+  <!-- WALLET — live paper state from /api/trader/status (Phase 2) -->
   <div class="cc-trader-card">
     <div class="cc-section-label">WALLET</div>
-    <div class="cc-trader-empty">NO WALLET CONNECTED</div>
-    <div class="cc-trader-empty">Max loss = funded wallet balance. No bank credentials. Trade-only API keys.</div>
+    <div id="cc-trader-wallet-body">
+      <div class="cc-trader-empty">NO WALLET CONNECTED</div>
+      <div class="cc-trader-empty">Max loss = funded wallet balance. No bank credentials. Trade-only API keys.</div>
+    </div>
   </div>
 
   <!-- STRATEGY — StrategyCard -->
@@ -215,11 +264,13 @@ export function buildTraderTab() {
     <div class="cc-trader-empty">Target: ≥50-cent contracts, +2.6% maker ROI, GWU 2026. Phase 1 validates data pipeline.</div>
   </div>
 
-  <!-- POSITIONS & P&L — T2 panel, do not modify -->
+  <!-- POSITIONS & P&L — live paper state from /api/trader/status (Phase 2) -->
   <div class="cc-trader-card">
     <div class="cc-section-label">POSITIONS AND P&L</div>
-    <div class="cc-trader-empty">NO POSITIONS — PAPER TRADING BEGINS IN PHASE 2</div>
-    <div class="cc-trader-empty">Phase 2 requires ≥300 live forward-test trades before Phase 3 gate.</div>
+    <div id="cc-trader-positions-body">
+      <div class="cc-trader-empty">NO POSITIONS</div>
+      <div class="cc-trader-empty">Phase 2 requires ≥300 live forward-test trades before Phase 3 gate.</div>
+    </div>
   </div>
 
   <!-- RESEARCH BRIEFS — Phase 1 live panel (T1) -->
@@ -243,11 +294,13 @@ export function buildTraderTab() {
     </div>
   </div>
 
-  <!-- AUDIT LEDGER — AuditFeedCard -->
+  <!-- AUDIT LEDGER — hash-chained events from /api/trader/ledger (Phase 2) -->
   <div class="cc-trader-card">
     <div class="cc-section-label">AUDIT LEDGER</div>
-    <div class="cc-trader-empty">NO EVENTS</div>
-    <div class="cc-trader-empty">Every proposal, approval, rejection, and trade will be logged here.</div>
+    <div id="cc-trader-ledger-body">
+      <div class="cc-trader-empty">NO EVENTS</div>
+      <div class="cc-trader-empty">Every proposal, approval, rejection, and trade will be logged here.</div>
+    </div>
   </div>
 
 </div>`.trim();
@@ -341,6 +394,96 @@ window._traderGenerateBriefs = async function() {
   }
 };
 
+// ── Phase 2: paper-sim live panels (T2) ───────────────────────────────────────
+
+function _applyStatus(root, s) {
+  const dot   = root.querySelector('#cc-trader-kill-dot');
+  const label = root.querySelector('#cc-trader-kill-label');
+  if (dot && s.kill_armed) {
+    dot.classList.add('cc-trader-kill-dot--armed');
+    if (label) label.textContent = 'ARMED — KILL SWITCH ACTIVE — ALL SESSIONS HALTED';
+  } else if (dot && label) {
+    label.textContent = s.mandate_ok
+      ? 'READY — NO ACTIVE TRADING'
+      : `MANDATE ERROR — ${s.mandate_err || 'check data/trader/mandate.json'}`;
+  }
+
+  const bar  = root.querySelector('#cc-trader-circuit-bar');
+  const clbl = root.querySelector('#cc-trader-circuit-label');
+  const p = s.paper;
+  if (bar && p) {
+    const pct = Math.min(p.circuit_used_pct || 0, 100);
+    bar.style.width = pct + '%';
+    if (pct >= 80) bar.classList.add('cc-trader-circuit-bar--warn');
+    if (clbl) clbl.textContent =
+      `CIRCUIT ${pct.toFixed(0)}% — ${p.circuit_cap_pct}% daily-loss cap`;
+  }
+
+  const wallet = root.querySelector('#cc-trader-wallet-body');
+  if (wallet && p) {
+    const fmt = (v) => '$' + v.toFixed(2);
+    wallet.innerHTML = `
+      <div class="cc-trader-stat-row">
+        <span class="cc-trader-stat-label">PAPER BALANCE</span>
+        <span class="cc-trader-stat-value">${fmt(p.balance)}</span>
+      </div>
+      <div class="cc-trader-stat-row">
+        <span class="cc-trader-stat-label">OPEN EXPOSURE</span>
+        <span class="cc-trader-stat-value">${fmt(p.open_exposure)}</span>
+      </div>
+      <div class="cc-trader-stat-row">
+        <span class="cc-trader-stat-label">TODAY FILLS</span>
+        <span class="cc-trader-stat-value">${p.today_fills} / ${p.mandate.max_trades_per_day}</span>
+      </div>
+      <div class="cc-trader-stat-row">
+        <span class="cc-trader-stat-label">DAILY LOSS</span>
+        <span class="cc-trader-stat-value${p.daily_loss > 0 ? ' cc-trader-stat-value--loss' : ''}">${fmt(p.daily_loss)}</span>
+      </div>`;
+  }
+
+  const posEl = root.querySelector('#cc-trader-positions-body');
+  if (posEl && p) {
+    const open = p.open_trades || [];
+    posEl.innerHTML = open.length === 0
+      ? '<div class="cc-trader-empty">NO POSITIONS</div>'
+      : open.map(t => `<div class="cc-trader-stat-row">
+          <span class="cc-trader-stat-label">${_esc(t.contract)} · ${t.side.toUpperCase()} x${t.size}</span>
+          <span class="cc-trader-stat-value">¢${t.fill_price_cents} entry</span>
+        </div>`).join('');
+  }
+}
+
+function _applyLedger(root, entries) {
+  const el = root.querySelector('#cc-trader-ledger-body');
+  if (!el) return;
+  if (!entries || entries.length === 0) {
+    el.innerHTML = '<div class="cc-trader-empty">NO EVENTS</div>';
+    return;
+  }
+  el.innerHTML = entries.slice(0, 10).map(e => {
+    const ts = e.ts ? e.ts.replace('T', ' ').slice(0, 19) : '';
+    return `<div class="cc-trader-ledger-entry">
+      <span class="cc-trader-ledger-ts">${_esc(ts)}</span>
+      &nbsp;${_esc(e.event_type.toUpperCase())}
+    </div>`;
+  }).join('');
+}
+
+async function _loadPaperState(root) {
+  try {
+    const [sRes, lRes] = await Promise.all([
+      fetch('/api/trader/status'),
+      fetch('/api/trader/ledger?limit=10'),
+    ]);
+    if (sRes.ok) _applyStatus(root, await sRes.json());
+    if (lRes.ok) _applyLedger(root, (await lRes.json()).entries || []);
+  } catch (_) {
+    // Network errors are silent — static shell stands on its own
+  }
+}
+
+// ── Public API ─────────────────────────────────────────────────────────────────
+
 export function loadTrader(root) {
   if (!root) return;
   _ensureStyles();
@@ -352,10 +495,14 @@ export function loadTrader(root) {
     return;
   }
 
+  // Phase 1: market data + research briefs (T1)
   const marketsEl = root.querySelector('#cc-trader-markets-body');
-  const briefsEl = root.querySelector('#cc-trader-briefs-body');
+  const briefsEl  = root.querySelector('#cc-trader-briefs-body');
   if (marketsEl) _loadMarkets(marketsEl);
-  if (briefsEl) _loadBriefs(briefsEl);
+  if (briefsEl)  _loadBriefs(briefsEl);
+
+  // Phase 2: paper-sim kill switch + wallet + positions + audit ledger (T2)
+  _loadPaperState(root);
 }
 
 // ── Utilities ───────────────────────────────────────────────────────────────

@@ -2358,6 +2358,40 @@ def _migrate_create_council_presets_table():
         )
 
 
+class PaperTrade(TimestampMixin, Base):
+    """Simulated paper trade record — no real money, no real exchange."""
+    __tablename__ = "paper_trades"
+
+    id          = Column(String, primary_key=True)
+    owner       = Column(String, nullable=False, index=True)
+    contract    = Column(String, nullable=False)
+    side        = Column(String, nullable=False)   # "buy" | "sell"
+    size        = Column(Integer, nullable=False)   # number of contracts
+    fill_price  = Column(String, nullable=False)   # cents as string ("57")
+    pnl_cents   = Column(Integer, nullable=True)   # None = open; negative = loss
+    closed_at   = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        Index("ix_paper_trades_owner_open", "owner", "closed_at"),
+    )
+
+
+class PaperLedgerEntry(TimestampMixin, Base):
+    """Append-only audit ledger entry with SHA-256 hash chaining."""
+    __tablename__ = "paper_ledger"
+
+    id          = Column(String, primary_key=True)
+    owner       = Column(String, nullable=False, index=True)
+    event_type  = Column(String, nullable=False)
+    data        = Column(JSON, nullable=False)
+    prev_hash   = Column(String(64), nullable=False)
+    entry_hash  = Column(String(64), nullable=False)
+
+    __table_args__ = (
+        Index("ix_paper_ledger_owner_ts", "owner", "created_at"),
+    )
+
+
 def init_db():
     """
     Initialize the database by creating all tables.
