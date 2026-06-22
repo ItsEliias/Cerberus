@@ -24,6 +24,7 @@ function _buildChatPanel(agentName, agentAvatar, accentColor, ttsVoice) {
     <span class="cc-agent-chat-sigil" style="background:${_esc(accentColor)}">${_esc(glyph)}</span>
     <span class="cc-agent-chat-name">${_esc(agentName)}</span>
     ${callBtn}
+    <button class="cc-chat-export-btn" title="Export thread as Markdown">↓ MD</button>
     <button class="cc-chat-summarise-btn" title="Summarise this thread">// SUMMARISE</button>
     <button class="cc-chat-clear-btn" title="Clear conversation">Clear</button>
   </div>
@@ -208,6 +209,7 @@ export async function openAgentChat(container, agentId, agentName, agentAvatar, 
   const sendBtn     = container.querySelector('#cc-chat-send-btn');
   const backBtn       = container.querySelector('.cc-chat-back-btn');
   const clearBtn      = container.querySelector('.cc-chat-clear-btn');
+  const exportBtn     = container.querySelector('.cc-chat-export-btn');
   const summariseBtn  = container.querySelector('.cc-chat-summarise-btn');
   const summaryEl     = container.querySelector('#cc-chat-summary');
   const stopBtn       = container.querySelector('.cc-chat-stop-btn');
@@ -325,6 +327,43 @@ export async function openAgentChat(container, agentId, agentName, agentAvatar, 
     const { buildAgentsTab, loadAgents } = await import('./agents.js');
     container.innerHTML = buildAgentsTab();
     await loadAgents(container);
+  });
+
+  // Export thread → Markdown download. Filename comes from the server's
+  // Content-Disposition; we fall back to a sensible default if parsing fails.
+  // Object URL is revoked after the click so we don't leak the blob.
+  exportBtn?.addEventListener('click', async () => {
+    if (exportBtn.disabled) return;
+    const original = exportBtn.textContent;
+    exportBtn.disabled = true;
+    exportBtn.textContent = '…';
+    let blobUrl = null;
+    try {
+      const res = await fetch(
+        `/api/agents/${encodeURIComponent(agentId)}/thread/export`,
+        { credentials: 'same-origin' },
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const cd = res.headers.get('content-disposition') || '';
+      const m = /filename\s*=\s*"?([^";]+)"?/i.exec(cd);
+      const slug = (agentName || 'agent').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'agent';
+      const filename = m ? m[1] : `cerberus-${slug}-${new Date().toISOString().slice(0, 10)}.md`;
+      const blob = await res.blob();
+      blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (_) {
+      // Silent — the button reverts below so the user can retry.
+    } finally {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      exportBtn.disabled = false;
+      exportBtn.textContent = original;
+    }
   });
 
   // Clear thread
