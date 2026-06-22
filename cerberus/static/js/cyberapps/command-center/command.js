@@ -163,15 +163,23 @@ function _sparkPoints(data, W, H, maxV) {
 function _updateSparklines(container, series) {
   ['cpu', 'ram', 'latency'].forEach(key => {
     const data = series[key] || [];
-    if (!data.length) return;
     const poly    = container.querySelector(`.cc-spark-line-${key}`);
     const cursor  = container.querySelector(`.cc-spark-cursor-${key}`);
     const trail   = container.querySelector(`.cc-spark-trail-${key}`);
     const W = 200, H = 44, maxV = key === 'latency' ? 200 : 100;
+
+    const hasData = data.length >= 2 && data.some(v => v > 0);
+    if (!hasData) {
+      if (poly)   { poly.setAttribute('points', `0,${H / 2} ${W},${H / 2}`); poly.setAttribute('style', 'opacity:0.2;stroke-dasharray:4,4'); }
+      if (cursor) { cursor.setAttribute('cx', '-10'); cursor.setAttribute('cy', '-10'); }
+      if (trail)  { trail.setAttribute('x1', '0'); trail.setAttribute('y1', '0'); trail.setAttribute('x2', '0'); trail.setAttribute('y2', '0'); }
+      return;
+    }
+
     const pts = _sparkPoints(data, W, H, maxV);
     const joined = pts.map(p => `${p.x},${p.y}`).join(' ');
 
-    if (!REDUCED && poly) poly.setAttribute('points', joined);
+    if (!REDUCED && poly) { poly.setAttribute('points', joined); poly.removeAttribute('style'); }
 
     if (!REDUCED && cursor && pts.length > 0) {
       const last = pts[pts.length - 1];
