@@ -482,8 +482,8 @@ function _createForm() {
   <label>System prompt <span class="cc-req">*</span></label>
   <textarea id="cc-create-prompt" rows="5" placeholder="You are …"></textarea>
   <div class="cc-ag-invoke-actions">
-    <button id="cc-create-submit">Create</button>
-    <button id="cc-create-cancel">Cancel</button>
+    <button id="cc-create-submit" class="cc-detail-btn cc-detail-btn-primary">Create</button>
+    <button id="cc-create-cancel" class="cc-detail-btn cc-detail-btn-secondary">Cancel</button>
   </div>
   <div id="cc-create-msg" class="cc-ag-edit-msg"></div>
 </div>`.trim();
