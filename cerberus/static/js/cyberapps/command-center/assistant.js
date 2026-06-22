@@ -115,7 +115,7 @@ function _refreshPanel(root, id) {
 export function buildAssistantTab() {
   return `<div class="cc-assistant-tab">
     <div class="cc-chat-history" id="cc-chat-history">
-      <div class="cc-empty" style="margin-top:32px;">
+      <div class="cc-empty" style="margin:auto;text-align:center;padding:0 24px;">
         Cerberus Operations Assistant ready. Ask about tasks, agents, or system state.
       </div>
     </div>
@@ -333,7 +333,7 @@ async function _sendMessage(root, text) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: _messages,
+        message: text,
         system: SYSTEM_PROMPT,
         stream: true,
       }),
