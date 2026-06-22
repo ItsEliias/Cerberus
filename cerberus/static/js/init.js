@@ -2,6 +2,7 @@
 // ES6 module — extracted from index.html inline scripts
 
 import Storage from './storage.js';
+import './glow-wiring.js';
 
 function clearFreshComposerRestore() {
   const msgInput = document.getElementById('message');
