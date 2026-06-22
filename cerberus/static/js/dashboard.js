@@ -272,16 +272,17 @@ function _buildPanel() {
     modal.classList.remove('hidden');
   });
   panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _go(() => {
-    window.history.replaceState({}, '', '/');
+    document.dispatchEvent(new CustomEvent('cerberus:new-session'));
     document.getElementById('rail-new-session')?.click();
   }));
   panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _go(() => {
     sessionStorage.setItem('cerberus_skip_modal_restore', '1');
     window.location.href = '/home';
   }));
-  panel.querySelector('#dash-act-cerberus')?.addEventListener('click', () => _go(() => {
-    window.location.href = '/';
-  }));
+  panel.querySelector('#dash-act-cerberus')?.addEventListener('click', () => {
+    _cleanup();
+    document.getElementById(PANEL_ID)?.remove();
+  });
   panel.querySelector('#dash-act-cc')?.addEventListener('click', () => _go(() => {
     window.history.replaceState({}, '', '/');
     document.getElementById('sidebar-command-center-btn')?.click();
@@ -501,8 +502,13 @@ async function _loadSessions() {
       el.innerHTML = `<div class="dash-empty dash-first-run">
         <div class="dash-empty-icon">◈</div>
         <div class="dash-empty-msg">No conversations yet.</div>
-        <button class="dash-cta-btn" onclick="(function(){document.getElementById('cerberus-dashboard')&&window.dashModule&&window.dashModule.close();setTimeout(()=>document.getElementById('rail-new-session')?.click(),100)})()">Start your first chat →</button>
+        <button class="dash-cta-btn" id="dash-cta-first-chat">Start your first chat →</button>
       </div>`;
+      el.querySelector('#dash-cta-first-chat')?.addEventListener('click', () => {
+        close();
+        document.dispatchEvent(new CustomEvent('cerberus:new-session'));
+        setTimeout(() => document.getElementById('rail-new-session')?.click(), 100);
+      });
       return;
     }
 
