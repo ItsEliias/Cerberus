@@ -692,12 +692,12 @@ function _wireRow(container, agentId) {
   const cancelBtn  = invokeForm?.querySelector('.cc-ag-cancel-btn');
   const exportBtn  = invokeForm?.querySelector('.cc-invoke-export-btn');
   const clearBtn   = invokeForm?.querySelector('.cc-invoke-hist-clear');
-  submitBtn?.addEventListener('click', () => _invokeAgentWithHistory(agentId, agent?.name, textarea, result, submitBtn, detail));
+  submitBtn?.addEventListener('click', () => _invokeAgentWithHistory(agentId, row.dataset.agentName, textarea, result, submitBtn, detail));
   cancelBtn?.addEventListener('click', () => {
     if (invokeForm) invokeForm.style.display = 'none';
     if (result)     result.textContent = '';
   });
-  exportBtn?.addEventListener('click', () => _exportInvokeHistory(agentId, agent?.name));
+  exportBtn?.addEventListener('click', () => _exportInvokeHistory(agentId, row.dataset.agentName));
   clearBtn?.addEventListener('click', () => {
     if (typeof confirm === 'function'
         && !confirm('Clear invocation history for this agent?')) return;
