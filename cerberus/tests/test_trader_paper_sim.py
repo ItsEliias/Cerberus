@@ -325,7 +325,7 @@ def test_get_state_reflects_open_positions(sim, db):
     state = sim.get_state(balance=100.0)
     assert len(state["open_trades"]) == 1
     assert state["open_trades"][0]["contract"] == "ABC"
-    assert state["open_exposure"] == pytest.approx(0.60, rel=1e-3)
+    assert abs(state["open_exposure"] - 0.60) < 0.001
 
 
 def test_ledger_append_only_no_delete(db):
