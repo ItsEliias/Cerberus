@@ -1,0 +1,281 @@
+/* ====================================================================
+ * CERBERUS — jarvis-v2/chat-hud.css
+ * Chat surface HUD chrome — Nexus HUD Stage 2 Batch 2.
+ *
+ * Batch 2 principle: HUD on chrome, readable body.
+ *   - Thread header / context strip / composer frame → full HUD
+ *   - Message body text → 14px system-ui, calm and readable
+ *   - Code blocks → 12px JetBrains Mono
+ *
+ * All rules gated with body.jx2-active so theme stays reactive.
+ * Loaded after hud.css — reuses .jx2-hud-chip and jx2 tokens.
+ * ==================================================================== */
+
+/* ── Thread header (chat-top-bar) — HUD surface + divider ─────────── */
+
+body.jx2-active .chat-top-bar {
+  background:    var(--jx2-hud-surface) !important;
+  border-bottom: 1px solid var(--jx2-hud-border) !important;
+}
+
+body.jx2-active .chat-meta-overlay {
+  font-family:    var(--jx2-font-mono) !important;
+  font-size:      11px !important;
+  letter-spacing: 0.06em;
+  color:          var(--jx2-fg-secondary);
+}
+
+body.jx2-active .chat-meta-overlay #current-meta {
+  font-family:    var(--jx2-font-mono) !important;
+  font-size:      11px !important;
+  letter-spacing: 0.08em;
+  color:          var(--jx2-fg-primary) !important;
+  text-transform: uppercase;
+}
+
+/* Message count — visually hidden in the header; surfaced in the context strip */
+body.jx2-active .chat-meta-count {
+  clip:     rect(0,0,0,0);
+  position: absolute;
+  overflow: hidden;
+  width:    1px;
+  height:   1px;
+}
+
+/* Session cost — HUD chip when visible */
+body.jx2-active .session-cost-display {
+  font-family:    var(--jx2-font-mono) !important;
+  font-size:      8px !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color:          var(--jx2-hud-chip-text);
+  padding:        2px 6px;
+  border:         1px solid var(--jx2-hud-chip-border);
+  border-radius:  var(--jx2-radius-sm);
+  background:     var(--jx2-hud-chip-bg);
+  white-space:    nowrap;
+}
+
+/* Export button — ghost HUD style */
+body.jx2-active .export-dl-btn {
+  font-family:   var(--jx2-font-mono);
+  font-size:     9px;
+  padding:       3px 7px;
+  border:        1px solid var(--jx2-hud-border) !important;
+  border-radius: var(--jx2-radius-sm);
+  background:    transparent !important;
+  color:         var(--jx2-fg-muted) !important;
+  transition:    border-color 150ms, color 150ms;
+}
+
+body.jx2-active .export-dl-btn:hover {
+  border-color: var(--jx2-crimson-600) !important;
+  color:        var(--jx2-fg-secondary) !important;
+}
+
+/* ── Context strip (jx2-chat-context-strip) ───────────────────────── */
+
+#jx2-chat-context-strip {
+  display:         flex;
+  align-items:     center;
+  gap:             6px;
+  padding:         5px 0;
+  flex-shrink:     0;
+  overflow-x:      auto;
+  scrollbar-width: none;
+}
+
+#jx2-chat-context-strip::-webkit-scrollbar { display: none; }
+
+/* Hide when welcome screen is active (no session open) */
+.chat-container.welcome-active #jx2-chat-context-strip {
+  display: none !important;
+}
+
+body.jx2-active #jx2-chat-context-strip {
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  background:    var(--jx2-surface-void);
+  padding:       5px 0;
+}
+
+.jx2-ctx-label {
+  font-family:    var(--jx2-font-mono);
+  font-size:      8px;
+  color:          var(--jx2-fg-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space:    nowrap;
+  user-select:    none;
+  flex-shrink:    0;
+}
+
+.jx2-ctx-label::before {
+  content:     "// ";
+  color:       var(--jx2-hud-prefix-color, var(--jx2-crimson-500));
+  text-shadow: var(--jx2-hud-prefix-glow, 0 0 12px rgba(192,57,43,0.4));
+}
+
+/* Hide empty chips so the strip stays clean with no session model yet */
+#jx2-chat-context-strip .jx2-hud-chip:empty {
+  display: none;
+}
+
+/* ── Message bubbles — HUD frame, readable body ────────────────────── */
+
+/* USER messages — subtle crimson tint background */
+body.jx2-active .msg-user {
+  background:    color-mix(in srgb, var(--red, #c0392b) 10%, var(--jx2-surface-raised)) !important;
+  border:        1px solid color-mix(in srgb, var(--red, #c0392b) 25%, transparent) !important;
+  border-radius: 3px 3px 0 3px !important;
+}
+
+/* AI messages — neutral raised surface + thin crimson left-border */
+body.jx2-active .msg-ai {
+  background:    var(--jx2-surface-raised) !important;
+  border:        1px solid rgba(255,255,255,0.04) !important;
+  border-left:   2px solid var(--jx2-crimson-600) !important;
+  border-radius: 3px 3px 3px 0 !important;
+}
+
+/* Message body — 14px system-ui, calm and readable */
+body.jx2-active .msg .body {
+  font-size:   14px !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  line-height: 1.6 !important;
+  color:       var(--jx2-fg-primary) !important;
+}
+
+/* Inline code — 12px JetBrains Mono, crimson-200 color */
+body.jx2-active .msg .body code:not(pre > code) {
+  font-family:   var(--jx2-font-mono) !important;
+  font-size:     12px !important;
+  background:    rgba(0,0,0,0.28) !important;
+  color:         var(--jx2-crimson-200) !important;
+  padding:       1px 4px !important;
+  border-radius: 2px !important;
+  border:        none !important;
+}
+
+/* Code blocks — 12px JetBrains Mono, muted foreground */
+body.jx2-active .msg .body pre {
+  font-family:   var(--jx2-font-mono) !important;
+  font-size:     12px !important;
+  background:    rgba(0,0,0,0.28) !important;
+  border:        1px solid rgba(255,255,255,0.05) !important;
+  border-radius: 3px !important;
+  color:         var(--jx2-fg-secondary) !important;
+  line-height:   1.5 !important;
+}
+
+body.jx2-active .msg .body pre code {
+  font-family: var(--jx2-font-mono) !important;
+  font-size:   12px !important;
+  background:  transparent !important;
+  color:       inherit !important;
+  padding:     0 !important;
+}
+
+/* ── Streaming cursor ────────────────────────────────────────────────── */
+/* Block cursor shown while AI is actively writing.
+   `inline` so it appears right after the last character.
+   Animation uses the shared jx2-pulse-crimson keyframe from tokens.css. */
+body.jx2-active .msg-ai.streaming .body::after {
+  content:      '▊';
+  display:      inline;
+  color:        var(--jx2-crimson-400);
+  animation:    jx2-pulse-crimson 0.8s ease-in-out infinite;
+  margin-left:  2px;
+  font-size:    0.9em;
+  line-height:  1;
+  vertical-align: -1px;
+}
+
+/* Reduced-motion: freeze cursor, stay visible */
+@media (prefers-reduced-motion: reduce) {
+  body.jx2-active .msg-ai.streaming .body::after {
+    animation: none;
+    opacity:   0.7;
+  }
+}
+
+/* ── Composer — HUD chrome frame ────────────────────────────────────── */
+
+/* Chat input bar — HUD dark surface + hairline border */
+body.jx2-active .chat-input-bar {
+  background:    var(--jx2-hud-surface) !important;
+  border:        1px solid var(--jx2-hud-border) !important;
+  border-radius: var(--jx2-radius-md) !important;
+}
+
+/* Focus-within: brand-red border + soft glow */
+body.jx2-active .chat-input-bar:focus-within {
+  border-color: var(--jx2-crimson-500) !important;
+  box-shadow:   0 0 0 1px color-mix(in srgb, var(--red, #c0392b) 18%, transparent) !important;
+}
+
+/* Textarea — caret in crimson */
+body.jx2-active .chat-input-bar textarea#message {
+  caret-color: var(--jx2-crimson-400) !important;
+}
+
+/* Composer icon buttons — HUD chip style */
+body.jx2-active .chat-input-bottom .input-icon-btn {
+  border:        1px solid var(--jx2-hud-chip-border) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  background:    var(--jx2-hud-chip-bg) !important;
+  color:         var(--jx2-fg-muted) !important;
+  opacity:       1 !important;
+  transition:    border-color 150ms, color 150ms, background 150ms !important;
+}
+
+body.jx2-active .chat-input-bottom .input-icon-btn:hover {
+  border-color: var(--jx2-crimson-600) !important;
+  color:        var(--jx2-fg-secondary) !important;
+  background:   color-mix(in srgb, var(--red, #c0392b) 8%, transparent) !important;
+}
+
+body.jx2-active .chat-input-bottom .input-icon-btn.active,
+body.jx2-active .chat-input-bottom .input-icon-btn[data-active="true"] {
+  border-color: var(--jx2-crimson-500) !important;
+  color:        var(--jx2-crimson-200) !important;
+  background:   color-mix(in srgb, var(--red, #c0392b) 14%, transparent) !important;
+}
+
+/* Input divider — use hairline token */
+body.jx2-active .input-divider {
+  background: var(--jx2-border-hairline) !important;
+  opacity:    1 !important;
+}
+
+/* Mode toggle (Chat / Agent) — HUD chip container */
+body.jx2-active .mode-toggle {
+  border:        1px solid var(--jx2-hud-chip-border) !important;
+  border-radius: var(--jx2-radius-sm) !important;
+  background:    var(--jx2-hud-chip-bg) !important;
+}
+
+body.jx2-active .mode-toggle-btn {
+  font-family:    var(--jx2-font-mono) !important;
+  font-size:      9px !important;
+  letter-spacing: 0.08em !important;
+  color:          var(--jx2-fg-muted) !important;
+  border:         none !important;
+}
+
+body.jx2-active .mode-toggle-btn.active {
+  background:   color-mix(in srgb, var(--red, #c0392b) 14%, transparent) !important;
+  color:        var(--jx2-crimson-200) !important;
+  border-color: transparent !important;
+  cursor:       default;
+}
+
+/* ── Mobile tweaks ───────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  body.jx2-active #jx2-chat-context-strip {
+    padding: 4px 0;
+    gap:     4px;
+  }
+  body.jx2-active .jx2-ctx-label {
+    font-size: 7px;
+  }
+}
