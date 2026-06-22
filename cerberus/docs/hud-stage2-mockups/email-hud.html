@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUD Stage 2 Batch 2 — Email Surface Mockup</title>
+<style>
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal; font-weight: 400 900; font-display: swap;
+  src: url('../../static/fonts/Orbitron.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal; font-weight: 400 600; font-display: swap;
+  src: url('../../static/fonts/JetBrainsMono.woff2') format('woff2');
+}
+:root {
+  --red: #c0392b;
+  --jx2-crimson-700: #4a0f0f; --jx2-crimson-600: #7a1a1a;
+  --jx2-crimson-500: #c0392b; --jx2-crimson-400: #e04535;
+  --jx2-crimson-300: #f06b5a; --jx2-crimson-200: #ff9080;
+  --jx2-surface-void:   #09090a; --jx2-surface-base:   #0d0d0f;
+  --jx2-surface-raised: #111115; --jx2-surface-modal:  #16161c;
+  --jx2-fg-primary: #e8e8ec; --jx2-fg-secondary: #9a9aaa; --jx2-fg-muted: #5a5a6a;
+  --jx2-border-hairline: color-mix(in srgb, var(--red) 12%, transparent);
+  --jx2-border-default:  color-mix(in srgb, var(--red) 28%, transparent);
+  --jx2-border-glow:     color-mix(in srgb, var(--red) 55%, transparent);
+  --jx2-status-active:     #22c55e;
+  --jx2-status-processing: #3b82f6;
+  --jx2-font-display: 'Orbitron', monospace;
+  --jx2-font-mono:    'JetBrains Mono', monospace;
+  --jx2-radius-sm: 2px; --jx2-radius-md: 4px;
+  --jx2-hud-surface:          var(--jx2-surface-void);
+  --jx2-hud-border:           var(--jx2-border-default);
+  --jx2-hud-scanline-gap:     4px;
+  --jx2-hud-scanline-color:   rgba(0,0,0,0.07);
+  --jx2-hud-scanline-opacity: 0.5;
+  --jx2-hud-active-bg:        color-mix(in srgb, var(--red) 12%, transparent);
+  --jx2-hud-active-glow:
+    inset 0 0 16px color-mix(in srgb, var(--red) 10%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--red) 12%, transparent);
+  --jx2-hud-active-border:    var(--jx2-crimson-400);
+  --jx2-hud-chip-border:      rgba(255,255,255,0.07);
+  --jx2-hud-chip-bg:          rgba(255,255,255,0.025);
+  --jx2-hud-chip-text:        var(--jx2-fg-muted);
+  --jx2-hud-prefix-color:     var(--jx2-crimson-500);
+  --jx2-hud-prefix-glow:      0 0 12px color-mix(in srgb, var(--red) 40%, transparent);
+  --jx2-hud-wordmark-glow:    0 0 20px color-mix(in srgb, var(--red) 40%, transparent);
+}
+@keyframes jx2-pulse-crimson { 0%,100%{opacity:.5} 50%{opacity:1} }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #04040a; display: flex; flex-direction: column;
+  align-items: center; min-height: 100vh; padding: 32px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--jx2-fg-primary); gap: 20px;
+}
+.page-label {
+  font-family: var(--jx2-font-mono); font-size: 10px;
+  color: var(--jx2-fg-muted); letter-spacing: 0.18em; text-transform: uppercase;
+}
+
+/* ── Shell ────────────────────────────────────────────────────────── */
+.cc-shell {
+  width: 100%; max-width: 1100px; height: 780px;
+  background: var(--jx2-surface-base); border: 1px solid var(--jx2-border-glow);
+  border-radius: 4px; display: flex; flex-direction: column; overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--red) 6%, transparent),
+    0 4px 48px rgba(0,0,0,0.7),
+    0 0 80px color-mix(in srgb, var(--red) 4%, transparent);
+}
+.cc-shell::before {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,transparent,
+    transparent calc(var(--jx2-hud-scanline-gap) - 1px),
+    var(--jx2-hud-scanline-color) calc(var(--jx2-hud-scanline-gap) - 1px),
+    var(--jx2-hud-scanline-color) var(--jx2-hud-scanline-gap)
+  );
+  pointer-events: none; z-index: 99; opacity: var(--jx2-hud-scanline-opacity);
+}
+
+/* ── Brand bar ───────────────────────────────────────────────────── */
+.cc-brand-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px 8px;
+  background: var(--jx2-hud-surface); border-bottom: 1px solid var(--jx2-hud-border);
+  flex-shrink: 0; position: relative; z-index: 2;
+}
+.cc-wordmark {
+  font-family: var(--jx2-font-display); font-size: 17px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--jx2-fg-primary);
+  text-shadow: var(--jx2-hud-wordmark-glow); white-space: nowrap; user-select: none;
+}
+.cc-wordmark .hud-bracket { color: var(--jx2-crimson-700); font-size: 1.1em; }
+.cc-wordmark .hud-lead    { color: var(--jx2-crimson-300); }
+.cc-wordmark-sub {
+  font-family: var(--jx2-font-mono); font-size: 9px; letter-spacing: 0.18em;
+  color: var(--jx2-crimson-500); text-shadow: var(--jx2-hud-prefix-glow);
+  text-transform: uppercase; margin-left: 4px; opacity: 0.7;
+}
+.cc-brand-chips { display: flex; align-items: center; gap: 5px; margin-left: 8px; }
+.hud-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--jx2-font-mono); font-size: 8px;
+  color: var(--jx2-hud-chip-text); letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 2px 6px; border: 1px solid var(--jx2-hud-chip-border);
+  border-radius: var(--jx2-radius-sm); background: var(--jx2-hud-chip-bg);
+  white-space: nowrap; user-select: none;
+}
+.hud-chip-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.hud-chip-dot--online { background: var(--jx2-status-active); }
+.hud-chip-dot--auth   { background: var(--jx2-crimson-400); animation: jx2-pulse-crimson 2.4s ease-in-out infinite; }
+.cc-brand-spacer { flex: 1; }
+.cc-clock {
+  font-family: var(--jx2-font-display); font-size: 11px;
+  letter-spacing: 0.12em; color: var(--jx2-fg-muted); font-variant-numeric: tabular-nums;
+}
+
+/* ── Tab nav ─────────────────────────────────────────────────────── */
+.cc-tab-nav {
+  display: flex; gap: 2px; padding: 5px 12px;
+  background: var(--jx2-hud-surface); border-bottom: 1px solid var(--jx2-hud-border);
+  flex-shrink: 0; position: relative; z-index: 2;
+}
+.cc-tab-btn {
+  font-family: var(--jx2-font-mono); font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; padding: 4px 10px;
+  border: 1px solid transparent; border-radius: var(--jx2-radius-sm);
+  background: transparent; color: var(--jx2-fg-muted); cursor: pointer;
+  white-space: nowrap; opacity: 0.6; transition: all 150ms; user-select: none;
+}
+.cc-tab-btn.active {
+  background: var(--jx2-hud-active-bg); border-color: var(--jx2-hud-active-border);
+  color: var(--jx2-crimson-200); opacity: 1; box-shadow: var(--jx2-hud-active-glow);
+}
+.cc-tab-btn.active::before {
+  content: "// "; color: var(--jx2-hud-prefix-color); font-size: 0.9em;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+
+/* ── Email layout ─────────────────────────────────────────────────── */
+.email-layout {
+  display: flex; flex: 1; overflow: hidden;
+}
+
+/* ── Left panel (folders + list) ─────────────────────────────────── */
+.email-sidebar {
+  width: 300px; flex-shrink: 0;
+  border-right: 1px solid var(--jx2-hud-border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* Folder header — HUD chrome */
+.email-folder-header {
+  padding: 8px 12px 6px;
+  background: color-mix(in srgb, var(--red) 5%, var(--jx2-surface-void));
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
+}
+.email-folder-label {
+  font-family: var(--jx2-font-mono); font-size: 8px;
+  color: var(--jx2-crimson-500); letter-spacing: 0.15em; text-transform: uppercase;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+.email-folder-label::before { content: "// "; }
+.email-folder-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.folder-chip {
+  font-family: var(--jx2-font-mono); font-size: 8px; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 2px 8px;
+  border: 1px solid var(--jx2-hud-chip-border); border-radius: var(--jx2-radius-sm);
+  background: var(--jx2-hud-chip-bg); color: var(--jx2-fg-muted); cursor: pointer;
+  transition: all 150ms; white-space: nowrap;
+}
+.folder-chip.active {
+  background: var(--jx2-hud-active-bg); border-color: var(--jx2-hud-active-border);
+  color: var(--jx2-crimson-200);
+}
+.folder-chip .folder-badge {
+  display: inline-block; background: var(--jx2-crimson-600); color: var(--jx2-crimson-200);
+  font-size: 7px; padding: 0 3px; border-radius: 2px; margin-left: 3px;
+}
+
+/* Search bar — HUD chip style */
+.email-search {
+  padding: 6px 12px; border-bottom: 1px solid var(--jx2-border-hairline); flex-shrink: 0;
+}
+.email-search-input {
+  width: 100%; background: var(--jx2-surface-raised);
+  border: 1px solid var(--jx2-border-default); border-radius: var(--jx2-radius-sm);
+  color: var(--jx2-fg-primary); font-family: var(--jx2-font-mono); font-size: 9px;
+  padding: 4px 8px; outline: none; letter-spacing: 0.05em;
+}
+.email-search-input::placeholder { color: var(--jx2-fg-muted); }
+.email-search-input:focus { border-color: var(--jx2-crimson-500); }
+
+/* Email list */
+.email-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--jx2-border-default) transparent; }
+.email-item {
+  padding: 9px 12px; border-bottom: 1px solid var(--jx2-border-hairline);
+  cursor: pointer; transition: background 150ms; display: flex; flex-direction: column; gap: 3px;
+  position: relative;
+}
+.email-item:hover { background: color-mix(in srgb, var(--red) 5%, transparent); }
+.email-item.active {
+  background: var(--jx2-hud-active-bg);
+  border-left: 2px solid var(--jx2-crimson-500);
+}
+.email-item.unread .email-sender { color: var(--jx2-fg-primary); font-weight: 600; }
+.email-item.unread::before {
+  content: ''; position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: var(--jx2-crimson-400);
+}
+.email-sender {
+  font-family: var(--jx2-font-mono); font-size: 10px;
+  color: var(--jx2-fg-secondary); letter-spacing: 0.04em;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.email-sender-date {
+  font-size: 8px; color: var(--jx2-fg-muted); letter-spacing: 0.06em;
+  flex-shrink: 0; margin-left: 8px;
+}
+/* Subject + preview — readable, not tiny mono */
+.email-subject {
+  font-size: 12px; color: var(--jx2-fg-primary); line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.email-preview {
+  font-size: 11px; color: var(--jx2-fg-muted); line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.email-tags { display: flex; gap: 3px; margin-top: 1px; }
+.email-tag {
+  font-family: var(--jx2-font-mono); font-size: 7px; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 1px 5px; border-radius: 2px;
+  border: 1px solid; white-space: nowrap;
+}
+.email-tag--threat { border-color: var(--jx2-crimson-600); color: var(--jx2-crimson-300); background: color-mix(in srgb, var(--red) 8%, transparent); }
+.email-tag--auto   { border-color: rgba(59,130,246,0.3); color: #60a5fa; background: rgba(59,130,246,0.06); }
+.email-tag--starred{ border-color: rgba(245,158,11,0.3); color: #fbbf24; background: rgba(245,158,11,0.06); }
+
+/* ── Reading pane ─────────────────────────────────────────────────── */
+.email-reader {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* Reader toolbar — HUD chrome */
+.email-reader-toolbar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  background: color-mix(in srgb, var(--red) 5%, var(--jx2-surface-void));
+  border-bottom: 1px solid var(--jx2-hud-border); flex-shrink: 0;
+}
+.reader-action-btn {
+  font-family: var(--jx2-font-mono); font-size: 8px; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 3px 9px;
+  border: 1px solid var(--jx2-hud-chip-border); border-radius: var(--jx2-radius-sm);
+  background: var(--jx2-hud-chip-bg); color: var(--jx2-fg-muted); cursor: pointer;
+  transition: all 150ms; white-space: nowrap;
+}
+.reader-action-btn:hover { border-color: var(--jx2-crimson-600); color: var(--jx2-crimson-300); }
+.reader-action-btn.primary {
+  border-color: var(--jx2-crimson-600); color: var(--jx2-crimson-200);
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+}
+.reader-spacer { flex: 1; }
+.reader-ai-badge {
+  font-family: var(--jx2-font-mono); font-size: 8px; letter-spacing: 0.08em;
+  padding: 2px 7px; border: 1px solid rgba(59,130,246,0.3); border-radius: var(--jx2-radius-sm);
+  background: rgba(59,130,246,0.06); color: #60a5fa; white-space: nowrap;
+}
+
+/* Email header — HUD chip layout for metadata */
+.email-header-block {
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  background: var(--jx2-surface-void); flex-shrink: 0;
+}
+.email-subject-line {
+  /* Readable subject — comfortable font size */
+  font-size: 16px; font-weight: 600; color: var(--jx2-fg-primary);
+  line-height: 1.3; margin-bottom: 10px;
+}
+.email-meta-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.email-meta-from {
+  font-family: var(--jx2-font-mono); font-size: 9px;
+  color: var(--jx2-fg-secondary); letter-spacing: 0.05em;
+}
+.email-meta-from strong { color: var(--jx2-fg-primary); }
+
+/* Email body — calm readable prose, NOT mono, NOT tiny */
+.email-body-scroll {
+  flex: 1; overflow-y: auto; padding: 20px 24px;
+  scrollbar-width: thin; scrollbar-color: var(--jx2-border-default) transparent;
+}
+.email-body-text {
+  font-size: 14px;              /* comfortable reading size */
+  line-height: 1.7;
+  color: var(--jx2-fg-primary);
+  font-family: system-ui, -apple-system, sans-serif;
+  max-width: 680px;
+}
+.email-body-text p { margin-bottom: 12px; }
+.email-body-text p:last-child { margin-bottom: 0; }
+.email-signature {
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--jx2-border-hairline);
+  font-size: 12px; color: var(--jx2-fg-muted); line-height: 1.6;
+}
+
+/* AI summary strip — HUD chip style over readable text */
+.email-ai-strip {
+  padding: 8px 18px;
+  border-top: 1px solid var(--jx2-border-hairline);
+  background: color-mix(in srgb, #3b82f6 5%, var(--jx2-surface-void));
+  display: flex; align-items: flex-start; gap: 10px; flex-shrink: 0;
+}
+.ai-strip-label {
+  font-family: var(--jx2-font-mono); font-size: 8px; color: #60a5fa;
+  letter-spacing: 0.12em; text-transform: uppercase; flex-shrink: 0; margin-top: 1px;
+}
+.ai-strip-text {
+  font-size: 12px; color: var(--jx2-fg-secondary); line-height: 1.5; flex: 1;
+}
+
+/* Reply composer */
+.email-reply-bar {
+  padding: 8px 14px; border-top: 1px solid var(--jx2-hud-border);
+  background: var(--jx2-hud-surface); display: flex; gap: 8px; flex-shrink: 0;
+  align-items: flex-end;
+}
+.email-reply-textarea {
+  flex: 1; min-height: 54px; resize: none;
+  background: var(--jx2-surface-raised); border: 1px solid var(--jx2-border-default);
+  border-radius: var(--jx2-radius-md); color: var(--jx2-fg-primary);
+  font-family: system-ui, -apple-system, sans-serif; font-size: 13px;
+  padding: 8px 10px; line-height: 1.5; outline: none;
+}
+.email-reply-textarea:focus { border-color: var(--jx2-crimson-500); }
+.email-reply-textarea::placeholder { color: var(--jx2-fg-muted); }
+.email-reply-send {
+  font-family: var(--jx2-font-mono); font-size: 9px; letter-spacing: 0.1em;
+  text-transform: uppercase; padding: 0 14px; height: 32px; flex-shrink: 0;
+  background: color-mix(in srgb, var(--red) 20%, transparent);
+  border: 1px solid var(--jx2-crimson-600); color: var(--jx2-crimson-200);
+  cursor: pointer; border-radius: var(--jx2-radius-sm); transition: all 150ms;
+}
+.email-reply-send:hover {
+  background: color-mix(in srgb, var(--red) 30%, transparent);
+  border-color: var(--jx2-crimson-400);
+}
+</style>
+</head>
+<body>
+<p class="page-label">HUD Stage 2 · Batch 2 · Email Surface</p>
+
+<div class="cc-shell">
+
+  <!-- Brand bar -->
+  <div class="cc-brand-bar">
+    <span class="cc-wordmark">
+      <span class="hud-bracket">[</span><span class="hud-lead">C</span>erberus<span class="hud-bracket">]</span>
+      <span class="cc-wordmark-sub">v4</span>
+    </span>
+    <div class="cc-brand-chips">
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--online"></span>Online</span>
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--auth"></span>Auth</span>
+      <span class="hud-chip">ops@cerberus.local</span>
+    </div>
+    <div class="cc-brand-spacer"></div>
+    <span class="cc-clock">14:22:07</span>
+  </div>
+
+  <!-- Tab nav -->
+  <div class="cc-tab-nav">
+    <button class="cc-tab-btn">Dashboard</button>
+    <button class="cc-tab-btn active">Email</button>
+    <button class="cc-tab-btn">Chat</button>
+    <button class="cc-tab-btn">Agents</button>
+    <button class="cc-tab-btn">Ops</button>
+    <button class="cc-tab-btn">Settings</button>
+  </div>
+
+  <div class="email-layout">
+
+    <!-- Left: folders + list — HUD chrome throughout -->
+    <div class="email-sidebar">
+
+      <div class="email-folder-header">
+        <div class="email-folder-label">Folders</div>
+        <div class="email-folder-chips">
+          <span class="folder-chip active">Inbox <span class="folder-badge">7</span></span>
+          <span class="folder-chip">Sent</span>
+          <span class="folder-chip">Starred</span>
+          <span class="folder-chip">Archive</span>
+          <span class="folder-chip">Trash</span>
+        </div>
+      </div>
+
+      <div class="email-search">
+        <input class="email-search-input" placeholder="Search…" />
+      </div>
+
+      <div class="email-list">
+
+        <div class="email-item active">
+          <div class="email-sender">
+            Marcus L. <span class="email-sender-date">14:18</span>
+          </div>
+          <div class="email-subject">Re: OPS-2847 — TA558 subnet escalation</div>
+          <div class="email-preview">I've taken L2 ownership. Blocklist push confirmed at 14:22. Need the full IOC…</div>
+          <div class="email-tags">
+            <span class="email-tag email-tag--threat">Threat Intel</span>
+          </div>
+        </div>
+
+        <div class="email-item unread">
+          <div class="email-sender">
+            Security Alerts <span class="email-sender-date">13:44</span>
+          </div>
+          <div class="email-subject">[SIEM] 3 medium-severity events — AS15169</div>
+          <div class="email-preview">Automated digest: 3 events triggered at 13:38 UTC. Source IPs: 34.82.47.211…</div>
+          <div class="email-tags">
+            <span class="email-tag email-tag--auto">Auto</span>
+            <span class="email-tag email-tag--threat">SIEM</span>
+          </div>
+        </div>
+
+        <div class="email-item unread">
+          <div class="email-sender">
+            Alex Chen <span class="email-sender-date">11:32</span>
+          </div>
+          <div class="email-subject">Q3 penetration test — scheduling request</div>
+          <div class="email-preview">Hi, we'd like to book the external pentest for July. Can you confirm availability…</div>
+          <div class="email-tags">
+            <span class="email-tag email-tag--starred">Starred</span>
+          </div>
+        </div>
+
+        <div class="email-item">
+          <div class="email-sender">
+            no-reply@github.com <span class="email-sender-date">10:05</span>
+          </div>
+          <div class="email-subject">[cerberus] PR #22 merged — Agents roster table</div>
+          <div class="email-preview">itseliias merged pull request #22 into cerberus from feat/agents-tab-variant-a…</div>
+          <div class="email-tags">
+            <span class="email-tag email-tag--auto">GitHub</span>
+          </div>
+        </div>
+
+        <div class="email-item">
+          <div class="email-sender">
+            Cloudflare <span class="email-sender-date">09:30</span>
+          </div>
+          <div class="email-subject">DDoS mitigation — incident resolved</div>
+          <div class="email-preview">The DDoS attack targeting your origin (Zone: cerberus.io) has been mitigated…</div>
+        </div>
+
+      </div><!-- /email-list -->
+    </div><!-- /email-sidebar -->
+
+    <!-- Right: reading pane -->
+    <div class="email-reader">
+
+      <!-- Toolbar — HUD chrome -->
+      <div class="email-reader-toolbar">
+        <button class="reader-action-btn primary">↩ Reply</button>
+        <button class="reader-action-btn">Reply All</button>
+        <button class="reader-action-btn">→ Forward</button>
+        <button class="reader-action-btn">Archive</button>
+        <button class="reader-action-btn">✕ Delete</button>
+        <div class="reader-spacer"></div>
+        <span class="reader-ai-badge">✦ AI Reply Draft</span>
+      </div>
+
+      <!-- Email header — subject readable, metadata HUD chips -->
+      <div class="email-header-block">
+        <div class="email-subject-line">Re: OPS-2847 — TA558 subnet escalation</div>
+        <div class="email-meta-row">
+          <span class="email-meta-from"><strong>Marcus L.</strong> &lt;marcus@cerberus.local&gt;</span>
+          <span class="hud-chip">14:18</span>
+          <span class="hud-chip">To: ops@cerberus.local</span>
+          <span class="hud-chip email-tag--threat" style="font-family:var(--jx2-font-mono);font-size:7px;letter-spacing:.06em;text-transform:uppercase;padding:2px 5px;border-radius:2px;border:1px solid var(--jx2-crimson-600);color:var(--jx2-crimson-300);background:color-mix(in srgb,var(--red) 8%,transparent);">Threat Intel</span>
+        </div>
+      </div>
+
+      <!-- Email body — calm readable prose -->
+      <div class="email-body-scroll">
+        <div class="email-body-text">
+          <p>Confirmed. I've taken L2 ownership of OPS-2847 and the blocklist push for <code style="font-family:var(--jx2-font-mono);font-size:12px;background:rgba(0,0,0,0.25);padding:1px 4px;border-radius:2px;color:var(--jx2-crimson-200);">34.82.47.192/26</code> went through at 14:22 UTC.</p>
+          <p>Could you send over the full IOC report that JARVIS generated? I need the TTP mapping and the confidence scores for the TA558 attribution before I update the threat register.</p>
+          <p>Also — are we planning to notify the affected subnet's ASN (AS15169)? Standard practice is to send an abuse report within 24 hours. Let me know if you want me to handle that or if the AI should draft it.</p>
+          <p>Otherwise the incident looks contained. I'll post a close-out summary to the ops channel once the register is updated.</p>
+          <div class="email-signature">
+            Marcus L.<br>
+            SOC L2 Analyst · Cerberus Security<br>
+            <span style="opacity:0.6;">PGP: 8F3A 4421 BE09 ...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI summary strip — HUD chip label, readable summary text -->
+      <div class="email-ai-strip">
+        <span class="ai-strip-label">✦ AI</span>
+        <span class="ai-strip-text">Marcus has taken L2 ownership and confirmed blocklist push. He needs the full IOC report + TTP mapping. Asking about ASN abuse notification and whether to close out the incident.</span>
+      </div>
+
+      <!-- Reply bar — HUD frame, readable textarea -->
+      <div class="email-reply-bar">
+        <textarea class="email-reply-textarea" placeholder="Reply to Marcus…"></textarea>
+        <button class="email-reply-send">Send</button>
+      </div>
+
+    </div><!-- /email-reader -->
+
+  </div><!-- /email-layout -->
+
+</div>
+
+<p class="page-label">Design intent: folder/toolbar/chips = HUD chrome · Subject/body/reply = comfortable 14px system-ui · AI strip = readable 12px summary</p>
+</body>
+</html>

@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUD Stage 2 Batch 2 — Notes Surface Mockup</title>
+<style>
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal; font-weight: 400 900; font-display: swap;
+  src: url('../../static/fonts/Orbitron.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal; font-weight: 400 600; font-display: swap;
+  src: url('../../static/fonts/JetBrainsMono.woff2') format('woff2');
+}
+:root {
+  --red: #c0392b;
+  --jx2-crimson-700: #4a0f0f; --jx2-crimson-600: #7a1a1a;
+  --jx2-crimson-500: #c0392b; --jx2-crimson-400: #e04535;
+  --jx2-crimson-300: #f06b5a; --jx2-crimson-200: #ff9080;
+  --jx2-surface-void:   #09090a; --jx2-surface-base: #0d0d0f;
+  --jx2-surface-raised: #111115; --jx2-surface-modal: #16161c;
+  --jx2-fg-primary: #e8e8ec; --jx2-fg-secondary: #9a9aaa; --jx2-fg-muted: #5a5a6a;
+  --jx2-border-hairline: color-mix(in srgb, var(--red) 12%, transparent);
+  --jx2-border-default:  color-mix(in srgb, var(--red) 28%, transparent);
+  --jx2-border-glow:     color-mix(in srgb, var(--red) 55%, transparent);
+  --jx2-status-active: #22c55e; --jx2-status-warn: #f59e0b;
+  --jx2-font-display: 'Orbitron', monospace;
+  --jx2-font-mono:    'JetBrains Mono', monospace;
+  --jx2-radius-sm: 2px; --jx2-radius-md: 4px;
+  --jx2-hud-surface:          var(--jx2-surface-void);
+  --jx2-hud-border:           var(--jx2-border-default);
+  --jx2-hud-scanline-gap:     4px;
+  --jx2-hud-scanline-color:   rgba(0,0,0,0.07);
+  --jx2-hud-scanline-opacity: 0.5;
+  --jx2-hud-active-bg:        color-mix(in srgb, var(--red) 12%, transparent);
+  --jx2-hud-active-glow:
+    inset 0 0 16px color-mix(in srgb, var(--red) 10%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--red) 12%, transparent);
+  --jx2-hud-active-border:    var(--jx2-crimson-400);
+  --jx2-hud-chip-border:      rgba(255,255,255,0.07);
+  --jx2-hud-chip-bg:          rgba(255,255,255,0.025);
+  --jx2-hud-chip-text:        var(--jx2-fg-muted);
+  --jx2-hud-prefix-color:     var(--jx2-crimson-500);
+  --jx2-hud-prefix-glow:      0 0 12px color-mix(in srgb, var(--red) 40%, transparent);
+  --jx2-hud-wordmark-glow:    0 0 20px color-mix(in srgb, var(--red) 40%, transparent);
+}
+@keyframes jx2-pulse-crimson { 0%,100%{opacity:.5} 50%{opacity:1} }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #04040a; display: flex; flex-direction: column;
+  align-items: center; min-height: 100vh; padding: 32px;
+  font-family: system-ui, -apple-system, sans-serif; color: var(--jx2-fg-primary); gap: 20px;
+}
+.page-label {
+  font-family: var(--jx2-font-mono); font-size: 10px;
+  color: var(--jx2-fg-muted); letter-spacing: 0.18em; text-transform: uppercase;
+}
+
+/* ── Shell ────────────────────────────────────────────────────────── */
+.cc-shell {
+  width: 100%; max-width: 1100px; height: 780px;
+  background: var(--jx2-surface-base); border: 1px solid var(--jx2-border-glow);
+  border-radius: 4px; display: flex; flex-direction: column; overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--red) 6%, transparent),
+    0 4px 48px rgba(0,0,0,0.7),
+    0 0 80px color-mix(in srgb, var(--red) 4%, transparent);
+}
+.cc-shell::before {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,transparent,
+    transparent calc(var(--jx2-hud-scanline-gap) - 1px),
+    var(--jx2-hud-scanline-color) calc(var(--jx2-hud-scanline-gap) - 1px),
+    var(--jx2-hud-scanline-color) var(--jx2-hud-scanline-gap)
+  );
+  pointer-events: none; z-index: 99; opacity: var(--jx2-hud-scanline-opacity);
+}
+
+/* ── Brand bar ───────────────────────────────────────────────────── */
+.cc-brand-bar {
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px 8px;
+  background: var(--jx2-hud-surface); border-bottom: 1px solid var(--jx2-hud-border);
+  flex-shrink: 0; position: relative; z-index: 2;
+}
+.cc-wordmark {
+  font-family: var(--jx2-font-display); font-size: 17px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--jx2-fg-primary);
+  text-shadow: var(--jx2-hud-wordmark-glow); white-space: nowrap; user-select: none;
+}
+.cc-wordmark .hud-bracket { color: var(--jx2-crimson-700); font-size: 1.1em; }
+.cc-wordmark .hud-lead    { color: var(--jx2-crimson-300); }
+.cc-wordmark-sub {
+  font-family: var(--jx2-font-mono); font-size: 9px; letter-spacing: 0.18em;
+  color: var(--jx2-crimson-500); text-shadow: var(--jx2-hud-prefix-glow);
+  text-transform: uppercase; margin-left: 4px; opacity: 0.7;
+}
+.cc-brand-chips { display: flex; align-items: center; gap: 5px; margin-left: 8px; }
+.hud-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--jx2-font-mono); font-size: 8px;
+  color: var(--jx2-hud-chip-text); letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 2px 6px; border: 1px solid var(--jx2-hud-chip-border);
+  border-radius: var(--jx2-radius-sm); background: var(--jx2-hud-chip-bg);
+  white-space: nowrap; user-select: none;
+}
+.hud-chip-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.hud-chip-dot--online { background: var(--jx2-status-active); }
+.hud-chip-dot--auth   { background: var(--jx2-crimson-400); animation: jx2-pulse-crimson 2.4s ease-in-out infinite; }
+.cc-brand-spacer { flex: 1; }
+.cc-clock {
+  font-family: var(--jx2-font-display); font-size: 11px;
+  letter-spacing: 0.12em; color: var(--jx2-fg-muted); font-variant-numeric: tabular-nums;
+}
+
+/* ── Tab nav ─────────────────────────────────────────────────────── */
+.cc-tab-nav {
+  display: flex; gap: 2px; padding: 5px 12px;
+  background: var(--jx2-hud-surface); border-bottom: 1px solid var(--jx2-hud-border);
+  flex-shrink: 0; position: relative; z-index: 2;
+}
+.cc-tab-btn {
+  font-family: var(--jx2-font-mono); font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; padding: 4px 10px;
+  border: 1px solid transparent; border-radius: var(--jx2-radius-sm);
+  background: transparent; color: var(--jx2-fg-muted); cursor: pointer;
+  white-space: nowrap; opacity: 0.6; transition: all 150ms; user-select: none;
+}
+.cc-tab-btn.active {
+  background: var(--jx2-hud-active-bg); border-color: var(--jx2-hud-active-border);
+  color: var(--jx2-crimson-200); opacity: 1; box-shadow: var(--jx2-hud-active-glow);
+}
+.cc-tab-btn.active::before {
+  content: "// "; color: var(--jx2-hud-prefix-color); font-size: 0.9em;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+
+/* ── Notes layout ─────────────────────────────────────────────────── */
+.notes-layout { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Left: list panel — HUD chrome ───────────────────────────────── */
+.notes-list-panel {
+  width: 280px; flex-shrink: 0;
+  border-right: 1px solid var(--jx2-hud-border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* List header — HUD chrome */
+.notes-list-header {
+  padding: 8px 12px 6px;
+  background: color-mix(in srgb, var(--red) 5%, var(--jx2-surface-void));
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;
+}
+.notes-header-row {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.notes-section-label {
+  font-family: var(--jx2-font-mono); font-size: 8px;
+  color: var(--jx2-crimson-500); letter-spacing: 0.15em; text-transform: uppercase;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+.notes-section-label::before { content: "// "; }
+.notes-new-btn {
+  font-family: var(--jx2-font-mono); font-size: 9px; letter-spacing: 0.06em;
+  padding: 2px 8px; border: 1px solid var(--jx2-crimson-600);
+  background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--jx2-crimson-200);
+  cursor: pointer; border-radius: var(--jx2-radius-sm); transition: all 150ms;
+}
+.notes-new-btn:hover { background: color-mix(in srgb, var(--red) 22%, transparent); }
+.notes-filter-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.notes-filter-chip {
+  font-family: var(--jx2-font-mono); font-size: 8px; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 2px 7px;
+  border: 1px solid var(--jx2-hud-chip-border); border-radius: var(--jx2-radius-sm);
+  background: var(--jx2-hud-chip-bg); color: var(--jx2-fg-muted); cursor: pointer;
+  transition: all 150ms;
+}
+.notes-filter-chip.active {
+  border-color: var(--jx2-hud-active-border); color: var(--jx2-crimson-200);
+  background: var(--jx2-hud-active-bg);
+}
+.notes-search {
+  padding: 5px 10px; border-bottom: 1px solid var(--jx2-border-hairline); flex-shrink: 0;
+}
+.notes-search-input {
+  width: 100%; background: var(--jx2-surface-raised);
+  border: 1px solid var(--jx2-border-default); border-radius: var(--jx2-radius-sm);
+  color: var(--jx2-fg-primary); font-family: var(--jx2-font-mono); font-size: 9px;
+  padding: 4px 8px; outline: none;
+}
+.notes-search-input::placeholder { color: var(--jx2-fg-muted); }
+.notes-search-input:focus { border-color: var(--jx2-crimson-500); }
+
+/* Note cards — HUD frame, readable preview text */
+.notes-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--jx2-border-default) transparent; }
+.note-card {
+  padding: 10px 12px; border-bottom: 1px solid var(--jx2-border-hairline);
+  cursor: pointer; transition: background 150ms; position: relative;
+}
+.note-card:hover { background: color-mix(in srgb, var(--red) 5%, transparent); }
+.note-card.active {
+  background: var(--jx2-hud-active-bg); border-left: 2px solid var(--jx2-crimson-500);
+}
+.note-card.pinned { border-left: 2px solid var(--jx2-status-warn); }
+.note-card-header { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 4px; }
+.note-pin-icon { font-size: 9px; color: var(--jx2-status-warn); flex-shrink: 0; margin-top: 2px; }
+/* Note title — readable size */
+.note-title {
+  font-size: 13px; font-weight: 600; color: var(--jx2-fg-primary);
+  line-height: 1.3; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.note-date {
+  font-family: var(--jx2-font-mono); font-size: 8px; color: var(--jx2-fg-muted);
+  letter-spacing: 0.06em; flex-shrink: 0;
+}
+/* Note preview — comfortable readable */
+.note-preview {
+  font-size: 11px; color: var(--jx2-fg-secondary); line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.note-card-footer { display: flex; gap: 4px; margin-top: 5px; }
+.note-label-chip {
+  font-family: var(--jx2-font-mono); font-size: 7px; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 1px 5px; border-radius: 2px;
+  border: 1px solid var(--jx2-hud-chip-border); background: var(--jx2-hud-chip-bg);
+  color: var(--jx2-fg-muted);
+}
+.note-reminder-chip {
+  font-family: var(--jx2-font-mono); font-size: 7px; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 1px 5px; border-radius: 2px;
+  border: 1px solid rgba(245,158,11,0.3); background: rgba(245,158,11,0.06);
+  color: #fbbf24;
+}
+
+/* ── Right: editor panel — HUD frame, readable content ───────────── */
+.notes-editor-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Editor toolbar — HUD chrome */
+.notes-editor-toolbar {
+  display: flex; align-items: center; gap: 5px; padding: 7px 14px;
+  background: color-mix(in srgb, var(--red) 5%, var(--jx2-surface-void));
+  border-bottom: 1px solid var(--jx2-hud-border); flex-shrink: 0;
+}
+.editor-tool-btn {
+  font-family: var(--jx2-font-mono); font-size: 8px; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 3px 8px;
+  border: 1px solid var(--jx2-hud-chip-border); border-radius: var(--jx2-radius-sm);
+  background: var(--jx2-hud-chip-bg); color: var(--jx2-fg-muted); cursor: pointer;
+  transition: all 150ms; white-space: nowrap;
+}
+.editor-tool-btn:hover { border-color: var(--jx2-crimson-600); color: var(--jx2-fg-secondary); }
+.editor-tool-sep {
+  width: 1px; height: 14px; background: var(--jx2-hud-chip-border); flex-shrink: 0;
+}
+.editor-tool-spacer { flex: 1; }
+.editor-save-status {
+  font-family: var(--jx2-font-mono); font-size: 8px;
+  color: var(--jx2-status-active); letter-spacing: 0.1em;
+  display: flex; align-items: center; gap: 4px;
+}
+.editor-save-status::before {
+  content: ''; display: block; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--jx2-status-active);
+}
+
+/* Note title input — readable, prominent */
+.notes-title-bar {
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  background: var(--jx2-surface-void); flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+}
+.note-title-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-size: 20px; font-weight: 600; color: var(--jx2-fg-primary);
+  font-family: system-ui, -apple-system, sans-serif; line-height: 1.2;
+}
+.note-title-input::placeholder { color: var(--jx2-fg-muted); opacity: 0.5; }
+.note-meta-chips { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+
+/* Note body — calm, readable prose area. Not tiny mono, not scanlined over. */
+.notes-editor-body {
+  flex: 1; overflow-y: auto; padding: 18px 24px;
+  scrollbar-width: thin; scrollbar-color: var(--jx2-border-default) transparent;
+}
+.notes-editor-content {
+  font-size: 15px;                 /* comfortable reading size */
+  line-height: 1.7;
+  color: var(--jx2-fg-primary);
+  font-family: system-ui, -apple-system, sans-serif;
+  max-width: 680px; outline: none;
+}
+/* Headings in notes */
+.notes-editor-content h2 {
+  font-size: 16px; font-weight: 600; color: var(--jx2-fg-primary);
+  margin-bottom: 10px; margin-top: 20px; border-bottom: 1px solid var(--jx2-border-hairline); padding-bottom: 6px;
+}
+.notes-editor-content h2:first-child { margin-top: 0; }
+.notes-editor-content p { margin-bottom: 12px; }
+.notes-editor-content ul { padding-left: 18px; margin-bottom: 12px; }
+.notes-editor-content li { margin-bottom: 5px; }
+/* Checklist items */
+.checklist-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+.check-box {
+  width: 15px; height: 15px; border: 1px solid var(--jx2-border-default);
+  border-radius: 2px; flex-shrink: 0; margin-top: 2px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.check-box.done { background: var(--jx2-crimson-700); border-color: var(--jx2-crimson-500); }
+.check-box.done::after { content: '✓'; font-size: 9px; color: var(--jx2-crimson-200); }
+.check-text { font-size: 15px; color: var(--jx2-fg-primary); line-height: 1.5; }
+.check-text.done { text-decoration: line-through; color: var(--jx2-fg-muted); }
+
+/* Code block in notes — mono but readable size */
+.notes-editor-content pre {
+  font-family: var(--jx2-font-mono); font-size: 12px;
+  background: rgba(0,0,0,0.3); padding: 10px 12px; border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.05); color: var(--jx2-fg-secondary);
+  line-height: 1.5; overflow-x: auto; margin: 10px 0;
+}
+.notes-editor-content code {
+  font-family: var(--jx2-font-mono); font-size: 12px;
+  background: rgba(0,0,0,0.25); padding: 1px 4px; border-radius: 2px;
+  color: var(--jx2-crimson-200);
+}
+
+/* Status bar — HUD chrome */
+.notes-status-bar {
+  display: flex; align-items: center; gap: 8px; padding: 5px 14px;
+  background: var(--jx2-hud-surface); border-top: 1px solid var(--jx2-hud-border);
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+<p class="page-label">HUD Stage 2 · Batch 2 · Notes Surface</p>
+
+<div class="cc-shell">
+
+  <!-- Brand bar -->
+  <div class="cc-brand-bar">
+    <span class="cc-wordmark">
+      <span class="hud-bracket">[</span><span class="hud-lead">C</span>erberus<span class="hud-bracket">]</span>
+      <span class="cc-wordmark-sub">v4</span>
+    </span>
+    <div class="cc-brand-chips">
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--online"></span>Online</span>
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--auth"></span>Auth</span>
+    </div>
+    <div class="cc-brand-spacer"></div>
+    <span class="cc-clock">14:22:07</span>
+  </div>
+
+  <!-- Tab nav -->
+  <div class="cc-tab-nav">
+    <button class="cc-tab-btn">Dashboard</button>
+    <button class="cc-tab-btn">Email</button>
+    <button class="cc-tab-btn">Chat</button>
+    <button class="cc-tab-btn active">Notes</button>
+    <button class="cc-tab-btn">Agents</button>
+    <button class="cc-tab-btn">Docs</button>
+    <button class="cc-tab-btn">Settings</button>
+  </div>
+
+  <div class="notes-layout">
+
+    <!-- Left: list panel — HUD chrome -->
+    <div class="notes-list-panel">
+
+      <div class="notes-list-header">
+        <div class="notes-header-row">
+          <span class="notes-section-label">Notes</span>
+          <button class="notes-new-btn">+ New</button>
+        </div>
+        <div class="notes-filter-row">
+          <span class="notes-filter-chip active">All</span>
+          <span class="notes-filter-chip">Pinned</span>
+          <span class="notes-filter-chip">Reminders</span>
+          <span class="notes-filter-chip">Archive</span>
+        </div>
+      </div>
+
+      <div class="notes-search">
+        <input class="notes-search-input" placeholder="Search notes…" />
+      </div>
+
+      <div class="notes-list">
+
+        <!-- Pinned note -->
+        <div class="note-card pinned active">
+          <div class="note-card-header">
+            <span class="note-pin-icon">📌</span>
+            <span class="note-title">Q3 Pentest Scope — Checklist</span>
+            <span class="note-date">Today</span>
+          </div>
+          <div class="note-preview">External scope: cerberus.io, api.cerberus.io, admin.cerberus.io. Internal: 10.0.0.0/8 subnets…</div>
+          <div class="note-card-footer">
+            <span class="note-label-chip">Security</span>
+            <span class="note-reminder-chip">⏰ Jun 20</span>
+          </div>
+        </div>
+
+        <div class="note-card">
+          <div class="note-card-header">
+            <span class="note-title">TA558 incident — notes</span>
+            <span class="note-date">Today</span>
+          </div>
+          <div class="note-preview">Correlated 3 IPs to TA558 phishing campaign. Subnet 34.82.47.192/26 blocked. Ticket OPS-2847…</div>
+          <div class="note-card-footer">
+            <span class="note-label-chip">Threat Intel</span>
+            <span class="note-label-chip">Active</span>
+          </div>
+        </div>
+
+        <div class="note-card">
+          <div class="note-card-header">
+            <span class="note-title">HUD Stage 2 — design decisions</span>
+            <span class="note-date">Jun 17</span>
+          </div>
+          <div class="note-preview">HUD identity at edges. Body text stays comfortable. No scanlines over content. Orbitron wordmark only…</div>
+          <div class="note-card-footer">
+            <span class="note-label-chip">Design</span>
+          </div>
+        </div>
+
+        <div class="note-card">
+          <div class="note-card-header">
+            <span class="note-title">Cerberus deployment — config reference</span>
+            <span class="note-date">Jun 15</span>
+          </div>
+          <div class="note-preview">loopback bind required. auth always on. jarvis-v2 tokens. owner-scoped. OpenSandbox for execution…</div>
+          <div class="note-card-footer">
+            <span class="note-label-chip">Ops</span>
+          </div>
+        </div>
+
+        <div class="note-card">
+          <div class="note-card-header">
+            <span class="note-title">Books to read</span>
+            <span class="note-date">Jun 10</span>
+          </div>
+          <div class="note-preview">The Art of Intrusion — Mitnick. Hacking: The Art of Exploitation. Red Team Development…</div>
+        </div>
+
+      </div><!-- /notes-list -->
+    </div><!-- /notes-list-panel -->
+
+    <!-- Right: editor — HUD frame, readable content -->
+    <div class="notes-editor-panel">
+
+      <!-- Editor toolbar — HUD chrome -->
+      <div class="notes-editor-toolbar">
+        <button class="editor-tool-btn">B</button>
+        <button class="editor-tool-btn"><i>I</i></button>
+        <button class="editor-tool-btn"><u>U</u></button>
+        <div class="editor-tool-sep"></div>
+        <button class="editor-tool-btn">H2</button>
+        <button class="editor-tool-btn">List</button>
+        <button class="editor-tool-btn">✓ Todo</button>
+        <button class="editor-tool-btn">Code</button>
+        <div class="editor-tool-sep"></div>
+        <button class="editor-tool-btn">📌 Pin</button>
+        <button class="editor-tool-btn">⏰ Remind</button>
+        <button class="editor-tool-btn">🏷 Label</button>
+        <div class="editor-tool-spacer"></div>
+        <span class="editor-save-status">Saved</span>
+      </div>
+
+      <!-- Note title — readable, prominent -->
+      <div class="notes-title-bar">
+        <input class="note-title-input" value="Q3 Pentest Scope — Checklist" />
+        <div class="note-meta-chips">
+          <span class="hud-chip">Security</span>
+          <span class="hud-chip" style="border-color:rgba(245,158,11,0.3);color:#fbbf24;background:rgba(245,158,11,0.06);">⏰ Jun 20</span>
+        </div>
+      </div>
+
+      <!-- Note body — calm, readable prose. NOT tiny mono. -->
+      <div class="notes-editor-body">
+        <div class="notes-editor-content" contenteditable="true">
+
+          <h2>Scope</h2>
+          <p>
+            External attack surface: <code>cerberus.io</code>, <code>api.cerberus.io</code>, <code>admin.cerberus.io</code>.<br>
+            Internal range: <code>10.0.0.0/8</code> — office subnets only, not prod VPC.
+          </p>
+
+          <h2>Pre-engagement checklist</h2>
+          <div class="checklist-item">
+            <div class="check-box done"></div>
+            <span class="check-text done">Scope agreement signed by Alex Chen</span>
+          </div>
+          <div class="checklist-item">
+            <div class="check-box done"></div>
+            <span class="check-text done">Emergency contact list confirmed (Marcus L. — SOC L2)</span>
+          </div>
+          <div class="checklist-item">
+            <div class="check-box"></div>
+            <span class="check-text">Kick-off call scheduled (Jul 1 — 10:00 AEST)</span>
+          </div>
+          <div class="checklist-item">
+            <div class="check-box"></div>
+            <span class="check-text">Burp Suite Pro license renewed</span>
+          </div>
+          <div class="checklist-item">
+            <div class="check-box"></div>
+            <span class="check-text">VPN access provisioned for test subnet</span>
+          </div>
+          <div class="checklist-item">
+            <div class="check-box"></div>
+            <span class="check-text">Report template updated with Q3 branding</span>
+          </div>
+
+          <h2>Out of scope</h2>
+          <ul>
+            <li>Prod VPC — <strong>hard out-of-scope</strong>. Any access must be immediately halted and reported.</li>
+            <li>Social engineering / phishing of staff (separate engagement, not this contract)</li>
+            <li>Physical access testing</li>
+          </ul>
+
+          <h2>Notes</h2>
+          <p>
+            Alex mentioned they recently hardened the WAF config after the TA558 incident — expect Cloudflare Pro in front of all external hosts. Focus initial recon on subdomain enumeration and certificate transparency logs.
+          </p>
+          <pre>subfinder -d cerberus.io -silent | httpx -title -tech-detect -status-code</pre>
+
+        </div>
+      </div>
+
+      <!-- Status bar — HUD chrome -->
+      <div class="notes-status-bar">
+        <span class="hud-chip">347 words</span>
+        <span class="hud-chip">Last saved 14:21:55</span>
+        <span class="hud-chip">6 items</span>
+        <div class="cc-brand-spacer"></div>
+        <span class="hud-chip">List view</span>
+      </div>
+
+    </div><!-- /notes-editor-panel -->
+
+  </div><!-- /notes-layout -->
+
+</div>
+
+<p class="page-label">Design intent: header/toolbar/chips = HUD chrome · Note title 20px system-ui · Body 15px system-ui, 1.7 line-height · Code 12px mono inline only</p>
+</body>
+</html>

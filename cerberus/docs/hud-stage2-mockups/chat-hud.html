@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUD Stage 2 Batch 2 — Chat Surface Mockup</title>
+<style>
+/* ── Self-hosted fonts — no CDN (privacy-first rule) ─────────────── */
+@font-face {
+  font-family: 'Orbitron';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('../../static/fonts/Orbitron.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../../static/fonts/JetBrainsMono.woff2') format('woff2');
+}
+
+/* ── jarvis-v2 tokens ─────────────────────────────────────────────── */
+:root {
+  --red: #c0392b;
+  --jx2-crimson-900: #1a0505;
+  --jx2-crimson-800: #2d0a0a;
+  --jx2-crimson-700: #4a0f0f;
+  --jx2-crimson-600: #7a1a1a;
+  --jx2-crimson-500: #c0392b;
+  --jx2-crimson-400: #e04535;
+  --jx2-crimson-300: #f06b5a;
+  --jx2-crimson-200: #ff9080;
+  --jx2-surface-void:   #09090a;
+  --jx2-surface-base:   #0d0d0f;
+  --jx2-surface-raised: #111115;
+  --jx2-surface-modal:  #16161c;
+  --jx2-fg-primary:   #e8e8ec;
+  --jx2-fg-secondary: #9a9aaa;
+  --jx2-fg-muted:     #5a5a6a;
+  --jx2-border-hairline: color-mix(in srgb, var(--red) 12%, transparent);
+  --jx2-border-default:  color-mix(in srgb, var(--red) 28%, transparent);
+  --jx2-border-glow:     color-mix(in srgb, var(--red) 55%, transparent);
+  --jx2-status-active:     #22c55e;
+  --jx2-status-processing: #3b82f6;
+  --jx2-status-idle:       #f59e0b;
+  --jx2-font-display: 'Orbitron', monospace;
+  --jx2-font-mono:    'JetBrains Mono', monospace;
+  --jx2-radius-sm: 2px;
+  --jx2-radius-md: 4px;
+  --jx2-hud-surface:        var(--jx2-surface-void);
+  --jx2-hud-border:         var(--jx2-border-default);
+  --jx2-hud-scanline-gap:   4px;
+  --jx2-hud-scanline-color: rgba(0,0,0,0.07);
+  --jx2-hud-scanline-opacity: 0.5;
+  --jx2-hud-active-bg:      color-mix(in srgb, var(--red) 12%, transparent);
+  --jx2-hud-active-glow:
+    inset 0 0 16px color-mix(in srgb, var(--red) 10%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--red) 12%, transparent);
+  --jx2-hud-active-border:  var(--jx2-crimson-400);
+  --jx2-hud-hover-bg:       color-mix(in srgb, var(--red) 8%, transparent);
+  --jx2-hud-chip-border:    rgba(255,255,255,0.07);
+  --jx2-hud-chip-bg:        rgba(255,255,255,0.025);
+  --jx2-hud-chip-text:      var(--jx2-fg-muted);
+  --jx2-hud-prefix-color:   var(--jx2-crimson-500);
+  --jx2-hud-prefix-glow:    0 0 12px color-mix(in srgb, var(--red) 40%, transparent);
+  --jx2-hud-wordmark-glow:  0 0 20px color-mix(in srgb, var(--red) 40%, transparent);
+}
+
+@keyframes jx2-pulse-crimson {
+  0%, 100% { opacity: 0.5; } 50% { opacity: 1.0; }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #04040a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 32px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--jx2-fg-primary);
+  gap: 20px;
+}
+.page-label {
+  font-family: var(--jx2-font-mono);
+  font-size: 10px;
+  color: var(--jx2-fg-muted);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* ── CC Shell ─────────────────────────────────────────────────────── */
+.cc-shell {
+  width: 100%;
+  max-width: 1100px;
+  height: 780px;
+  background: var(--jx2-surface-base);
+  border: 1px solid var(--jx2-border-glow);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--red) 6%, transparent),
+    0 4px 48px rgba(0,0,0,0.7),
+    0 0 80px color-mix(in srgb, var(--red) 4%, transparent);
+}
+.cc-shell::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent calc(var(--jx2-hud-scanline-gap) - 1px),
+    var(--jx2-hud-scanline-color) calc(var(--jx2-hud-scanline-gap) - 1px),
+    var(--jx2-hud-scanline-color) var(--jx2-hud-scanline-gap)
+  );
+  pointer-events: none;
+  z-index: 99;
+  opacity: var(--jx2-hud-scanline-opacity);
+}
+
+/* ── Brand bar ───────────────────────────────────────────────────── */
+.cc-brand-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px 8px;
+  background: var(--jx2-hud-surface);
+  border-bottom: 1px solid var(--jx2-hud-border);
+  flex-shrink: 0; position: relative; z-index: 2;
+}
+.cc-wordmark {
+  font-family: var(--jx2-font-display);
+  font-size: 17px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--jx2-fg-primary);
+  text-shadow: var(--jx2-hud-wordmark-glow);
+  white-space: nowrap; user-select: none;
+}
+.cc-wordmark .hud-bracket { color: var(--jx2-crimson-700); font-size: 1.1em; }
+.cc-wordmark .hud-lead    { color: var(--jx2-crimson-300); }
+.cc-wordmark-sub {
+  font-family: var(--jx2-font-mono); font-size: 9px;
+  letter-spacing: 0.18em; color: var(--jx2-crimson-500);
+  text-shadow: var(--jx2-hud-prefix-glow); text-transform: uppercase;
+  margin-left: 4px; opacity: 0.7;
+}
+.cc-brand-chips { display: flex; align-items: center; gap: 5px; margin-left: 8px; }
+.hud-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--jx2-font-mono); font-size: 8px;
+  color: var(--jx2-hud-chip-text); letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 2px 6px; border: 1px solid var(--jx2-hud-chip-border);
+  border-radius: var(--jx2-radius-sm); background: var(--jx2-hud-chip-bg);
+  white-space: nowrap; user-select: none;
+}
+.hud-chip-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.hud-chip-dot--online  { background: var(--jx2-status-active); }
+.hud-chip-dot--busy    { background: var(--jx2-status-processing); }
+.hud-chip-dot--auth    { background: var(--jx2-crimson-400); animation: jx2-pulse-crimson 2.4s ease-in-out infinite; }
+.cc-brand-spacer { flex: 1; }
+.cc-clock {
+  font-family: var(--jx2-font-display); font-size: 11px;
+  letter-spacing: 0.12em; color: var(--jx2-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Tab nav ─────────────────────────────────────────────────────── */
+.cc-tab-nav {
+  display: flex; gap: 2px; padding: 5px 12px;
+  background: var(--jx2-hud-surface); border-bottom: 1px solid var(--jx2-hud-border);
+  flex-shrink: 0; overflow-x: auto; scrollbar-width: none; position: relative; z-index: 2;
+}
+.cc-tab-btn {
+  font-family: var(--jx2-font-mono); font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; padding: 4px 10px;
+  border: 1px solid transparent; border-radius: var(--jx2-radius-sm);
+  background: transparent; color: var(--jx2-fg-muted); cursor: pointer;
+  white-space: nowrap; opacity: 0.6; transition: all 150ms; user-select: none;
+}
+.cc-tab-btn:hover { opacity: 0.9; border-color: var(--jx2-hud-border); color: var(--jx2-fg-secondary); }
+.cc-tab-btn.active {
+  background: var(--jx2-hud-active-bg); border-color: var(--jx2-hud-active-border);
+  color: var(--jx2-crimson-200); opacity: 1; box-shadow: var(--jx2-hud-active-glow);
+}
+.cc-tab-btn.active::before {
+  content: "// "; color: var(--jx2-hud-prefix-color); font-size: 0.9em;
+  text-shadow: var(--jx2-hud-prefix-glow);
+}
+
+/* ── Chat body ────────────────────────────────────────────────────── */
+.chat-body {
+  display: flex; flex-direction: column; flex: 1; overflow: hidden;
+}
+
+/* ── Chat thread header ───────────────────────────────────────────── */
+.chat-thread-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px;
+  background: color-mix(in srgb, var(--red) 6%, var(--jx2-surface-void));
+  border-bottom: 1px solid var(--jx2-hud-border);
+  flex-shrink: 0;
+}
+.chat-back-btn {
+  font-family: var(--jx2-font-mono); font-size: 9px;
+  padding: 3px 8px; border: 1px solid var(--jx2-hud-border);
+  background: transparent; color: var(--jx2-fg-muted); cursor: pointer;
+  border-radius: var(--jx2-radius-sm); letter-spacing: 0.08em;
+  transition: all 150ms;
+}
+.chat-back-btn:hover { border-color: var(--jx2-crimson-500); color: var(--jx2-crimson-300); }
+.chat-agent-sigil {
+  width: 26px; height: 26px; border-radius: 3px;
+  background: color-mix(in srgb, var(--red) 22%, transparent);
+  border: 1px solid var(--jx2-crimson-600);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0;
+}
+.chat-agent-name {
+  font-family: var(--jx2-font-mono); font-size: 11px;
+  color: var(--jx2-fg-primary); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.chat-agent-status {
+  font-family: var(--jx2-font-mono); font-size: 8px;
+  color: var(--jx2-status-active); letter-spacing: 0.1em;
+  display: flex; align-items: center; gap: 4px;
+}
+.chat-agent-status::before {
+  content: ''; display: block; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--jx2-status-active);
+}
+.chat-thread-header .cc-brand-spacer { flex: 1; }
+.chat-header-meta { display: flex; align-items: center; gap: 6px; }
+.chat-hdr-btn {
+  font-family: var(--jx2-font-mono); font-size: 9px;
+  padding: 3px 8px; border: 1px solid var(--jx2-hud-border);
+  background: transparent; color: var(--jx2-fg-muted); cursor: pointer;
+  border-radius: var(--jx2-radius-sm); letter-spacing: 0.08em;
+  transition: all 150ms;
+}
+.chat-hdr-btn:hover { border-color: var(--jx2-crimson-500); color: var(--jx2-crimson-300); }
+
+/* ── Thread context strip ─────────────────────────────────────────── */
+.chat-context-strip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 16px;
+  border-bottom: 1px solid var(--jx2-border-hairline);
+  background: var(--jx2-surface-void);
+  flex-shrink: 0;
+}
+.ctx-label {
+  font-family: var(--jx2-font-mono); font-size: 8px;
+  color: var(--jx2-fg-muted); letter-spacing: 0.12em; text-transform: uppercase;
+  margin-right: 2px;
+}
+
+/* ── Message list ─────────────────────────────────────────────────── */
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 16px;
+  scrollbar-width: thin; scrollbar-color: var(--jx2-border-default) transparent;
+}
+
+/* ── Individual messages — HUD frame, readable body ──────────────── */
+.chat-msg {
+  display: flex; flex-direction: column; gap: 4px;
+  max-width: 76%;
+}
+.chat-msg--user { align-self: flex-end; }
+.chat-msg--agent { align-self: flex-start; }
+
+.chat-msg-meta {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--jx2-font-mono); font-size: 8px;
+  color: var(--jx2-fg-muted); letter-spacing: 0.1em; text-transform: uppercase;
+}
+.chat-msg--user .chat-msg-meta { flex-direction: row-reverse; }
+
+.chat-msg-bubble {
+  padding: 11px 14px;
+  border-radius: 3px;
+  line-height: 1.6;
+  font-size: 14px;         /* comfortable reading size — not tiny mono */
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--jx2-fg-primary);
+}
+.chat-msg--user .chat-msg-bubble {
+  background: color-mix(in srgb, var(--red) 12%, var(--jx2-surface-raised));
+  border: 1px solid color-mix(in srgb, var(--red) 28%, transparent);
+  border-bottom-right-radius: 0;
+}
+.chat-msg--agent .chat-msg-bubble {
+  background: var(--jx2-surface-raised);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-left: 2px solid var(--jx2-crimson-600);
+  border-bottom-left-radius: 0;
+}
+
+/* Code in messages — mono but still readable */
+.chat-msg-bubble code {
+  font-family: var(--jx2-font-mono); font-size: 12px;
+  background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 2px;
+  color: var(--jx2-crimson-200);
+}
+.chat-msg-bubble pre {
+  font-family: var(--jx2-font-mono); font-size: 12px;
+  background: rgba(0,0,0,0.3); padding: 10px 12px; border-radius: 3px;
+  margin: 8px 0; overflow-x: auto; line-height: 1.5;
+  border: 1px solid rgba(255,255,255,0.05);
+  color: var(--jx2-fg-secondary);
+}
+
+/* Streaming indicator */
+.chat-msg-streaming .chat-msg-bubble::after {
+  content: '▊';
+  color: var(--jx2-crimson-400);
+  animation: jx2-pulse-crimson 0.8s ease-in-out infinite;
+  margin-left: 2px;
+}
+
+/* System message */
+.chat-msg-system {
+  align-self: center; text-align: center;
+  font-family: var(--jx2-font-mono); font-size: 8px;
+  color: var(--jx2-fg-muted); letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 4px 10px; border: 1px solid var(--jx2-border-hairline); border-radius: 10px;
+  background: rgba(255,255,255,0.015);
+}
+
+/* ── Composer ─────────────────────────────────────────────────────── */
+.chat-composer {
+  flex-shrink: 0;
+  background: var(--jx2-hud-surface);
+  border-top: 1px solid var(--jx2-hud-border);
+  padding: 10px 14px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.chat-composer-toolbar {
+  display: flex; align-items: center; gap: 6px;
+}
+.composer-tool-btn {
+  font-family: var(--jx2-font-mono); font-size: 8px; letter-spacing: 0.08em;
+  padding: 2px 7px; border: 1px solid var(--jx2-hud-chip-border);
+  background: var(--jx2-hud-chip-bg); color: var(--jx2-fg-muted); cursor: pointer;
+  border-radius: var(--jx2-radius-sm); transition: all 150ms; text-transform: uppercase;
+}
+.composer-tool-btn:hover { border-color: var(--jx2-crimson-600); color: var(--jx2-fg-secondary); }
+.composer-tool-spacer { flex: 1; }
+.composer-hint {
+  font-family: var(--jx2-font-mono); font-size: 8px;
+  color: var(--jx2-fg-muted); letter-spacing: 0.08em; opacity: 0.6;
+}
+.chat-composer-input-row { display: flex; gap: 8px; }
+.chat-textarea {
+  flex: 1; min-height: 60px; resize: none;
+  background: var(--jx2-surface-raised);
+  border: 1px solid var(--jx2-border-default); border-radius: var(--jx2-radius-md);
+  color: var(--jx2-fg-primary);
+  font-family: system-ui, -apple-system, sans-serif; /* readable input */
+  font-size: 14px; padding: 10px 12px; line-height: 1.5;
+  outline: none; transition: border-color 150ms;
+}
+.chat-textarea:focus {
+  border-color: var(--jx2-crimson-500);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--red) 20%, transparent);
+}
+.chat-textarea::placeholder { color: var(--jx2-fg-muted); opacity: 0.6; }
+.chat-send-btn {
+  font-family: var(--jx2-font-mono); font-size: 9px; letter-spacing: 0.1em;
+  text-transform: uppercase; padding: 0 16px; align-self: flex-end; height: 34px;
+  background: color-mix(in srgb, var(--red) 20%, transparent);
+  border: 1px solid var(--jx2-crimson-600); color: var(--jx2-crimson-200);
+  cursor: pointer; border-radius: var(--jx2-radius-sm); transition: all 150ms;
+  white-space: nowrap;
+}
+.chat-send-btn:hover {
+  background: color-mix(in srgb, var(--red) 30%, transparent);
+  border-color: var(--jx2-crimson-400);
+}
+</style>
+</head>
+<body>
+<p class="page-label">HUD Stage 2 · Batch 2 · Chat Surface</p>
+
+<div class="cc-shell">
+
+  <!-- Brand bar — HUD chrome -->
+  <div class="cc-brand-bar">
+    <span class="cc-wordmark">
+      <span class="hud-bracket">[</span><span class="hud-lead">C</span>erberus<span class="hud-bracket">]</span>
+      <span class="cc-wordmark-sub">v4</span>
+    </span>
+    <div class="cc-brand-chips">
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--online"></span>Online</span>
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--busy"></span>1 Active</span>
+      <span class="hud-chip"><span class="hud-chip-dot hud-chip-dot--auth"></span>Auth</span>
+    </div>
+    <div class="cc-brand-spacer"></div>
+    <span class="cc-clock">14:22:07</span>
+  </div>
+
+  <!-- Tab nav — HUD chrome -->
+  <div class="cc-tab-nav">
+    <button class="cc-tab-btn">Dashboard</button>
+    <button class="cc-tab-btn">Council</button>
+    <button class="cc-tab-btn active">Chat</button>
+    <button class="cc-tab-btn">Agents</button>
+    <button class="cc-tab-btn">Ops</button>
+    <button class="cc-tab-btn">Analytics</button>
+    <button class="cc-tab-btn">Settings</button>
+  </div>
+
+  <!-- Chat body -->
+  <div class="chat-body">
+
+    <!-- Thread header — HUD chrome -->
+    <div class="chat-thread-header">
+      <button class="chat-back-btn">← Back</button>
+      <div class="chat-agent-sigil">⚡</div>
+      <div>
+        <div class="chat-agent-name">JARVIS</div>
+        <div class="chat-agent-status">Active</div>
+      </div>
+      <div class="cc-brand-spacer"></div>
+      <div class="chat-header-meta">
+        <span class="hud-chip">claude-opus-4-7</span>
+        <span class="hud-chip">Session 3h 14m</span>
+        <button class="chat-hdr-btn">📞 Call</button>
+        <button class="chat-hdr-btn">Clear</button>
+      </div>
+    </div>
+
+    <!-- Context strip — HUD chrome -->
+    <div class="chat-context-strip">
+      <span class="ctx-label">// Thread</span>
+      <span class="hud-chip">38 messages</span>
+      <span class="hud-chip">12.4k tokens</span>
+      <span class="hud-chip">Ctx 18%</span>
+      <span class="hud-chip">System prompt: Security analyst</span>
+    </div>
+
+    <!-- Messages — readable body content -->
+    <div class="chat-messages">
+
+      <div class="chat-msg-system">Session started · 11:08</div>
+
+      <div class="chat-msg chat-msg--agent">
+        <div class="chat-msg-meta">
+          <span>JARVIS</span>
+          <span>11:08</span>
+        </div>
+        <div class="chat-msg-bubble">
+          Good morning. I've reviewed the overnight SIEM alerts. There are three medium-severity events worth your attention — all originating from the same /16 subnet in AS15169. Want me to correlate them against the threat intel feeds and draft a summary?
+        </div>
+      </div>
+
+      <div class="chat-msg chat-msg--user">
+        <div class="chat-msg-meta">
+          <span>YOU</span>
+          <span>11:09</span>
+        </div>
+        <div class="chat-msg-bubble">
+          Yes, run the correlation. Also check if any of those IPs appear in our blocklist history.
+        </div>
+      </div>
+
+      <div class="chat-msg chat-msg--agent">
+        <div class="chat-msg-meta"><span>JARVIS</span><span>11:09</span></div>
+        <div class="chat-msg-bubble">
+          Correlation complete. Two of the three IPs (<code>34.82.47.211</code>, <code>34.82.47.219</code>) were seen in last month's phishing campaign attributed to TA558. The third is new but resolves to the same ASN.<br><br>
+          None appear in the current blocklist — I'm flagging them for addition. Here's the summary:
+          <pre>Event: Outbound DNS to *.malicious-cdn[.]com
+IPs:   34.82.47.211, 34.82.47.219 (known TA558)
+       34.82.47.223 (new, same ASN)
+Risk:  MEDIUM → recommend escalate to HIGH
+Action: Block /26 subnet, alert SOC L2</pre>
+          Shall I generate the IOC report and open a ticket in the ops queue?
+        </div>
+      </div>
+
+      <div class="chat-msg chat-msg--user">
+        <div class="chat-msg-meta"><span>YOU</span><span>11:12</span></div>
+        <div class="chat-msg-bubble">
+          Do it. Escalate to HIGH and route to Marcus on L2.
+        </div>
+      </div>
+
+      <div class="chat-msg chat-msg--agent">
+        <div class="chat-msg-meta"><span>JARVIS</span><span>11:12</span></div>
+        <div class="chat-msg-bubble">
+          Done. IOC report generated, ticket OPS-2847 opened and assigned to Marcus (L2). Subnet <code>34.82.47.192/26</code> queued for blocklist deploy on next push cycle (≈ 4 minutes).
+        </div>
+      </div>
+
+      <div class="chat-msg-system">14:22 · 27 messages earlier</div>
+
+      <div class="chat-msg chat-msg--agent">
+        <div class="chat-msg-meta"><span>JARVIS</span><span>14:22</span></div>
+        <div class="chat-msg-bubble">
+          Standing by. The afternoon SIEM digest is ready when you want it.
+        </div>
+      </div>
+
+      <!-- Streaming in-progress message -->
+      <div class="chat-msg chat-msg--agent chat-msg-streaming">
+        <div class="chat-msg-meta"><span>JARVIS</span><span>14:22</span></div>
+        <div class="chat-msg-bubble">
+          Pulling the digest now
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Composer — HUD chrome frame, readable input -->
+    <div class="chat-composer">
+      <div class="chat-composer-toolbar">
+        <button class="composer-tool-btn">@ Mention</button>
+        <button class="composer-tool-btn">Attach</button>
+        <button class="composer-tool-btn">Invoke Tool</button>
+        <div class="composer-tool-spacer"></div>
+        <span class="composer-hint">Ctrl+Enter to send</span>
+      </div>
+      <div class="chat-composer-input-row">
+        <textarea class="chat-textarea" placeholder="Message JARVIS…"></textarea>
+        <button class="chat-send-btn">Send</button>
+      </div>
+    </div>
+
+  </div><!-- /chat-body -->
+
+</div><!-- /cc-shell -->
+
+<p class="page-label">Design intent: HUD chrome on header/tabs/composer frame · Message bubbles in comfortable 14px system-ui · Code blocks in 12px mono</p>
+</body>
+</html>
