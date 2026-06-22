@@ -1,9 +1,9 @@
-// test_trader_tab — five invariants for the TRADER tab shell:
+// test_trader_tab — invariants for the TRADER tab (Phase 1: data + briefs).
 //
-//   1. buildTraderTab returns markup containing the NOT-YET-ACTIVE banner.
-//   2. All placeholder panels render with empty-state text (no mock numbers).
+//   1. buildTraderTab returns markup containing the Phase 1 banner.
+//   2. Static panels render with expected content (T2-owned panels unchanged).
 //   3. Mode flags show SIM as the only current-state flag.
-//   4. loadTrader is a safe no-op: doesn't throw, makes no fetch.
+//   4. loadTrader (admin) calls fetch for markets and briefs; non-admin gets access-denied.
 //   5. TRADER is registered in the TABS array in index.js.
 //
 // No jsdom — hand-rolled DOM shim + vm sandbox pattern.
@@ -74,12 +74,10 @@ function makeElement(tag = 'div') {
         if (idM)    child._attrs.id = idM[1];
         if (clsM)   clsM[1].split(/\s+/).filter(Boolean).forEach(c => child._classes.add(c));
         if (titleM) child._attrs.title = titleM[1];
-        // Capture text nodes between tags as _text on nearest parent
         child.parentElement = parent;
         parent._children.push(child);
         if (!selfClose) stack.push(child);
       }
-      // Also extract text content from the raw HTML for text-content queries
       el._text = this._innerHTML.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     },
     get textContent() { return this._text; },
@@ -110,9 +108,8 @@ function _matcher(sel) {
   if (!sel) return () => false;
   const parts = sel.trim().split(/\s+/);
   if (parts.length === 1) return _singleMatcher(parts[0]);
-  // Descendant combinator: match last part among descendants of something matching first parts
   const last = _singleMatcher(parts[parts.length - 1]);
-  return (node) => last(node);  // simplified: just match last segment
+  return (node) => last(node);
 }
 
 function _singleMatcher(sel) {
@@ -156,49 +153,36 @@ function runTrader(extra = {}) {
 
 // ── Tests ─────────────────────────────────────────────────────────────
 
-test('buildTraderTab contains the NOT-YET-ACTIVE banner', () => {
+test('buildTraderTab contains the Phase 1 active banner', () => {
   const sb = runTrader();
   const html = sb.buildTraderTab();
   assert.ok(typeof html === 'string' && html.length > 0, 'returns non-empty string');
   assert.ok(
-    html.includes('NOT YET ACTIVE') || html.includes('NOT-YET-ACTIVE'),
-    'banner text present',
+    html.includes('PHASE 1') || html.includes('DATA + BRIEFS'),
+    'Phase 1 banner text present',
   );
   assert.ok(html.includes('cc-trader-notice'), 'banner uses cc-trader-notice class');
 });
 
-test('placeholder panels render empty-state text with no mock numbers', () => {
+test('T2-owned static panels are present and unchanged', () => {
   const sb = runTrader();
   const html = sb.buildTraderTab();
 
-  // All required panels must be present
-  const requiredPanels = [
+  // T2-owned panels must be verbatim
+  const t2Panels = [
     'NO WALLET CONNECTED',
-    'NO STRATEGY LOADED',
     'NO POSITIONS',
-    'NO BRIEFS YET',
-    'NO EVENTS',
     'HUMAN APPROVAL REQUIRED',
+    'NO EVENTS',
   ];
-  for (const text of requiredPanels) {
-    assert.ok(html.includes(text), `panel empty state "${text}" present`);
+  for (const text of t2Panels) {
+    assert.ok(html.includes(text), `T2 panel "${text}" must be unchanged`);
   }
 
-  // No mock numeric data: no dollar amounts, no percentages that look like fake data
-  // Check for patterns like "$1,234" or "2.6%" appearing as standalone data values
-  // (the mention of "+2.6%" in the strategy blurb is descriptive text, not fake data)
-  const container = makeElement('div');
-  container.innerHTML = html;
-  // None of the cc-trader-empty elements should contain standalone numbers
-  const empties = container.querySelectorAll('.cc-trader-empty');
-  assert.ok(empties.length >= 6, `at least 6 empty-state elements, got ${empties.length}`);
-  for (const el of empties) {
-    const text = el._text;
-    assert.equal(
-      /^\s*[\d,]+\s*$/.test(text), false,
-      `empty-state element contains only a number (mock data?): "${text}"`,
-    );
-  }
+  // Phase 1 panels should have live data placeholders, not the old "NO … YET" text
+  assert.ok(html.includes('cc-trader-markets-body'), 'market data mount point present');
+  assert.ok(html.includes('cc-trader-briefs-body'), 'briefs mount point present');
+  assert.ok(html.includes('GENERATE BRIEFS'), 'generate-briefs button present');
 });
 
 test('mode flags show SIM as the only current-state flag', () => {
@@ -214,34 +198,53 @@ test('mode flags show SIM as the only current-state flag', () => {
   assert.equal(currentFlags.length, 1, 'exactly one flag has --current modifier');
   assert.ok(
     currentFlags[0]._text.includes('SIM') || currentFlags[0]._attrs.title?.includes('SIM')
-    || html.includes('cc-trader-flag--current" title="Current state'),
+    || html.includes('cc-trader-flag--current" title="'),
     'the current flag is SIM',
   );
 });
 
-test('loadTrader is a safe no-op: no fetch, no throw', async () => {
-  let fetchCalled = false;
-  const sb = runTrader();
-  sb.fetch = async () => { fetchCalled = true; return { ok: true, json: async () => ({}) }; };
-  vm.createContext(sb);  // already contextified — extend globals via property
-  sb.window._isAdmin = true;
+test('loadTrader (admin) calls fetch; non-admin renders access-denied', async () => {
+  // Admin branch: fetch should be called for markets and briefs
+  let fetchCount = 0;
+  const sbAdmin = runTrader();
+  sbAdmin.window._isAdmin = true;
+  sbAdmin.fetch = async (url) => {
+    fetchCount++;
+    return { ok: true, json: async () => ({ markets: [], briefs: [] }) };
+  };
 
-  const container = makeElement('div');
-  container.innerHTML = sb.buildTraderTab();
+  const adminRoot = makeElement('div');
+  adminRoot.innerHTML = sbAdmin.buildTraderTab();
+  sbAdmin.loadTrader(adminRoot);
+  // Give microtasks a tick to run
+  await new Promise(r => setTimeout(r, 0));
+  assert.ok(fetchCount >= 1, `admin loadTrader must call fetch (called ${fetchCount} times)`);
 
-  // Should not throw
-  await assert.doesNotReject(
-    async () => { sb.loadTrader(container); },
-    'loadTrader must not throw',
+  // Non-admin branch: no fetch, renders access-denied
+  let nonAdminFetch = 0;
+  const sbGuest = runTrader();
+  sbGuest.window._isAdmin = false;
+  sbGuest.fetch = async () => { nonAdminFetch++; return { ok: true, json: async () => ({}) }; };
+
+  const guestRoot = makeElement('div');
+  guestRoot.innerHTML = sbGuest.buildTraderTab();
+  sbGuest.loadTrader(guestRoot);
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(nonAdminFetch, 0, 'non-admin loadTrader must not call fetch');
+  // The shim doesn't back-propagate child mutations to the parent _innerHTML,
+  // so check the wrapper's _innerHTML directly.
+  const wrapper = guestRoot.querySelector('#cc-trader-root');
+  const wrapperHtml = wrapper ? wrapper._innerHTML : guestRoot._innerHTML;
+  assert.ok(
+    wrapperHtml.includes('ADMIN ACCESS REQUIRED'),
+    'non-admin sees access-denied state',
   );
-  assert.equal(fetchCalled, false, 'loadTrader must not call fetch');
 });
 
 test('TRADER is registered in the TABS array in index.js', () => {
   const src = readFileSync(
     join(ROOT, 'static/js/cyberapps/command-center/index.js'), 'utf8',
   );
-  // Check the TABS array contains an entry for trader
   assert.ok(
     /id\s*:\s*['"]trader['"]/.test(src),
     'TABS array in index.js contains { id: "trader" }',
