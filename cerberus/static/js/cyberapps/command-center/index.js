@@ -11,6 +11,7 @@ import { buildCommandTab, applyVitals, applyTimeseries, applySwarm, applyAgents,
 import { buildCouncilTab, initCouncil, loadCouncil } from './council.js';
 import { buildWorkspaceTab, loadWorkspace } from './workspace.js';
 import { buildFinanceTab, loadFinance }     from './finance.js';
+import { buildTraderTab, loadTrader }       from './trader.js';
 import { buildAssistantTab, initAssistant, destroyAssistant } from './assistant.js';
 import { buildGatewayTab, loadGateway } from './gateway.js';
 import { buildAgentsTab, loadAgents } from './agents.js';
@@ -44,6 +45,7 @@ const TABS = [
   { id: 'council',       label: 'COUNCIL'   },
   { id: 'workspace',     label: 'WORKSPACE' },
   { id: 'finance',       label: 'FINANCE'   },
+  { id: 'trader',        label: 'TRADER',   adminOnly: true },
   { id: 'assistant',     label: 'ASSISTANT' },
   { id: 'gateway',       label: 'GATEWAY'   },
   { id: 'agents',        label: 'AGENTS'    },
@@ -60,7 +62,10 @@ function _tabLabel(tab) {
 
 function _renderTabNavHTML(activeTab) {
   // Local var named `tab` so it doesn't shadow the imported `t()` helper.
-  return TABS.map(tab => `
+  // adminOnly tabs are hidden from non-admin users (window._isAdmin set by app.js).
+  return TABS
+    .filter(tab => !tab.adminOnly || window._isAdmin)
+    .map(tab => `
     <button class="cc-tab-btn${tab.id === activeTab ? ' active' : ''}"
       data-tab="${tab.id}">${_tabLabel(tab)}
     </button>`).join('');
@@ -284,6 +289,9 @@ function _mountTab(id, shell) {
   } else if (id === 'finance') {
     content.innerHTML = buildFinanceTab();
     loadFinance(content);
+  } else if (id === 'trader') {
+    content.innerHTML = buildTraderTab();
+    loadTrader(content);
   } else if (id === 'assistant') {
     content.innerHTML = buildAssistantTab();
     initAssistant(content);
