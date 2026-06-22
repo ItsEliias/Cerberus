@@ -80,7 +80,7 @@ export function buildGatewayTab() {
   <!-- COMPOSE EMAIL — backed by /api/email/compose-send + compose-allowlist.
        Hidden when the allowlist is empty (no enabled recipients). -->
   <div class="cc-gw-section cc-email-compose" id="cc-email-compose" hidden>
-    <div class="cc-section-label">// COMPOSE EMAIL</div>
+    <div class="cc-section-label">COMPOSE EMAIL</div>
     <select class="cc-email-to" id="cc-email-to" aria-label="Recipient"></select>
     <input class="cc-email-subject" id="cc-email-subject" type="text" maxlength="998" placeholder="// subject">
     <textarea class="cc-email-body" id="cc-email-body" rows="6" maxlength="200000" placeholder="// message body..."></textarea>
@@ -92,29 +92,8 @@ export function buildGatewayTab() {
   </div>
 
   <div class="cc-gw-section">
-    <div class="cc-section-label">PLATFORM STATUS</div>
-    <div class="cc-gw-platforms" id="gw-platforms">
-      <div class="cc-gw-platform-row" data-platform="telegram">
-        <span class="cc-gw-dot" style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.15);flex-shrink:0"></span>
-        <span class="cc-gw-pname">Telegram</span>
-        <span class="cc-gw-pstatus">—</span>
-      </div>
-      <div class="cc-gw-platform-row" data-platform="discord">
-        <span class="cc-gw-dot" style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.15);flex-shrink:0"></span>
-        <span class="cc-gw-pname">Discord</span>
-        <span class="cc-gw-pstatus">—</span>
-      </div>
-      <div class="cc-gw-platform-row" data-platform="slack">
-        <span class="cc-gw-dot" style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.15);flex-shrink:0"></span>
-        <span class="cc-gw-pname">Slack</span>
-        <span class="cc-gw-pstatus">—</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="cc-gw-section">
-    <div class="cc-section-label" style="display:flex;align-items:center;justify-content:space-between">
-      <span>CRON JOBS</span>
+    <div class="cc-section-label-row">
+      <div class="cc-section-label">CRON JOBS</div>
       <button class="cc-gw-add-btn" id="gw-add-btn">+ ADD</button>
     </div>
     <div class="cc-gw-jobs" id="gw-jobs">
@@ -124,7 +103,7 @@ export function buildGatewayTab() {
 
   <!-- MESSAGE LOG — inbound gateway messages audit trail -->
   <div class="cc-gw-section" id="gw-msg-log-section">
-    <div class="cc-section-label">// MESSAGE LOG</div>
+    <div class="cc-section-label">MESSAGE LOG</div>
     <div class="cc-gw-msg-list" id="gw-msg-list">
       <div class="cc-gw-empty" id="gw-msg-empty">No messages yet.</div>
     </div>
@@ -167,7 +146,6 @@ export function loadGateway(root) {
   _loadApprovals(root);
   _loadComposeAllowlist(root);
   _initEmailCompose(root);
-  _loadPlatforms(root);
   _loadJobs(root);
   _loadMessageLog(root);
 
@@ -389,39 +367,6 @@ function _markCardFailure(card, buttons, stateEl, message) {
     stateEl.hidden = false;
     stateEl.textContent = message;
     stateEl.className = 'cc-gw-approval-state cc-gw-approval-state--err';
-  }
-}
-
-// ---- Platform status ----
-
-async function _loadPlatforms(root) {
-  try {
-    const r = await fetch(`${BASE}/api/cyberapps/operations/gateway`);
-    if (!r.ok) return;
-    const data = await r.json();
-    _applyPlatforms(root, data);
-  } catch (_) {}
-}
-
-function _applyPlatforms(root, data) {
-  const platforms = (data && data.platforms) || [];
-  for (const p of platforms) {
-    const row = root.querySelector(`.cc-gw-platform-row[data-platform="${p.name}"]`);
-    if (!row) continue;
-    const dot    = row.querySelector('.cc-gw-dot');
-    const status = row.querySelector('.cc-gw-pstatus');
-    const color  = _STATUS_COLOR[p.status] || _STATUS_COLOR.unconfigured;
-    if (dot) {
-      dot.style.background  = color;
-      dot.style.boxShadow   = p.status === 'active' ? `0 0 5px ${color}` : 'none';
-    }
-    if (status) {
-      if (p.status === 'unconfigured') {
-        status.textContent = 'not configured';
-      } else {
-        status.textContent = `${p.status} · ${_relTime(p.last_seen)}`;
-      }
-    }
   }
 }
 

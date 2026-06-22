@@ -76,7 +76,7 @@ export function buildCompareTab() {
       rows="3" autocomplete="off" spellcheck="false"></textarea>
 
     <div class="cc-compare-agent-picker">
-      <div class="cc-section-label">// SELECT AGENTS (max ${MAX_AGENTS})</div>
+      <div class="cc-section-label">SELECT AGENTS (max ${MAX_AGENTS})</div>
       <div class="cc-compare-agent-grid" id="cc-compare-agent-grid">
         <div class="cc-empty">Loading agents…</div>
       </div>
