@@ -40,7 +40,7 @@ function _animCounter(el, to, ms) {
 }
 
 function _buildSparkline(byDay, valueKey) {
-  if (!byDay || byDay.length === 0) return '<div class="cc-fin-no-data">No daily data</div>';
+  if (!byDay || byDay.length === 0) return '<div class="cc-fin-no-data">// NO DATA</div>';
   const days = byDay.slice(-30);
   const max = Math.max(...days.map(d => d[valueKey] || 0), 1);
   const W = 300, H = 48;

@@ -272,16 +272,17 @@ function _buildPanel() {
     modal.classList.remove('hidden');
   });
   panel.querySelector('#dash-act-chat')?.addEventListener('click', () => _go(() => {
-    window.history.replaceState({}, '', '/');
+    document.dispatchEvent(new CustomEvent('cerberus:new-session'));
     document.getElementById('rail-new-session')?.click();
   }));
   panel.querySelector('#dash-act-nexus')?.addEventListener('click', () => _go(() => {
     sessionStorage.setItem('cerberus_skip_modal_restore', '1');
     window.location.href = '/home';
   }));
-  panel.querySelector('#dash-act-cerberus')?.addEventListener('click', () => _go(() => {
-    window.location.href = '/';
-  }));
+  panel.querySelector('#dash-act-cerberus')?.addEventListener('click', () => {
+    _cleanup();
+    document.getElementById(PANEL_ID)?.remove();
+  });
   panel.querySelector('#dash-act-cc')?.addEventListener('click', () => _go(() => {
     window.history.replaceState({}, '', '/');
     document.getElementById('sidebar-command-center-btn')?.click();
@@ -501,8 +502,13 @@ async function _loadSessions() {
       el.innerHTML = `<div class="dash-empty dash-first-run">
         <div class="dash-empty-icon">◈</div>
         <div class="dash-empty-msg">No conversations yet.</div>
-        <button class="dash-cta-btn" onclick="(function(){document.getElementById('cerberus-dashboard')&&window.dashModule&&window.dashModule.close();setTimeout(()=>document.getElementById('rail-new-session')?.click(),100)})()">Start your first chat →</button>
+        <button class="dash-cta-btn" id="dash-cta-first-chat">Start your first chat →</button>
       </div>`;
+      el.querySelector('#dash-cta-first-chat')?.addEventListener('click', () => {
+        close();
+        document.dispatchEvent(new CustomEvent('cerberus:new-session'));
+        setTimeout(() => document.getElementById('rail-new-session')?.click(), 100);
+      });
       return;
     }
 
@@ -638,7 +644,7 @@ async function _loadTokenUsage() {
     const lifeTokensEl = document.getElementById('dash-life-tokens');
     if (lifeTokensEl) lifeTokensEl.textContent = '—';
     const canvas2 = document.getElementById('dash-usage-canvas');
-    if (canvas2) _drawTokenFlowGraph(canvas2, []); // graceful: fallback sine wave
+    if (canvas2) _drawTokenFlowGraph(canvas2, []);
   }
 }
 
@@ -776,10 +782,30 @@ function _drawTokenFlowGraph(canvas, byDay) {
 
 function _drawTokenFlowGraphImmediate(canvas, byDay) {
   if (!canvas || !document.getElementById(PANEL_ID)) return;
-  // Graceful fallback when no data: a flat low-activity reference baseline
-  const raw = (byDay.length >= 2)
-    ? byDay.slice(-30).map(d => d.tokens || 0)
-    : Array.from({length: 24}, (_, i) => Math.round(800 + Math.sin(i * 0.55) * 400 + i * 12));
+
+  if (!byDay.length) {
+    const W = 900, H = 130;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width  = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const [r, g, b] = _getRgb();
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.15)`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(8, H / 2); ctx.lineTo(W - 8, H / 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = `rgba(${r},${g},${b},0.35)`;
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('// NO DATA', W / 2, H / 2 - 8);
+    return;
+  }
+
+  const raw = byDay.slice(-30).map(d => d.tokens || 0);
 
   const parent = canvas.parentElement;
   // getBoundingClientRect is reliable inside overflow/flex; clientWidth can be 0 before first paint
