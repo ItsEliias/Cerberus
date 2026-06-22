@@ -53,7 +53,7 @@ function _formatTokens(n) {
 
 function _buildSparkline(byDay) {
   if (!byDay || byDay.length === 0) {
-    return `<div class="cc-obs-no-data">No daily data</div>`;
+    return `<div class="cc-obs-no-data">// NO DATA</div>`;
   }
   const days  = byDay.slice(-30);
   const max   = Math.max(...days.map(d => d.tokens || 0), 1);
@@ -161,7 +161,7 @@ function _renderModelBreakdown(listEl, rows) {
 
 function _buildCostSparkline(byDay) {
   const days = Array.isArray(byDay) ? byDay.slice(-30) : [];
-  if (!days.length) return '<div class="cc-obs-no-data">No daily data</div>';
+  if (!days.length) return '<div class="cc-obs-no-data">// NO DATA</div>';
   const costs = days.map(d => (d?.tokens || 0) * CLOUD_RATE_USD_PER_TOKEN);
   const max   = Math.max(...costs, 0.000001);
   const W = 300, H = 48, barW = Math.max(4, Math.floor((W - 8) / days.length) - 2);
