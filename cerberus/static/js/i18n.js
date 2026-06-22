@@ -40,6 +40,7 @@ const LOCALES = Object.freeze({
     "nav.rooms":         "Rooms",
     "nav.compare":       "Compare",
     "nav.observability": "Observe",
+    "nav.trader":        "Trader",
     "nav.chat":          "Chat",
     "nav.research":      "Research",
 
@@ -67,6 +68,7 @@ const LOCALES = Object.freeze({
     "nav.rooms":         "Salas",
     "nav.compare":       "Comparar",
     "nav.observability": "Observar",
+    "nav.trader":        "Trader",
     "nav.chat":          "Chat",
     "nav.research":      "Investigación",
 
