@@ -392,6 +392,45 @@ body.jx2-active ::selection {
   color:      var(--fg);
 }
 
+/* ── ORBIT GLOW — reusable conic-gradient border ring ────────────────
+ * Apply class .cerberus-orbit-glow to a modal/panel container.
+ * JS drives --orbit-angle via startOrbitGlow() in orbit-glow.js.
+ * Static at 0deg when JS is absent; 40% opacity for reduced-motion. */
+
+.cerberus-orbit-glow {
+  position: relative;
+}
+
+.cerberus-orbit-glow::after {
+  content: '';
+  position: absolute; inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--orbit-angle, 0deg),
+    transparent 0deg,
+    transparent 300deg,
+    color-mix(in srgb, var(--jx2-crimson-500, var(--red)) 70%, transparent) 335deg,
+    var(--jx2-crimson-500, var(--red)) 350deg,
+    color-mix(in srgb, var(--jx2-crimson-500, var(--red)) 70%, transparent) 358deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cerberus-orbit-glow::after { opacity: 0.4; }
+}
+
 /* ── CODE BLOCKS (dense data — no effects, just tiers) ───────────────*/
 body.jx2-active pre,
 body.jx2-active code {
