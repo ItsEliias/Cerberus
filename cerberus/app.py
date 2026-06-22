@@ -843,6 +843,9 @@ app.include_router(setup_workspace_routes())
 from routes.finance_routes import setup_finance_routes
 app.include_router(setup_finance_routes())
 
+from routes.trader_routes import setup_trader_routes
+app.include_router(setup_trader_routes())
+
 # ========= ROUTES (kept in app.py) =========
 
 def _serve_html_with_nonce(request: Request, file_path: str) -> HTMLResponse:

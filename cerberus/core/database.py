@@ -978,6 +978,87 @@ def _migrate_add_gateway_messages_table():
             pass
 
 
+class TraderBrief(Base):
+    """Research brief produced by the TRADER Council debate (Phase 1).
+
+    Phase 1 invariant: this table stores RESEARCH ONLY — advisory text from the
+    multi-role LLM debate. No order code reads from or writes to this table.
+    The 'direction' and 'confidence' fields are analyst output, not trade orders.
+    Connecting this to an execution layer is a Phase 3 task.
+    Ref: docs/TRADER_AGENT_ARCHITECTURE.md §6 (Data Flow — step 5)
+    """
+    __tablename__ = "trader_briefs"
+
+    id               = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    owner            = Column(String, nullable=True, index=True)
+    contract_ticker  = Column(String, nullable=False)
+    contract_title   = Column(String, nullable=True)
+    midpoint         = Column(String, nullable=True)          # stored as string; float at service layer
+    fetched_at       = Column(DateTime, nullable=True)        # when market data was pulled
+    bull_analysis    = Column(Text, nullable=True)
+    bear_analysis    = Column(Text, nullable=True)
+    risk_review      = Column(Text, nullable=True)
+    synthesis_json   = Column(Text, nullable=True)            # raw JSON from synthesis role
+    direction        = Column(String, nullable=True)          # "YES" | "NO" | "PASS"
+    confidence       = Column(Integer, nullable=True)         # 0–100
+    rationale        = Column(String, nullable=True)
+    risk_flags       = Column(Text, nullable=True)            # JSON list[str]
+    model_used       = Column(String, nullable=True)
+    created_at       = Column(DateTime, default=utcnow_naive, index=True)
+
+    __table_args__ = (
+        Index("ix_trader_briefs_owner_created", "owner", "created_at"),
+        Index("ix_trader_briefs_ticker", "contract_ticker"),
+    )
+
+
+def _migrate_create_trader_briefs_table():
+    """Create the trader_briefs table if it doesn't exist. Idempotent."""
+    import sqlite3
+    db_path = DATABASE_URL.replace("sqlite:///", "")
+    if not os.path.exists(db_path):
+        return
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS trader_briefs (
+                id               TEXT PRIMARY KEY,
+                owner            TEXT,
+                contract_ticker  TEXT NOT NULL,
+                contract_title   TEXT,
+                midpoint         TEXT,
+                fetched_at       DATETIME,
+                bull_analysis    TEXT,
+                bear_analysis    TEXT,
+                risk_review      TEXT,
+                synthesis_json   TEXT,
+                direction        TEXT,
+                confidence       INTEGER,
+                rationale        TEXT,
+                risk_flags       TEXT,
+                model_used       TEXT,
+                created_at       DATETIME
+            )
+        """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS ix_trader_briefs_owner_created "
+            "ON trader_briefs (owner, created_at)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS ix_trader_briefs_ticker "
+            "ON trader_briefs (contract_ticker)"
+        )
+        conn.commit()
+    except Exception as e:
+        logging.getLogger(__name__).warning("Migration trader_briefs failed: %s", e)
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
 def _migrate_add_routing_events_table():
     """Create the routing_events table if it doesn't yet exist.
 
@@ -2340,6 +2421,7 @@ def init_db():
     _migrate_add_agent_invocation_count_column()
     _migrate_add_agent_health_columns()
     _migrate_add_agent_pinned_skills_column()
+    _migrate_create_trader_briefs_table()
 
 
 def _migrate_add_agent_pinned_skills_column():
