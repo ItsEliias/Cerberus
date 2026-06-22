@@ -389,7 +389,7 @@ function _agentDetail(agent) {
         <div class="cc-ag-result" id="cc-ag-result-${id}"></div>
         <div class="cc-invoke-history" id="cc-invoke-history-${id}">
           <div class="cc-invoke-hist-head">
-            <span class="cc-section-label">// RECENT INVOCATIONS</span>
+            <span class="cc-section-label">RECENT INVOCATIONS</span>
             <button class="cc-invoke-hist-clear" data-agent-id="${id}" type="button">// CLEAR HISTORY</button>
           </div>
           <div class="cc-invoke-hist-list" id="cc-invoke-hist-list-${id}"></div>
