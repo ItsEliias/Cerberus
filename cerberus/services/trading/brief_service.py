@@ -273,14 +273,15 @@ async def run_brief_cycle(*, owner: str | None, limit: int = 10, db_session=None
     This is the entry point called by the /api/trader/brief POST route.
     Returns list of brief dicts (research only — no orders).
     """
-    markets = await get_filtered_markets(
-        min_midpoint=KALSHI_MAKER_THRESHOLD, limit=max(limit * 3, 50)
-    )
-    markets = enrich_with_timestamp(markets)
+    result = await get_filtered_markets(min_midpoint=KALSHI_MAKER_THRESHOLD)
+    markets = enrich_with_timestamp(result["markets"])
     targets = markets[:limit]
 
     if not targets:
-        logger.info("run_brief_cycle: no markets above %.0f¢ threshold", KALSHI_MAKER_THRESHOLD * 100)
+        logger.info(
+            "run_brief_cycle: no markets above %.0f¢ threshold (%d traded markets found)",
+            KALSHI_MAKER_THRESHOLD * 100, result["active_count"],
+        )
         return []
 
     briefs = []

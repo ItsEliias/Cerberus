@@ -96,6 +96,35 @@ async def get_contract(ticker: str) -> dict[str, Any]:
         raise KalshiDataError(f"Kalshi request failed: {e}") from e
 
 
+def _volume_fp(market: dict[str, Any]) -> float:
+    """Parse volume_fp (traded float volume) from a market dict, fallback to volume."""
+    for key in ("volume_fp", "volume"):
+        try:
+            v = float(market.get(key) or 0)
+            if v > 0:
+                return v
+        except (TypeError, ValueError):
+            pass
+    return 0.0
+
+
+def _is_traded(market: dict[str, Any]) -> bool:
+    """Return True if the market has any trading activity (volume or live price).
+
+    Kalshi's open-markets list contains thousands of dormant sub-markets at
+    $0.00 with zero volume. This predicate keeps only the ones actually trading.
+    """
+    if _volume_fp(market) > 0:
+        return True
+    for key in ("yes_bid_dollars", "last_price_dollars"):
+        try:
+            if float(market.get(key) or 0) > 0:
+                return True
+        except (TypeError, ValueError):
+            pass
+    return False
+
+
 def filter_maker_threshold(
     markets: list[dict[str, Any]], *, min_midpoint: float = DEFAULT_MAKER_THRESHOLD
 ) -> list[dict[str, Any]]:
@@ -112,7 +141,7 @@ def filter_maker_threshold(
         mid = _midpoint(m)
         if mid is not None and mid >= min_midpoint:
             result.append({**m, "_midpoint": round(mid, 4)})
-    return sorted(result, key=lambda x: x.get("volume", 0), reverse=True)
+    return sorted(result, key=_volume_fp, reverse=True)
 
 
 def _midpoint(market: dict[str, Any]) -> float | None:
@@ -168,28 +197,124 @@ def _midpoint(market: dict[str, Any]) -> float | None:
     return None
 
 
+_PAGE_SIZE = 200      # Kalshi per-request max
+_MAX_PAGES  = 5       # cap at 5 pages = 1000 markets total (stays polite at ~30 req/s)
+
+
+async def get_traded_markets(
+    *,
+    max_fetch: int = 1000,
+    page_size: int = _PAGE_SIZE,
+    series_ticker: str | None = None,
+) -> tuple[list[dict[str, Any]], int]:
+    """Paginate through Kalshi open markets and return only those actually trading.
+
+    Kalshi's open-markets list is dominated by thousands of dormant $0.00
+    sub-markets. This function paginates (up to max_fetch total, using the
+    response cursor) and keeps only markets where volume_fp > 0 or a live
+    price exists — the ones that matter for the maker strategy.
+
+    Returns (traded_markets, total_fetched):
+      traded_markets  — list sorted by volume_fp descending
+      total_fetched   — total raw markets scanned (useful for diagnostics)
+    """
+    traded: list[dict[str, Any]] = []
+    total_fetched = 0
+    cursor: str | None = None
+    page_size = min(page_size, _PAGE_SIZE)
+    max_pages = max(1, max_fetch // page_size + (1 if max_fetch % page_size else 0))
+    max_pages = min(max_pages, _MAX_PAGES)
+
+    for _ in range(max_pages):
+        fetch = min(page_size, max(1, max_fetch - total_fetched))
+        try:
+            resp = await get_active_markets(
+                limit=fetch, cursor=cursor, series_ticker=series_ticker
+            )
+        except KalshiDataError:
+            break
+        page = resp.get("markets", [])
+        if not page:
+            break
+        total_fetched += len(page)
+        for m in page:
+            if _is_traded(m):
+                traded.append(m)
+        cursor = resp.get("cursor") or ""
+        if not cursor or total_fetched >= max_fetch:
+            break
+
+    traded.sort(key=_volume_fp, reverse=True)
+    logger.info(
+        "Kalshi get_traded_markets: scanned %d markets, %d traded (volume>0 or live price)%s",
+        total_fetched,
+        len(traded),
+        f" [series={series_ticker}]" if series_ticker else "",
+    )
+    return traded, total_fetched
+
+
+async def get_series_markets(
+    series_ticker: str,
+    *,
+    max_fetch: int = 500,
+) -> tuple[list[dict[str, Any]], int]:
+    """Fetch traded markets for a specific Kalshi series (e.g. KXFED, KXELECTION).
+
+    Liquid series (Fed decisions, elections, econ indicators) reliably have
+    priced markets. Targets a known-liquid series rather than the full firehose.
+
+    Returns (traded_markets, total_fetched) same as get_traded_markets.
+    Future use: brief pipeline can target a series by ticker.
+    """
+    if not series_ticker or not series_ticker.strip():
+        raise ValueError("series_ticker must be a non-empty string")
+    return await get_traded_markets(
+        max_fetch=max_fetch,
+        series_ticker=series_ticker.strip(),
+    )
+
+
 async def get_filtered_markets(
     *,
     min_midpoint: float = DEFAULT_MAKER_THRESHOLD,
-    limit: int = 100,
-) -> list[dict[str, Any]]:
-    """Convenience wrapper: fetch active markets and apply the maker threshold filter.
+    max_fetch: int = 1000,
+    series_ticker: str | None = None,
+) -> dict[str, Any]:
+    """Fetch traded markets and apply the maker threshold filter.
 
-    This is the entry point for the brief_service pipeline. Returns markets
-    sorted by volume descending with a '_midpoint' key injected.
+    Paginates through Kalshi markets (up to max_fetch), keeps only traded
+    markets (volume_fp > 0 or live price), then applies the ≥ min_midpoint
+    filter. Returns a dict so callers can surface thin-liquidity diagnostics:
+
+      {
+        "markets":       [...],  # qualifying markets, sorted by volume_fp desc
+        "active_count":  N,      # traded markets before threshold filter
+        "total_fetched": M,      # raw markets scanned
+      }
+
+    When active_count > 0 but markets == [] it means traded markets exist but
+    none are ≥ min_midpoint right now (thin overnight liquidity — correct result,
+    not a broken fetch).
     """
     try:
-        resp = await get_active_markets(limit=limit)
-        markets = resp.get("markets", [])
-        filtered = filter_maker_threshold(markets, min_midpoint=min_midpoint)
-        logger.info(
-            "Kalshi: fetched %d markets, %d above %.0f¢ threshold",
-            len(markets), len(filtered), min_midpoint * 100,
+        traded, total_fetched = await get_traded_markets(
+            max_fetch=max_fetch, series_ticker=series_ticker
         )
-        return filtered
+        active_count = len(traded)
+        filtered = filter_maker_threshold(traded, min_midpoint=min_midpoint)
+        logger.info(
+            "Kalshi: scanned %d total, %d traded, %d above %.0f¢ threshold",
+            total_fetched, active_count, len(filtered), min_midpoint * 100,
+        )
+        return {
+            "markets": filtered,
+            "active_count": active_count,
+            "total_fetched": total_fetched,
+        }
     except KalshiDataError as e:
         logger.error("Kalshi data fetch failed: %s", e)
-        return []
+        return {"markets": [], "active_count": 0, "total_fetched": 0}
 
 
 def enrich_with_timestamp(markets: list[dict[str, Any]]) -> list[dict[str, Any]]:
