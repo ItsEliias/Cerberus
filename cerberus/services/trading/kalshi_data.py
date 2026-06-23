@@ -7,8 +7,8 @@ order-submission path. Any call that could place, modify, or cancel an
 order belongs in Phase 3 and must NOT be added here.
 
 The Kalshi REST v2 Markets API is public (no auth required for reads):
-  GET /trade-api/rest/v2/markets         — list active markets
-  GET /trade-api/rest/v2/markets/{ticker} — single market detail
+  GET /trade-api/v2/markets         — list active markets
+  GET /trade-api/v2/markets/{ticker} — single market detail
 
 Architecture ref: docs/TRADER_AGENT_ARCHITECTURE.md §3 (MVP Market — Kalshi)
 Risk ref:         docs/TRADER_AGENT_RISK_AND_PHASING.md §2 (Hard Safeguards)
@@ -26,7 +26,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 KALSHI_API_BASE = os.environ.get(
-    "KALSHI_API_BASE", "https://api.elections.kalshi.com/trade-api/rest/v2"
+    "KALSHI_API_BASE", "https://api.elections.kalshi.com/trade-api/v2"
 ).rstrip("/")
 
 # GWU 2026 documented edge threshold: contracts where midpoint ≥ 50¢
