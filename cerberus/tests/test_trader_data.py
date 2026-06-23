@@ -50,7 +50,14 @@ from services.trading.kalshi_data import (
 
 
 def _market(ticker, yes_bid, yes_ask, volume=100):
-    return {"ticker": ticker, "yes_bid": yes_bid, "yes_ask": yes_ask, "volume": volume}
+    """Build a market dict using the current Kalshi *_dollars string fields."""
+    return {
+        "ticker": ticker,
+        "yes_bid_dollars": f"{yes_bid:.4f}",
+        "yes_ask_dollars": f"{yes_ask:.4f}",
+        "response_price_units": "usd_cent",
+        "volume": volume,
+    }
 
 
 class TestFilterMakerThreshold:
@@ -87,9 +94,27 @@ class TestFilterMakerThreshold:
         assert len(result) == 1
 
     def test_missing_prices_skipped(self):
-        markets = [{"ticker": "X", "volume": 10}]  # no yes_bid / yes_ask
+        markets = [{"ticker": "X", "volume": 10}]  # no *_dollars fields
         result = filter_maker_threshold(markets, min_midpoint=0.50)
         assert result == []
+
+    def test_zero_dollar_prices_excluded(self):
+        """Markets with $0.00 bid/ask (not actively traded) must be excluded."""
+        markets = [
+            {"ticker": "DEAD", "yes_bid_dollars": "0.0000", "yes_ask_dollars": "0.0000",
+             "response_price_units": "usd_cent", "volume": 0},
+        ]
+        assert filter_maker_threshold(markets, min_midpoint=0.50) == []
+
+    def test_real_dollar_prices_pass(self):
+        """A market with yes_bid_dollars='0.5200' and yes_ask_dollars='0.5400' passes."""
+        markets = [
+            {"ticker": "LIVE", "yes_bid_dollars": "0.5200", "yes_ask_dollars": "0.5400",
+             "response_price_units": "usd_cent", "volume": 1000},
+        ]
+        result = filter_maker_threshold(markets, min_midpoint=0.50)
+        assert len(result) == 1
+        assert abs(result[0]["_midpoint"] - 0.53) < 0.001
 
 
 class TestMidpoint:
@@ -97,12 +122,26 @@ class TestMidpoint:
         m = _market("X", 0.60, 0.64)
         assert abs(_midpoint(m) - 0.62) < 0.001
 
-    def test_falls_back_to_last_price(self):
-        m = {"ticker": "X", "last_price": 0.70}
+    def test_falls_back_to_last_price_dollars(self):
+        m = {"ticker": "X", "last_price_dollars": "0.7000"}
         assert abs(_midpoint(m) - 0.70) < 0.001
+
+    def test_zero_dollar_prices_return_none(self):
+        """Both sides at $0.00 → no midpoint (market not actively traded)."""
+        m = {"ticker": "X", "yes_bid_dollars": "0.0000", "yes_ask_dollars": "0.0000"}
+        assert _midpoint(m) is None
 
     def test_returns_none_when_no_price(self):
         assert _midpoint({"ticker": "X"}) is None
+
+    def test_legacy_integer_cent_fallback(self):
+        """Old yes_bid/yes_ask integer cent fields (÷100) still work as fallback."""
+        m = {"ticker": "X", "yes_bid": 52, "yes_ask": 56}
+        assert abs(_midpoint(m) - 0.54) < 0.001
+
+    def test_legacy_zero_cents_excluded(self):
+        m = {"ticker": "X", "yes_bid": 0, "yes_ask": 0}
+        assert _midpoint(m) is None
 
 
 class TestEnrichWithTimestamp:
