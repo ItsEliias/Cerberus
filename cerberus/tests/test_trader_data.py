@@ -381,6 +381,17 @@ def test_trader_in_endpoint_setting_fields():
 
 # ── No order code in Phase 1 modules ─────────────────────────────────────────
 
+def test_kalshi_base_url_has_no_rest_segment():
+    """Base URL must be /trade-api/v2 not /trade-api/rest/v2 (the /rest/ path returns 404)."""
+    import services.trading.kalshi_data as mod
+    assert "/rest/" not in mod.KALSHI_API_BASE, (
+        f"KALSHI_API_BASE contains '/rest/' which returns 404: {mod.KALSHI_API_BASE!r}"
+    )
+    assert mod.KALSHI_API_BASE.endswith("/v2"), (
+        f"KALSHI_API_BASE should end with '/v2': {mod.KALSHI_API_BASE!r}"
+    )
+
+
 def test_no_order_code_in_kalshi_data():
     """kalshi_data.py must not reference any Kalshi order endpoints."""
     import inspect
