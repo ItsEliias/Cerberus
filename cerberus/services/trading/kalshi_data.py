@@ -54,8 +54,9 @@ async def get_active_markets(
       {"markets": [...], "cursor": "...", ...}
 
     Each market dict includes:
-      ticker, title, yes_bid, yes_ask, no_bid, no_ask,
-      volume, open_interest, expiration_time, status, category
+      ticker, title, yes_bid_dollars, yes_ask_dollars, no_bid_dollars, no_ask_dollars,
+      last_price_dollars, response_price_units, volume, open_interest,
+      expiration_time, status, category
     """
     params: dict[str, Any] = {"limit": min(limit, 200), "status": status}
     if cursor:
@@ -115,21 +116,55 @@ def filter_maker_threshold(
 
 
 def _midpoint(market: dict[str, Any]) -> float | None:
-    """Compute best-available midpoint from a Kalshi market dict."""
-    # Prefer bid+ask average; fall back to last_price
-    yes_bid = market.get("yes_bid")
-    yes_ask = market.get("yes_ask")
-    if yes_bid is not None and yes_ask is not None:
+    """Compute best-available midpoint from a Kalshi market dict.
+
+    Primary (current API): *_dollars string fields — values are already in
+      dollar units (e.g. "0.5200" == $0.52), directly comparable to the 0.50
+      threshold. Markets where both sides are "0.0000" return None (no live price).
+    Fallback (legacy API): yes_bid / yes_ask integer cent fields (÷100 → dollars).
+    """
+    def _dollar(key: str) -> float | None:
+        v = market.get(key)
+        if v is None:
+            return None
         try:
-            return (float(yes_bid) + float(yes_ask)) / 2.0
+            f = float(v)
+            return f if f > 0.0 else None
+        except (TypeError, ValueError):
+            return None
+
+    # ── Primary: *_dollars string fields (current Kalshi API) ────────────────
+    bid_d = _dollar("yes_bid_dollars")
+    ask_d = _dollar("yes_ask_dollars")
+    if bid_d is not None and ask_d is not None:
+        return (bid_d + ask_d) / 2.0
+
+    # Single-side or last-price dollar fallback
+    last_d = _dollar("last_price_dollars")
+    if last_d is not None:
+        return last_d
+    # One side missing but the other is live
+    one_d = bid_d or ask_d
+    if one_d is not None:
+        return one_d
+
+    # ── Legacy: integer cent fields (÷100 → dollars) ─────────────────────────
+    bid_i = market.get("yes_bid")
+    ask_i = market.get("yes_ask")
+    if bid_i is not None and ask_i is not None:
+        try:
+            mid = (float(bid_i) + float(ask_i)) / 2.0 / 100.0
+            return mid if mid > 0.0 else None
         except (TypeError, ValueError):
             pass
-    last = market.get("last_price") or market.get("yes_bid") or market.get("yes_ask")
-    if last is not None:
+    last_i = market.get("last_price") or market.get("yes_bid") or market.get("yes_ask")
+    if last_i is not None:
         try:
-            return float(last)
+            f = float(last_i) / 100.0
+            return f if f > 0.0 else None
         except (TypeError, ValueError):
             pass
+
     return None
 
 
