@@ -208,7 +208,7 @@ class TestValidateModel:
 async def test_run_brief_cycle_returns_empty_when_no_markets():
     """If Kalshi returns no ≥50¢ markets, cycle returns []."""
     with patch("services.trading.brief_service.get_filtered_markets", new_callable=AsyncMock) as mock_gfm:
-        mock_gfm.return_value = []
+        mock_gfm.return_value = {"markets": [], "active_count": 5, "total_fetched": 200}
         from services.trading.brief_service import run_brief_cycle
         result = await run_brief_cycle(owner="testuser", limit=3)
         assert result == []
@@ -228,7 +228,7 @@ async def test_run_brief_cycle_generates_briefs():
          patch("services.trading.brief_service._resolve_trader_endpoint", new_callable=AsyncMock) as mock_ep, \
          patch("services.trading.brief_service.llm_call_async", new_callable=AsyncMock) as mock_llm:
 
-        mock_gfm.return_value = [market]
+        mock_gfm.return_value = {"markets": [market], "active_count": 1, "total_fetched": 200}
         mock_ep.return_value = ("http://localhost:11434", "mistral-nemo", {})
         # First 3 calls: bull, bear, risk; 4th: synthesis
         mock_llm.side_effect = ["Bull text.", "Bear text.", "Risk text.", synth_json]
@@ -243,6 +243,132 @@ async def test_run_brief_cycle_generates_briefs():
     assert b["confidence"] == 72
     assert b["bull_analysis"] == "Bull text."
     assert b["rationale"] == "Test rationale"
+
+
+# ── Traded-market filtering and pagination tests ──────────────────────────────
+
+def test_is_traded_volume_fp():
+    """_is_traded returns True when volume_fp > 0."""
+    from services.trading.kalshi_data import _is_traded
+    assert _is_traded({"ticker": "A", "volume_fp": 108141.0})
+    assert _is_traded({"ticker": "A", "volume_fp": "500"})  # string also works
+
+
+def test_is_traded_live_bid():
+    """_is_traded returns True when yes_bid_dollars > 0 (even with zero volume)."""
+    from services.trading.kalshi_data import _is_traded
+    assert _is_traded({"ticker": "A", "volume_fp": 0, "yes_bid_dollars": "0.5200"})
+
+
+def test_is_traded_last_price():
+    """_is_traded returns True when last_price_dollars > 0."""
+    from services.trading.kalshi_data import _is_traded
+    assert _is_traded({"ticker": "A", "last_price_dollars": "0.1300"})
+
+
+def test_is_traded_false_for_dormant():
+    """_is_traded returns False for $0.00 / zero-volume markets (the graveyard)."""
+    from services.trading.kalshi_data import _is_traded
+    assert not _is_traded({"ticker": "A"})
+    assert not _is_traded({"ticker": "A", "volume_fp": 0, "yes_bid_dollars": "0.0000",
+                            "last_price_dollars": "0.0000"})
+
+
+@pytest.mark.asyncio
+async def test_get_traded_markets_paginates():
+    """get_traded_markets follows cursor across pages and returns only traded markets."""
+    from services.trading.kalshi_data import get_traded_markets
+
+    traded_market = {
+        "ticker": "KXELONMARS-99",
+        "yes_bid_dollars": "0.1200",
+        "last_price_dollars": "0.1300",
+        "volume_fp": 108141.0,
+    }
+    dormant = {"ticker": "DEAD", "yes_bid_dollars": "0.0000",
+               "last_price_dollars": "0.0000", "volume_fp": 0}
+
+    page1 = {"markets": [dormant] * 3, "cursor": "page2cursor"}
+    page2 = {"markets": [traded_market, dormant], "cursor": ""}
+
+    with patch("services.trading.kalshi_data.get_active_markets", new_callable=AsyncMock) as mock_ga:
+        mock_ga.side_effect = [page1, page2]
+        markets, total = await get_traded_markets(max_fetch=400, page_size=200)
+
+    assert total == 5                        # 3 + 2 markets fetched
+    assert len(markets) == 1                # only the traded one survives
+    assert markets[0]["ticker"] == "KXELONMARS-99"
+
+
+@pytest.mark.asyncio
+async def test_get_traded_markets_stops_at_empty_cursor():
+    """get_traded_markets stops when cursor is empty (no more pages)."""
+    from services.trading.kalshi_data import get_traded_markets
+
+    page = {"markets": [{"ticker": "A", "volume_fp": 100}], "cursor": ""}
+    with patch("services.trading.kalshi_data.get_active_markets", new_callable=AsyncMock) as mock_ga:
+        mock_ga.return_value = page
+        markets, total = await get_traded_markets()
+
+    assert mock_ga.call_count == 1  # stopped after the first empty cursor
+
+
+@pytest.mark.asyncio
+async def test_get_series_markets_passes_series_ticker():
+    """get_series_markets passes series_ticker to get_active_markets."""
+    from services.trading.kalshi_data import get_series_markets
+
+    page = {"markets": [{"ticker": "KXFED-99", "volume_fp": 5000}], "cursor": ""}
+    with patch("services.trading.kalshi_data.get_active_markets", new_callable=AsyncMock) as mock_ga:
+        mock_ga.return_value = page
+        markets, total = await get_series_markets("KXFED")
+
+    call_kwargs = mock_ga.call_args[1]  # keyword args
+    assert call_kwargs.get("series_ticker") == "KXFED"
+    assert len(markets) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_series_markets_rejects_empty_ticker():
+    from services.trading.kalshi_data import get_series_markets
+    with pytest.raises(ValueError):
+        await get_series_markets("")
+
+
+@pytest.mark.asyncio
+async def test_get_filtered_markets_returns_dict_with_active_count():
+    """get_filtered_markets returns dict with markets, active_count, total_fetched."""
+    from services.trading.kalshi_data import get_filtered_markets
+
+    traded = [_market("A", 0.55, 0.57)]    # passes ≥0.50 threshold
+    traded[0]["volume_fp"] = 1000
+
+    with patch("services.trading.kalshi_data.get_traded_markets", new_callable=AsyncMock) as mock_gt:
+        mock_gt.return_value = (traded, 200)
+        result = await get_filtered_markets(min_midpoint=0.50)
+
+    assert "markets" in result
+    assert "active_count" in result
+    assert "total_fetched" in result
+    assert result["active_count"] == 1
+    assert result["total_fetched"] == 200
+    assert len(result["markets"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_filtered_markets_thin_liquidity():
+    """active_count > 0 but markets == [] means thin liquidity (not broken)."""
+    from services.trading.kalshi_data import get_filtered_markets
+
+    traded = [_market("A", 0.12, 0.14)]    # below threshold
+    traded[0]["volume_fp"] = 500
+
+    with patch("services.trading.kalshi_data.get_traded_markets", new_callable=AsyncMock) as mock_gt:
+        mock_gt.return_value = (traded, 1000)
+        result = await get_filtered_markets(min_midpoint=0.50)
+
+    assert result["active_count"] == 1      # traded markets exist
+    assert result["markets"] == []          # but none ≥50¢ right now
 
 
 # ── DB migration idempotency ──────────────────────────────────────────────────

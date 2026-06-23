@@ -75,14 +75,22 @@ def setup_trader_routes() -> APIRouter:
 
     @router.get("/markets/threshold")
     async def list_threshold_markets(request: Request, limit: int = 50):
-        """Return markets where YES/NO midpoint ≥ maker threshold (default 50¢)."""
+        """Return markets where YES/NO midpoint ≥ maker threshold (default 50¢).
+
+        Response includes active_count (traded markets found, threshold-unfiltered)
+        so callers can distinguish "thin liquidity" (active_count>0, count=0) from
+        "broken fetch" (active_count=0, count=0).
+        """
         require_user(request)
         try:
-            markets = await get_filtered_markets(
-                min_midpoint=DEFAULT_MAKER_THRESHOLD, limit=min(limit, _PAGE_MAX)
-            )
-            markets = enrich_with_timestamp(markets)
-            return {"markets": markets, "threshold": DEFAULT_MAKER_THRESHOLD, "count": len(markets)}
+            result = await get_filtered_markets(min_midpoint=DEFAULT_MAKER_THRESHOLD)
+            markets = enrich_with_timestamp(result["markets"][:min(limit, _PAGE_MAX)])
+            return {
+                "markets": markets,
+                "threshold": DEFAULT_MAKER_THRESHOLD,
+                "count": len(markets),
+                "active_count": result["active_count"],
+            }
         except KalshiDataError as e:
             logger.warning("Kalshi threshold filter failed: %s", e)
             raise HTTPException(502, detail=str(e))
