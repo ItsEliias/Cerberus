@@ -1578,6 +1578,21 @@
             </div>
           </div>
           <div class="admin-card">
+            <h2 style="display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:1px;opacity:0.6;flex-shrink:0"><path d="M3 3l18 18M3 21l18-18" stroke-width="1.5"/><rect x="2" y="7" width="20" height="10" rx="2" stroke-width="1.5"/></svg>Trader Model <span style="font-size:0.72em;opacity:0.55;font-weight:normal;">(trading research briefs — keep separate from chat; must not be Llama 3.3)</span></h2>
+            <div class="admin-toggle-sub" style="margin-bottom:8px">Dedicated endpoint for TRADER research briefs (Bull/Bear/Risk/Synthesis debate). Falls back to Utility → Default when unset. Llama 3.3 is always blocked regardless of which endpoint resolves.</div>
+            <div class="settings-col">
+              <div class="settings-row">
+                <label class="settings-label">Endpoint</label>
+                <select id="set-traderEpSelect" class="settings-select"><option value="">Same as utility</option></select>
+              </div>
+              <div class="settings-row">
+                <label class="settings-label">Model</label>
+                <select id="set-traderModelSelect" class="settings-select"><option value="">Same as utility</option></select>
+              </div>
+              <div id="set-traderChatMsg" style="font-size:11px;color:color-mix(in srgb, var(--fg) 45%, transparent);"></div>
+            </div>
+          </div>
+          <div class="admin-card">
             <h2 style="display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:1px;opacity:0.6;flex-shrink:0"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Vision<span style="flex:1"></span><label class="admin-switch" title="Analyze images with a vision-capable model"><input type="checkbox" id="set-visionEnabledToggle" checked><span class="admin-slider"></span></label></h2>
             <div class="admin-toggle-sub" style="margin-bottom:8px">Analyze images with a vision-capable model.</div>
             <div style="display:flex;flex-direction:column;gap:0.5rem;">

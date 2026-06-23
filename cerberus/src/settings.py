@@ -130,6 +130,11 @@ DEFAULT_SETTINGS = {
     # Ordered fallback chain for the Utility model (summarization, naming,
     # tidy actions, etc.).
     "utility_model_fallbacks": [],
+    # Trader model — dedicated endpoint for trading research briefs.
+    # Falls back to utility → default when unset. Llama 3.3 is always blocked
+    # regardless of which endpoint resolves (risk doc §2.2).
+    "trader_endpoint_id": "",
+    "trader_model": "",
     "teacher_model": "",
     "teacher_enabled": False,
     # Skills: minimum self-reported confidence for an auto-written (LLM-authored)
@@ -263,6 +268,7 @@ _PER_USER_KEYS = {
     "default_endpoint_id", "default_model", "default_model_fallbacks",
     "utility_endpoint_id", "utility_model", "utility_model_fallbacks",
     "research_endpoint_id", "research_model",
+    "trader_endpoint_id", "trader_model",
 }
 
 

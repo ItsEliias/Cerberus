@@ -62,15 +62,24 @@ async def _resolve_trader_endpoint(owner: str | None) -> tuple[str | None, str |
     """Resolve LLM endpoint for trading briefs.
 
     Priority:
-      1. TRADER_REASONING_MODEL env var (uses utility endpoint URL)
-      2. Utility endpoint from settings
-      3. Default chat endpoint
+      1. Dedicated trader endpoint (Settings → AI Defaults → TRADER MODEL)
+      2. Utility endpoint (fallback when trader endpoint is unconfigured)
+      3. Default chat endpoint (last resort)
+
+    TRADER_REASONING_MODEL env var overrides just the model name on top of
+    whichever endpoint resolves — it does not change the URL or API key.
+
+    Llama-3.3 is blocked at the validated model regardless of source
+    (risk doc §2.2 — must fire whether the model came from trader, utility,
+    default, or the env var override).
     """
-    url, model, headers = resolve_endpoint("utility", owner=owner)
+    url, model, headers = resolve_endpoint("trader", owner=owner)
+    if not url:
+        url, model, headers = resolve_endpoint("utility", owner=owner)
     if not url:
         url, model, headers = resolve_endpoint("default", owner=owner)
 
-    # Override model if TRADER_REASONING_MODEL is set
+    # TRADER_REASONING_MODEL overrides only the model name, not url/key.
     if TRADER_REASONING_MODEL:
         _validate_model(TRADER_REASONING_MODEL)
         model = TRADER_REASONING_MODEL
