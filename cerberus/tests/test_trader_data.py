@@ -226,6 +226,159 @@ def test_migrate_create_trader_briefs_is_idempotent(tmp_path):
     assert "trader_briefs" in tables
 
 
+# ── Trader endpoint resolution priority ──────────────────────────────────────
+
+def test_trader_prefix_tried_first():
+    """_resolve_trader_endpoint must try 'trader' prefix before 'utility'."""
+    import inspect
+    import services.trading.brief_service as mod
+    src = inspect.getsource(mod._resolve_trader_endpoint)
+    # "trader" must appear before "utility" in the function body
+    trader_pos = src.index('"trader"')
+    utility_pos = src.index('"utility"')
+    assert trader_pos < utility_pos, (
+        "'trader' prefix must be resolved before 'utility' in _resolve_trader_endpoint"
+    )
+
+
+@pytest.mark.asyncio
+async def test_trader_endpoint_returned_when_configured():
+    """When trader endpoint is configured, its url+key+model are returned."""
+    with patch("services.trading.brief_service.resolve_endpoint") as mock_re:
+        # Simulate: trader endpoint configured → returns url+model+headers
+        def side_effect(prefix, owner=None):
+            if prefix == "trader":
+                return ("https://api.anthropic.com/v1/messages", "claude-3-5-sonnet-20241022", {"x-api-key": "sk-ant-test"})
+            if prefix == "utility":
+                return ("https://api.groq.com/openai/v1/chat/completions", "llama-3.1-70b", {"Authorization": "Bearer gsk_test"})
+            return (None, None, None)
+        mock_re.side_effect = side_effect
+
+        import services.trading.brief_service as svc
+        # clear cached TRADER_REASONING_MODEL so env override doesn't mask the result
+        orig = svc.TRADER_REASONING_MODEL
+        svc.TRADER_REASONING_MODEL = ""
+        try:
+            url, model, headers = await svc._resolve_trader_endpoint("testuser")
+        finally:
+            svc.TRADER_REASONING_MODEL = orig
+
+        assert url == "https://api.anthropic.com/v1/messages", "should use trader url, not utility"
+        assert model == "claude-3-5-sonnet-20241022", "should use trader model"
+        assert headers.get("x-api-key") == "sk-ant-test", "should use trader api key"
+        # Ensure 'trader' prefix was the first call
+        assert mock_re.call_args_list[0][0][0] == "trader"
+
+
+@pytest.mark.asyncio
+async def test_trader_falls_back_to_utility_when_unconfigured():
+    """When trader endpoint is NOT configured, falls back to utility endpoint."""
+    with patch("services.trading.brief_service.resolve_endpoint") as mock_re:
+        def side_effect(prefix, owner=None):
+            if prefix == "trader":
+                return (None, None, None)  # not configured
+            if prefix == "utility":
+                return ("https://api.groq.com/openai/v1/chat/completions", "llama-3.1-70b", {"Authorization": "Bearer gsk_test"})
+            return (None, None, None)
+        mock_re.side_effect = side_effect
+
+        import services.trading.brief_service as svc
+        orig = svc.TRADER_REASONING_MODEL
+        svc.TRADER_REASONING_MODEL = ""
+        try:
+            url, model, headers = await svc._resolve_trader_endpoint("testuser")
+        finally:
+            svc.TRADER_REASONING_MODEL = orig
+
+        assert url == "https://api.groq.com/openai/v1/chat/completions", "should fall back to utility url"
+        assert model == "llama-3.1-70b"
+
+
+@pytest.mark.asyncio
+async def test_trader_falls_back_to_default_when_utility_also_unconfigured():
+    """Fallback chain: trader → utility → default."""
+    with patch("services.trading.brief_service.resolve_endpoint") as mock_re:
+        def side_effect(prefix, owner=None):
+            if prefix == "default":
+                return ("https://api.openai.com/v1/chat/completions", "gpt-4o", {"Authorization": "Bearer sk-test"})
+            return (None, None, None)
+        mock_re.side_effect = side_effect
+
+        import services.trading.brief_service as svc
+        orig = svc.TRADER_REASONING_MODEL
+        svc.TRADER_REASONING_MODEL = ""
+        try:
+            url, model, headers = await svc._resolve_trader_endpoint("testuser")
+        finally:
+            svc.TRADER_REASONING_MODEL = orig
+
+        assert url == "https://api.openai.com/v1/chat/completions"
+        assert model == "gpt-4o"
+
+
+@pytest.mark.asyncio
+async def test_env_override_replaces_model_not_url():
+    """TRADER_REASONING_MODEL overrides model name but not url/key."""
+    with patch("services.trading.brief_service.resolve_endpoint") as mock_re:
+        mock_re.return_value = ("https://api.anthropic.com/v1/messages", "claude-3-5-haiku", {"x-api-key": "sk-ant-test"})
+
+        import services.trading.brief_service as svc
+        orig = svc.TRADER_REASONING_MODEL
+        svc.TRADER_REASONING_MODEL = "claude-3-5-sonnet-20241022"
+        try:
+            url, model, headers = await svc._resolve_trader_endpoint("testuser")
+        finally:
+            svc.TRADER_REASONING_MODEL = orig
+
+        assert url == "https://api.anthropic.com/v1/messages", "url must come from endpoint, not env"
+        assert model == "claude-3-5-sonnet-20241022", "model overridden by env var"
+        assert headers.get("x-api-key") == "sk-ant-test", "api key must come from endpoint"
+
+
+@pytest.mark.asyncio
+async def test_llama33_blocked_on_trader_endpoint():
+    """Llama 3.3 must be blocked even when it comes from the trader endpoint directly."""
+    with patch("services.trading.brief_service.resolve_endpoint") as mock_re:
+        mock_re.return_value = ("https://api.groq.com/v1/chat/completions", "llama-3.3-70b-versatile", {})
+
+        import services.trading.brief_service as svc
+        orig = svc.TRADER_REASONING_MODEL
+        svc.TRADER_REASONING_MODEL = ""
+        try:
+            with pytest.raises(ValueError, match="prohibited"):
+                await svc._resolve_trader_endpoint("testuser")
+        finally:
+            svc.TRADER_REASONING_MODEL = orig
+
+
+def test_trader_settings_keys_in_defaults():
+    """trader_endpoint_id and trader_model must appear in DEFAULT_SETTINGS block."""
+    # src.settings is stubbed in this test module (it imports src.constants which
+    # requires heavy deps). Use source inspection instead of live import.
+    with open("src/settings.py") as f:
+        src = f.read()
+    assert '"trader_endpoint_id"' in src, "trader_endpoint_id missing from DEFAULT_SETTINGS"
+    assert '"trader_model"' in src, "trader_model missing from DEFAULT_SETTINGS"
+
+
+def test_trader_settings_keys_in_per_user():
+    """trader_endpoint_id and trader_model must appear in _PER_USER_KEYS."""
+    with open("src/settings.py") as f:
+        src = f.read()
+    per_user_block_start = src.index("_PER_USER_KEYS")
+    per_user_block_end = src.index("}", per_user_block_start)
+    per_user_block = src[per_user_block_start:per_user_block_end]
+    assert '"trader_endpoint_id"' in per_user_block, "trader_endpoint_id missing from _PER_USER_KEYS"
+    assert '"trader_model"' in per_user_block, "trader_model missing from _PER_USER_KEYS"
+
+
+def test_trader_in_endpoint_setting_fields():
+    """model_routes._ENDPOINT_SETTING_FIELDS must register trader_endpoint_id."""
+    with open("routes/model_routes.py") as f:
+        src = f.read()
+    assert '"trader_endpoint_id"' in src, "trader_endpoint_id missing from _ENDPOINT_SETTING_FIELDS"
+
+
 # ── No order code in Phase 1 modules ─────────────────────────────────────────
 
 def test_no_order_code_in_kalshi_data():

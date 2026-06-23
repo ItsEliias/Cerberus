@@ -566,6 +566,60 @@ async function initUtilityModel() {
   });
 }
 
+/* ── Trader Model ── */
+// Dedicated endpoint for TRADER research briefs (Bull/Bear/Risk/Synthesis).
+// Falls back to utility → default when unset. Llama 3.3 always blocked.
+async function initTraderModel() {
+  var epSel = el('set-traderEpSelect');
+  var modelSel = el('set-traderModelSelect');
+  var msg = el('set-traderChatMsg');
+  if (!epSel || !modelSel) return;
+  var _endpoints = [];
+  if (epSel.options[0]) epSel.options[0].textContent = 'Same as utility';
+  if (modelSel.options[0]) modelSel.options[0].textContent = 'Same as utility';
+
+  try {
+    _endpoints = await _fetchModelEndpoints();
+    _fillEndpointSelect(epSel, _endpoints, epSel.value, true);
+  } catch (e) { console.warn('Failed to load endpoints for trader model', e); }
+
+  function refreshModels(selectedModel) {
+    var epId = epSel.value;
+    var ep = _endpoints.find(function(e) { return e.id === epId; });
+    _fillModelSelect(modelSel, ep ? ep.models : [], selectedModel, true);
+  }
+
+  try {
+    var res = await fetch('/api/auth/settings', { credentials: 'same-origin' });
+    var settings = await res.json();
+    if (settings.trader_endpoint_id) epSel.value = settings.trader_endpoint_id;
+    refreshModels(settings.trader_model || '');
+  } catch (e) { console.warn('Failed to load trader model settings', e); }
+
+  async function saveTrader() {
+    try {
+      await fetch('/api/auth/settings', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trader_endpoint_id: epSel.value || '',
+          trader_model: modelSel.value || ''
+        })
+      });
+      if (msg) { msg.textContent = 'Saved'; msg.style.color = 'var(--fg)'; }
+      setTimeout(function() { if (msg) msg.textContent = ''; }, 1500);
+    } catch (e) { if (msg) { msg.textContent = 'Failed to save'; msg.style.color = 'var(--red)'; } }
+  }
+
+  epSel.addEventListener('change', function() { refreshModels(''); saveTrader(); });
+  modelSel.addEventListener('change', saveTrader);
+
+  _registerAiEndpointRefresh(function(endpoints) {
+    _endpoints = endpoints;
+    _fillEndpointSelect(epSel, _endpoints, epSel.value, true);
+    refreshModels(modelSel.value);
+  });
+}
+
 /* ── Teacher Model ── */
 // SOTA model called automatically when a self-hosted student model
 // fails an agent-mode task. Stored as a single `teacher_model` string
@@ -2187,6 +2241,7 @@ function initAll() {
   initDefaultChat();
   initTeacherModel();
   initUtilityModel();
+  initTraderModel();
   initImageSettings();
   initVisionSettings();
   initTtsSettings();
