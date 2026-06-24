@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 
-_THINK_TAG_NAME = r"(?:think(?:ing)?|thought)"
+_THINK_TAG_NAME = r"(?:think(?:ing)?|thought|reason(?:ing)?|scratchpad)"
 
 # Closed reasoning blocks. Multi-pass loop in `strip_think` handles nested
 # `<think><think>...</think></think>` patterns some models emit.

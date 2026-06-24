@@ -137,6 +137,13 @@ DEFAULT_SETTINGS = {
     "trader_model": "",
     "teacher_model": "",
     "teacher_enabled": False,
+    # Profile persona injection in plain chat. When False (default), the
+    # operator's profile (role, bio) is NOT injected into plain chat context
+    # — it stays visible to agents but stays out of the vanilla chat system
+    # prompt so the LLM doesn't adopt the profile as its own persona.
+    # Enable in Settings → Profile if you want the LLM to be aware of your
+    # role/bio in every plain chat turn.
+    "chat_profile_persona": False,
     # Skills: minimum self-reported confidence for an auto-written (LLM-authored)
     # DRAFT skill to be injected into the agent prompt. Published skills always
     # qualify. Keeps low-confidence auto-skills out of context until they're

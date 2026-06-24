@@ -574,6 +574,14 @@ async def build_chat_context(
     # The stream path uses enhanced_message (with CoT/preprocessing applied),
     # the sync path uses text_for_context.
     _ctx_msg = preprocessed.enhanced_message if use_enhanced_message else preprocessed.text_for_context
+    # Profile persona: inject operator profile into plain chat only when the
+    # owner has explicitly enabled it. Agent mode always gets the profile so
+    # agents know who they're working with (required for agent-context aware
+    # replies). Default OFF prevents the LLM from adopting the role/bio as
+    # its own persona in plain conversational chat.
+    from src.settings import get_setting
+    _use_profile_persona = agent_mode or bool(get_setting("chat_profile_persona", False))
+
     _preface_kwargs = dict(
         message=_ctx_msg,
         session=sess,
@@ -586,6 +594,7 @@ async def build_chat_context(
         agent_mode=agent_mode,
         incognito=incognito,
         use_skills=skills_enabled,
+        use_profile_persona=_use_profile_persona,
     )
     if use_rag is not None:
         _preface_kwargs["use_rag"] = use_rag_val
@@ -908,6 +917,15 @@ def save_assistant_response(
         _content = _think_info["reply"]
     else:
         _content = full_response
+    # Final safety pass: strip any residual reasoning tags that _extract_thinking_meta
+    # missed (inline <reason>/<scratchpad> blocks, partial tags, etc.).
+    try:
+        from src.text_helpers import strip_think
+        _stripped = strip_think(_content or "", prose=False, prompt_echo=False).strip()
+        if _stripped:
+            _content = _stripped
+    except Exception:
+        pass
     sess.add_message(ChatMessage("assistant", _content, metadata=md))
 
     if not incognito:
