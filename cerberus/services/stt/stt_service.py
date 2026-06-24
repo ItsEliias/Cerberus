@@ -39,19 +39,33 @@ class STTService:
 
     @property
     def available(self) -> bool:
+        return not bool(self.unavailable_reason)
+
+    @property
+    def unavailable_reason(self) -> str:
+        """Return a human-readable reason why STT is unavailable, or '' if available."""
         settings = self._load_settings()
         if settings.get("stt_enabled") is False:
-            return False
+            return "STT is disabled — enable it in Settings → Voice"
         provider = settings["stt_provider"]
         if provider == "disabled":
-            return False
+            return "STT provider is set to 'disabled' in Settings → Voice"
         if provider == "browser":
-            return False  # Web Speech API is client-side; server cannot transcribe
+            return "STT is set to browser mode — transcription happens client-side"
         if provider == "local":
-            return self._get_whisper() is not None
+            try:
+                from faster_whisper import WhisperModel  # noqa: F401
+            except ImportError:
+                return (
+                    "faster-whisper is not installed — "
+                    "run: pip install faster-whisper"
+                )
+            if self._get_whisper() is None:
+                return "Whisper model failed to load — check logs for details"
+            return ""
         if provider.startswith("endpoint:"):
-            return True  # assume reachable
-        return False
+            return ""  # assume reachable
+        return "Unknown STT provider"
 
     # ── Local Whisper ──
 

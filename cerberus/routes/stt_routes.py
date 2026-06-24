@@ -27,10 +27,8 @@ def setup_stt_routes(stt_service):
         """Transcribe uploaded audio file to text"""
         try:
             if not stt_service.available:
-                raise HTTPException(
-                    status_code=503,
-                    detail={"message": "STT service not available or set to browser mode"}
-                )
+                reason = getattr(stt_service, "unavailable_reason", "") or "STT service not available"
+                raise HTTPException(status_code=503, detail={"message": reason})
 
             audio_bytes = await read_upload_limited(file, STT_MAX_AUDIO_BYTES, "Audio file")
             if not audio_bytes:

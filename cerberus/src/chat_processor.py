@@ -170,6 +170,7 @@ class ChatProcessor:
         agent_mode: bool = False,
         incognito: bool = False,
         use_skills: bool = True,
+        use_profile_persona: bool = False,
     ) -> Tuple[List[Dict[str, str]], List[Dict[str, Any]], List[Dict[str, str]]]:
         """Build the context preface for LLM calls.
 
@@ -207,6 +208,18 @@ class ChatProcessor:
         self._last_used_memories = []  # track what was injected
         if use_memory:
             mem_entries = self.memory_manager.load(owner=owner)
+
+            # operator_profile memories are only injected in agent mode or when
+            # the operator has explicitly enabled profile-persona in plain chat.
+            # Default OFF for plain chat — prevents the LLM from adopting the
+            # profile role/bio as its own persona instead of treating it as
+            # background context about the user.
+            if not use_profile_persona:
+                mem_entries = [
+                    m for m in mem_entries
+                    if m.get("category") != "operator_profile"
+                    and "operator_profile" not in (m.get("categories") or [])
+                ]
 
             pinned = [m for m in mem_entries if m.get("pinned")]
             extended = [m for m in mem_entries if not m.get("pinned")]
