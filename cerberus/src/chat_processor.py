@@ -12,6 +12,17 @@ from src.prompt_security import UNTRUSTED_CONTEXT_POLICY, untrusted_context_mess
 
 logger = logging.getLogger(__name__)
 
+# Default identity injected into plain chat when no preset system prompt is set.
+# Not applied in agent mode (agents carry their own personas).
+# Keep this static — it must not vary per-turn so KV-cache prefix stays stable.
+CERBERUS_PLAIN_CHAT_IDENTITY = (
+    "You are the AI assistant built into Cerberus — a self-hosted, security-hardened "
+    "private AI workspace. Cerberus provides: chat with local and hosted models, "
+    "specialized agents, council/multi-agent deliberation, deep research, persistent "
+    "memory, notes, tasks, calendar, email, and voice. You can help the user navigate "
+    "and use any of these capabilities."
+)
+
 # ── Stopwords & tokenizer ──
 
 _STOPWORDS = frozenset(
@@ -193,11 +204,18 @@ class ChatProcessor:
         preface = []
         rag_sources = []
 
-        # Add preset system prompt if specified
+        # Add preset system prompt if specified, else inject the Cerberus
+        # plain-chat identity for non-agent sessions. Identity is omitted when
+        # a preset is active (preset takes full ownership of the persona).
         if preset_system_prompt:
             preface.append({
                 "role": "system",
                 "content": preset_system_prompt
+            })
+        elif not agent_mode:
+            preface.append({
+                "role": "system",
+                "content": CERBERUS_PLAIN_CHAT_IDENTITY,
             })
         preface.append({
             "role": "system",
