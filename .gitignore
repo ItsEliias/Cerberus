@@ -1,0 +1,17 @@
+.DS_Store
+.claude-flow/
+data/
+*.swp
+
+# Local Claude Code / swarm state
+.claude/
+.swarm/
+
+# Local vector DBs
+agentdb.rvf
+agentdb.rvf.lock
+ruvector.db
+
+# Parallel-terminal working copies (each is its own git repo)
+cerberus-t2/
+cerberus-t3/
