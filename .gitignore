@@ -15,3 +15,14 @@ ruvector.db
 # Parallel-terminal working copies (each is its own git repo)
 cerberus-t2/
 cerberus-t3/
+
+# Dependencies / build artifacts
+node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# Engagement working directories (client-scoped recon data — keep local, never publish)
+engagements/

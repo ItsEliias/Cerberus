@@ -1,0 +1,178 @@
+/* ============================================================
+   Cerberus shared theme — ported from jarvis-v2/tokens.css and
+   command-center/styles.css so this module matches the OS shell.
+   Module-per-accent-color: crimson is the brand spine; a module
+   only overrides --red to reskin. Recon keeps crimson.
+   ============================================================ */
+
+@font-face {
+  font-family: 'Orbitron';
+  src: url('vendor/fonts/Orbitron.woff2') format('woff2');
+  font-weight: 400 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('vendor/fonts/JetBrainsMono.woff2') format('woff2');
+  font-weight: 400 600;
+  font-display: swap;
+}
+
+:root {
+  /* ── Crimson spine (brand anchor — never themed away) ── */
+  --red:            #c0392b;
+  --crimson-400:    #e04535;   /* hover on core */
+  --crimson-300:    #f06b5a;   /* focus rings, highlight */
+  --crimson-200:    #ff9080;   /* glow tips */
+  --crimson-hot:    color-mix(in srgb, var(--red) 85%, white);
+  --crimson-glow:   color-mix(in srgb, var(--red) 40%, transparent);
+
+  /* ── OLED surface tiers ── */
+  --void:           #060708;   /* deepest bg */
+  --void-mid:       #0d0f12;
+  --surface-base:   #0d0d0f;   /* panels, cards */
+  --surface-raised: #111115;   /* sidebar, active */
+  --surface-modal:  #16161c;   /* modals, popovers */
+
+  /* ── Foreground ── */
+  --fg:             #c5c9d0;
+  --fg-primary:     #e8e8ec;
+  --fg-secondary:   #9a9aaa;
+  --fg-muted:       #5a5a6a;
+
+  /* ── Borders (crimson-tinted, like the shell) ── */
+  --border:          color-mix(in srgb, var(--red) 12%, transparent);  /* hairline */
+  --border-default:  color-mix(in srgb, var(--red) 28%, transparent);
+  --border-glow:     color-mix(in srgb, var(--red) 55%, transparent);
+
+  /* ── Status colors (protected — meaning, not brand) ── */
+  --ok:      #22c55e;
+  --idle:    #f59e0b;
+  --proc:    #3b82f6;
+  --alert:   #ef4444;
+
+  /* Severity (findings) */
+  --sev-critical: #e74c3c;
+  --sev-high:     #e67e22;
+  --sev-medium:   #f1c40f;
+  --sev-low:      #2ecc71;
+  --sev-info:     #3498db;
+
+  /* ── Type ── */
+  --font-display: 'Orbitron', monospace;
+  --font-mono:    'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  --font-body:    'JetBrains Mono', 'Fira Code', monospace;
+  --tracking-hud:   0.15em;
+  --tracking-label: 0.08em;
+
+  /* ── Sharp HUD radii ── */
+  --r-sm: 2px;
+  --r-md: 4px;
+  --r-lg: 6px;
+
+  /* ── Glow ── */
+  --glow-hud-label: 0 0 12px color-mix(in srgb, var(--red) 40%, transparent);
+  --glow-focus: 0 0 0 1px var(--red), 0 0 8px color-mix(in srgb, var(--red) 60%, transparent);
+  --glow-lift:  0 4px 24px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--void);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--red) 22%, transparent); border-radius: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ── HUD section header — "// LABEL" in crimson, the shell's signature ── */
+.hud-label {
+  font-family: var(--font-mono);
+  font-size: 8.5px; font-weight: 600;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--red);
+  text-shadow: var(--glow-hud-label);
+}
+.hud-label::before { content: '// '; font-weight: 400; font-size: 0.9em; }
+
+/* ── Buttons — tactical outline, crimson on hover ── */
+button {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: var(--tracking-label); text-transform: uppercase;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  padding: 5px 11px;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s, background 0.15s;
+  -webkit-appearance: none; appearance: none;
+}
+button:hover { opacity: 1; border-color: var(--red); color: var(--red); }
+button:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; opacity: 1; }
+button.primary {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  border-color: var(--red);
+  color: var(--crimson-hot);
+  opacity: 1;
+  box-shadow: inset 0 0 14px color-mix(in srgb, var(--red) 10%, transparent);
+}
+button.primary:hover { background: color-mix(in srgb, var(--red) 22%, transparent); color: #fff; }
+
+input, textarea, select {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-primary);
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-sm);
+  padding: 6px 9px;
+  outline: none;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--red); }
+
+/* ── Severity badges ── */
+.badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 8px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.badge.critical { background: color-mix(in srgb, var(--sev-critical) 20%, transparent); color: var(--sev-critical); }
+.badge.high     { background: color-mix(in srgb, var(--sev-high) 20%, transparent);     color: var(--sev-high); }
+.badge.medium   { background: color-mix(in srgb, var(--sev-medium) 18%, transparent);   color: var(--sev-medium); }
+.badge.low      { background: color-mix(in srgb, var(--sev-low) 18%, transparent);      color: var(--sev-low); }
+.badge.info     { background: color-mix(in srgb, var(--sev-info) 18%, transparent);     color: var(--sev-info); }
+.badge.status   { background: rgba(255,255,255,0.05); color: var(--fg-secondary); border: 1px solid var(--border); }
+
+@keyframes jx2-pulse-crimson { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+@keyframes cc-dot-pulse {
+  0%, 100% { box-shadow: 0 0 3px var(--red); }
+  50%       { box-shadow: 0 0 8px var(--crimson-hot); }
+}
+@keyframes cc-glitch {
+  0%, 96%, 100% { clip-path: none; transform: none; }
+  96.5% { clip-path: inset(20% 0 60% 0); transform: translateX(-2px); }
+  97%   { clip-path: inset(60% 0 15% 0); transform: translateX(2px); }
+  98%   { clip-path: inset(40% 0 40% 0); transform: translateX(-1px); filter: brightness(1.4); }
+  98.5% { clip-path: none; transform: none; filter: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

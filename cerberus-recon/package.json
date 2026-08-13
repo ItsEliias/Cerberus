@@ -1,0 +1,23 @@
+{
+  "name": "cerberus-recon",
+  "productName": "Cerberus Recon",
+  "version": "0.1.0",
+  "description": "Cerberus module: branded terminal + dashboard that spawns Claude Code pre-loaded with a recon/pentest plugin stack for authorized bug bounty work.",
+  "main": "main.js",
+  "scripts": {
+    "postinstall": "node scripts/vendor.js",
+    "start": "electron .",
+    "rebuild": "electron-rebuild -f -w node-pty"
+  },
+  "author": "Eliias",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-rebuild": "^3.2.9"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
+    "node-pty": "^1.0.0"
+  }
+}
