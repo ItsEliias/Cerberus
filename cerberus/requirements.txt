@@ -44,7 +44,7 @@ croniter
 pytest
 pytest-asyncio
 # OpenSandbox secure execution SDK (Phase 2)
-opensandbox
+opensandbox==0.1.16
 # Telegram Bot API adapter (Phase 3 gateway)
 python-telegram-bot>=20.0
 # Discord adapter (Phase 3 gateway)
