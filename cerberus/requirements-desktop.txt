@@ -1,0 +1,15 @@
+# Desktop-packaging extras — layered on top of requirements.txt.
+#
+#   pip install -r requirements.txt -r requirements-desktop.txt
+#
+# These are only needed to RUN the native window (desktop.py) and to BUILD the
+# standalone executable (cerberus.spec). The server itself needs none of them.
+-r requirements.txt
+
+# Native OS webview window. On Windows this drives the system WebView2 runtime
+# via the EdgeChromium backend (pythonnet is pulled in automatically by the
+# platform marker in pywebview's own metadata).
+pywebview>=5.3
+
+# Standalone-executable builder (run on the target OS; produces a per-OS binary).
+pyinstaller>=6.11

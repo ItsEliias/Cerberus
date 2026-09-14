@@ -6,6 +6,10 @@ __pycache__/
 dist/
 build/
 !static/js/editor/build/
+
+# Desktop build outputs (PyInstaller + Inno Setup); icons are generated at build
+dist-installer/
+desktop_assets/
 venv/
 .venv/
 *.egg
