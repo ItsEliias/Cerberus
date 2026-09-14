@@ -25,7 +25,9 @@ on:
     tags: ["v*"]
 
 concurrency:
-  group: build-windows-${{ github.ref }}
+  # Include the profile so a lean and a full build of the same ref don't cancel
+  # each other (they are independent artifacts).
+  group: build-windows-${{ github.ref }}-${{ github.event.inputs.profile || 'tag' }}
   cancel-in-progress: true
 
 permissions:
