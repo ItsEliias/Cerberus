@@ -1548,8 +1548,12 @@
         <div data-settings-panel="sandbox" class="hidden">
           <div class="admin-card">
             <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;opacity:0.6"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>Docker-backed features</h2>
+            <div id="settings-sandbox-banner" role="status" style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;margin:0 0 12px;border-radius:6px;font-size:12px;line-height:1.45;border:1px solid var(--border);background:color-mix(in srgb, var(--panel) 60%, transparent);">
+              <span id="settings-sandbox-banner-icon" style="flex:0 0 auto;font-size:14px;line-height:1.2;">⏳</span>
+              <span id="settings-sandbox-banner-text">Checking sandbox status… These features require a running <strong>Docker</strong> / OpenSandbox server.</span>
+            </div>
             <p style="font-size:11px;opacity:0.6;margin:0 0 12px;line-height:1.5;">
-              Point Cerberus at a Docker/OpenSandbox server for sandboxed code execution, vectors and search &mdash; a local Docker stack now, or a remote server later. Changes are saved to your per-user config and <strong>apply on the next launch</strong>. When disabled or unreachable, code execution fails closed (never runs on the host).
+              <strong>Off by default.</strong> Sandboxed code execution, vectors and search all need a running <strong>Docker</strong> / OpenSandbox server &mdash; a local Docker stack now, or a remote server later. Enable below and set the server URL. Changes are saved to your per-user config and <strong>apply on the next launch</strong>. When disabled or unreachable, code execution fails closed (it never runs on the host).
             </p>
             <div class="settings-col">
               <label class="settings-row" style="align-items:center;gap:8px;cursor:pointer;">

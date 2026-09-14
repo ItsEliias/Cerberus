@@ -222,7 +222,10 @@ async def open_sandbox(
         ) from exc
     except Exception as exc:
         raise SandboxUnavailableError(
-            f"sandbox: could not connect to {SANDBOX_URL} — {exc}"
+            f"sandbox: could not connect to {SANDBOX_URL} — {exc}. "
+            "Docker-backed code execution needs a running Docker/OpenSandbox "
+            "server: start Docker, then enable and point the sandbox at it in "
+            "Settings → Sandbox (SANDBOX_URL)."
         ) from exc
 
     try:
