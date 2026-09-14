@@ -60,6 +60,20 @@ if "src.database" not in sys.modules:
 # collection, which breaks session import in subsequent tests).
 import core.models  # noqa: E402
 
+# Same defence for the `services` package: a few test modules insert lightweight
+# `services` / `services.docs` shells into sys.modules (to skip the heavy
+# services/__init__.py) guarded by `if pkg not in sys.modules`. If they collect
+# before other tests, those shells shadow the real subpackages and later
+# `import services.memory|search|research|docs.*` fail with "not a package".
+# Pre-importing the real subpackages here makes those guarded inserts no-ops.
+import importlib as _importlib  # noqa: E402
+for _svc in ("services", "services.docs", "services.memory",
+             "services.search", "services.research"):
+    try:
+        _importlib.import_module(_svc)
+    except Exception:
+        pass
+
 def pytest_configure(config):
     """Register the dynamic taxonomy ``sub_*`` markers before collection.
 
