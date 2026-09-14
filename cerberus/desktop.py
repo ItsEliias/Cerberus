@@ -118,16 +118,21 @@ def _free_port() -> int:
 
 def _serve(port: int) -> None:
     import uvicorn
-    # Import here (not at module top) so the pre-import env setup in main() has
-    # already run by the time app.py — and, transitively, the sandbox module —
-    # read their configuration.
+    # Import the app *object* (not the "app:app" import string). Two reasons:
+    #  1. String-target uvicorn re-imports "app" by name, which fails inside a
+    #     PyInstaller bundle; passing the object sidesteps that.
+    #  2. A real `from app import app` here puts app.py (and its transitive
+    #     route/service imports) into PyInstaller's dependency graph so they get
+    #     bundled — a string target is invisible to static analysis.
+    # Imported here (not at module top) so main()'s pre-import env setup has
+    # already run before app.py — and, transitively, the sandbox module — read
+    # their configuration.
+    from app import app as fastapi_app
     uvicorn.run(
-        "app:app",
+        fastapi_app,
         host="127.0.0.1",
         port=port,
         log_level=os.environ.get("CERBERUS_LOG_LEVEL", "warning"),
-        reload=False,
-        workers=1,
     )
 
 
