@@ -87,9 +87,19 @@ jobs:
       - name: Smoke test the frozen bundle
         env:
           CERBERUS_DESKTOP_SMOKE: "1"
+        shell: pwsh
         run: |
-          ./dist/Cerberus/Cerberus.exe --smoke
-          if ($LASTEXITCODE -ne 0) { throw "smoke test failed ($LASTEXITCODE)" }
+          # Cerberus.exe is a windowed (console=False) app, so PowerShell does not
+          # wait for it and $LASTEXITCODE is never set. Launch via Start-Process
+          # and read the real exit code, with a hard timeout.
+          $p = Start-Process -FilePath "dist\Cerberus\Cerberus.exe" -ArgumentList "--smoke" -PassThru
+          if (-not $p.WaitForExit(180000)) { $p.Kill(); throw "smoke test timed out" }
+          if ($p.ExitCode -ne 0) {
+            Write-Host "---- desktop.log ----"
+            Get-Content "$env:APPDATA\Cerberus\desktop.log" -Tail 60 -ErrorAction SilentlyContinue
+            throw "smoke test failed (exit $($p.ExitCode))"
+          }
+          Write-Host "smoke OK (exit 0)"
 
       - name: Package onedir (zip)
         shell: pwsh

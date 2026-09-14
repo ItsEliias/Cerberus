@@ -155,7 +155,34 @@ def _wait_ready(port: int, timeout_s: float = 90.0) -> bool:
     return False
 
 
+def _ensure_console_streams(data_dir: Path) -> None:
+    """Give the process real stdout/stderr when launched without a console.
+
+    A windowed frozen build (console=False on Windows, a double-clicked .app on
+    macOS) has sys.stdout/sys.stderr set to None. The app's logging.StreamHandler
+    and any print() would then crash on first use. Redirect both to a log file in
+    the per-user data dir so the app runs — and leaves a debuggable log.
+    """
+    if sys.stdout is not None and sys.stderr is not None:
+        return
+    try:
+        log_file = open(data_dir / "desktop.log", "a", buffering=1, encoding="utf-8")
+    except OSError:
+        # Last resort: a sink that swallows writes so nothing crashes.
+        import io
+        log_file = io.StringIO()
+    if sys.stdout is None:
+        sys.stdout = log_file
+    if sys.stderr is None:
+        sys.stderr = log_file
+
+
 def main() -> int:
+    # 0. A windowed launch (Windows console=False / double-clicked .app) has no
+    #    stdout/stderr — wire them to a log file before anything prints or logs.
+    _boot_dir = _user_data_dir()
+    _ensure_console_streams(_boot_dir)
+
     # 1. Redirect all persisted state to a per-user writable dir (unless the
     #    caller already pinned one). Must precede any import that reads DATA_DIR.
     #    Ensure the target exists — the SQLite DB is sqlite:///{DATA_DIR}/app.db
