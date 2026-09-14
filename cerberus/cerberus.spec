@@ -60,9 +60,11 @@ for pkg in ("routes", "services", "core", "src", "gateway", "mcp_servers",
         hiddenimports += collect_submodules(pkg)
     except Exception:
         pass
-# Third-party modules PyInstaller commonly under-collects.
+# Third-party modules PyInstaller commonly under-collects. chromadb pulls its
+# telemetry submodules (e.g. chromadb.telemetry.product.posthog) dynamically, so
+# static analysis misses them and the vector store fails to init without this.
 for pkg in ("uvicorn", "opensandbox", "pydantic", "pydantic_settings",
-            "email_validator", "webview"):
+            "email_validator", "webview", "chromadb"):
     try:
         hiddenimports += collect_submodules(pkg)
     except Exception:
