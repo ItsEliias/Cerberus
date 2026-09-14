@@ -4,10 +4,15 @@ name: Build Windows App
 # Inno Setup installer. Runs on a windows-latest runner because PyInstaller
 # produces per-OS binaries — a Windows .exe cannot be cross-built from macOS/Linux.
 #
+# Triggers:
+#   • workflow_dispatch — build a single chosen profile (lean|full) on demand.
+#   • push tag v*       — build BOTH profiles and publish a GitHub Release with
+#                          the installers + portable zips attached.
+#
 # NOTE: this workflow lives at the REPOSITORY ROOT (.github/workflows/). The app
-# itself is in the cerberus/ subdirectory, so every build step sets
-# working-directory: cerberus. (The workflows under cerberus/.github/ are not at
-# the repo root and are therefore not executed by GitHub Actions.)
+# itself is in the cerberus/ subdirectory, so build steps set
+# working-directory: cerberus. (Workflows under cerberus/.github/ are not at the
+# repo root and are therefore never executed by GitHub Actions.)
 
 on:
   workflow_dispatch:
@@ -25,23 +30,44 @@ on:
     tags: ["v*"]
 
 concurrency:
-  # Include the profile so a lean and a full build of the same ref don't cancel
-  # each other (they are independent artifacts).
-  group: build-windows-${{ github.ref }}-${{ github.event.inputs.profile || 'tag' }}
+  # Per ref + profile so a lean and a full dispatch don't cancel each other; tag
+  # runs share one group ('release') since a single run builds both profiles.
+  group: build-windows-${{ github.ref }}-${{ github.event.inputs.profile || 'release' }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  # Decide which profiles to build: both for a release tag, or the single chosen
+  # profile for a manual dispatch.
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      profiles: ${{ steps.pick.outputs.profiles }}
+    steps:
+      - id: pick
+        shell: bash
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo 'profiles=["lean","full"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'profiles=["${{ github.event.inputs.profile || 'full' }}"]' >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: setup
     runs-on: windows-latest
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJSON(needs.setup.outputs.profiles) }}
     defaults:
       run:
         working-directory: cerberus
     env:
-      CERBERUS_DESKTOP_PROFILE: ${{ github.event.inputs.profile || 'full' }}
+      CERBERUS_DESKTOP_PROFILE: ${{ matrix.profile }}
       APP_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '0.1.0-dev' }}
 
     steps:
@@ -58,7 +84,7 @@ jobs:
       # Full profile ships torch — install the CPU-only wheel so we do not pull
       # multi-GB of CUDA into a desktop app. Skipped entirely for lean builds.
       - name: Install CPU-only torch (full profile)
-        if: env.CERBERUS_DESKTOP_PROFILE == 'full'
+        if: matrix.profile == 'full'
         run: pip install torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Install dependencies
@@ -120,13 +146,49 @@ jobs:
       - name: Upload onedir zip
         uses: actions/upload-artifact@v4
         with:
-          name: Cerberus-onedir-${{ env.CERBERUS_DESKTOP_PROFILE }}
+          name: Cerberus-onedir-${{ matrix.profile }}
           path: cerberus/dist/Cerberus-*-win64.zip
           if-no-files-found: error
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: Cerberus-Setup-${{ env.CERBERUS_DESKTOP_PROFILE }}
+          name: Cerberus-Setup-${{ matrix.profile }}
           path: cerberus/dist-installer/Cerberus-Setup-*.exe
           if-no-files-found: error
+
+  # On a v* tag: gather both profiles' artifacts and publish a GitHub Release.
+  release:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-artifacts
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find dist-artifacts -type f \( -name '*.exe' -o -name '*.zip' \) | sort)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No release assets found under dist-artifacts/"; exit 1
+          fi
+          echo "Assets:"; printf '  %s\n' "${files[@]}"
+          # Mark pre-release for tags with a suffix (e.g. v0.1.0-beta).
+          pre=""
+          case "$TAG" in *-*) pre="--prerelease";; esac
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release upload "$TAG" --repo "$REPO" --clobber "${files[@]}"
+          else
+            gh release create "$TAG" --repo "$REPO" \
+              --title "Cerberus $TAG" --generate-notes $pre "${files[@]}"
+          fi
