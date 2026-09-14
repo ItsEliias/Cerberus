@@ -1,0 +1,120 @@
+name: Build Windows App
+
+# Builds Cerberus as a standalone Windows program (PyInstaller onedir) and an
+# Inno Setup installer. Runs on a windows-latest runner because PyInstaller
+# produces per-OS binaries — a Windows .exe cannot be cross-built from macOS/Linux.
+#
+# NOTE: this workflow lives at the REPOSITORY ROOT (.github/workflows/). The app
+# itself is in the cerberus/ subdirectory, so every build step sets
+# working-directory: cerberus. (The workflows under cerberus/.github/ are not at
+# the repo root and are therefore not executed by GitHub Actions.)
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Bundle profile"
+        type: choice
+        default: full
+        options: [full, lean]
+      python-version:
+        description: "Python version"
+        type: string
+        default: "3.12"
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: cerberus
+    env:
+      CERBERUS_DESKTOP_PROFILE: ${{ github.event.inputs.profile || 'full' }}
+      APP_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '0.1.0-dev' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ github.event.inputs.python-version || '3.12' }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip wheel
+
+      # Full profile ships torch — install the CPU-only wheel so we do not pull
+      # multi-GB of CUDA into a desktop app. Skipped entirely for lean builds.
+      - name: Install CPU-only torch (full profile)
+        if: env.CERBERUS_DESKTOP_PROFILE == 'full'
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-desktop.txt
+
+      - name: Render window icons from docs/cerberus.jpg
+        shell: python
+        working-directory: cerberus
+        run: |
+          import os
+          from PIL import Image
+          os.makedirs("desktop_assets", exist_ok=True)
+          img = Image.open("docs/cerberus.jpg").convert("RGBA")
+          side = min(img.size)
+          left = (img.width - side) // 2
+          top = (img.height - side) // 2
+          sq = img.crop((left, top, left + side, top + side))
+          sq.resize((512, 512)).save("desktop_assets/cerberus.png")
+          sq.save(
+              "desktop_assets/cerberus.ico",
+              sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+          )
+          print("icons written to desktop_assets/")
+
+      - name: Build (PyInstaller)
+        run: pyinstaller --noconfirm --clean cerberus.spec
+
+      - name: Smoke test the frozen bundle
+        env:
+          CERBERUS_DESKTOP_SMOKE: "1"
+        run: |
+          ./dist/Cerberus/Cerberus.exe --smoke
+          if ($LASTEXITCODE -ne 0) { throw "smoke test failed ($LASTEXITCODE)" }
+
+      - name: Package onedir (zip)
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/Cerberus/* -DestinationPath "dist/Cerberus-${env:APP_VERSION}-${env:CERBERUS_DESKTOP_PROFILE}-win64.zip" -Force
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+        shell: pwsh
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${env:APP_VERSION}" installer/cerberus.iss
+
+      - name: Upload onedir zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cerberus-onedir-${{ env.CERBERUS_DESKTOP_PROFILE }}
+          path: cerberus/dist/Cerberus-*-win64.zip
+          if-no-files-found: error
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cerberus-Setup-${{ env.CERBERUS_DESKTOP_PROFILE }}
+          path: cerberus/dist-installer/Cerberus-Setup-*.exe
+          if-no-files-found: error
