@@ -52,6 +52,48 @@ async function _load() {
   }
 }
 
+// Render the prominent status banner so it's obvious whether Docker-backed
+// features are actually on and reachable — the whole point of this panel.
+function _setBanner(icon, html, kind) {
+  const box = _el('settings-sandbox-banner');
+  const ic = _el('settings-sandbox-banner-icon');
+  const tx = _el('settings-sandbox-banner-text');
+  if (!box || !tx) return;
+  if (ic) ic.textContent = icon;
+  tx.innerHTML = html;
+  const border = kind === 'ok' ? 'var(--color-success, #3fb950)'
+    : kind === 'err' ? 'var(--color-error, #f85149)'
+    : kind === 'warn' ? 'var(--color-warning, #d29922)'
+    : 'var(--border)';
+  box.style.borderColor = border;
+  box.style.background = kind
+    ? `color-mix(in srgb, ${border} 12%, transparent)`
+    : 'color-mix(in srgb, var(--panel) 60%, transparent)';
+}
+
+async function _refreshBanner() {
+  _setBanner('⏳', 'Checking sandbox status…', null);
+  try {
+    const res = await fetch('/api/desktop/settings/status', { credentials: 'same-origin' });
+    if (res.status === 404) {
+      _setBanner('ℹ️', 'Desktop settings API is not available on this build.', 'warn');
+      return;
+    }
+    if (!res.ok) { _setBanner('⚠️', `Could not read status (HTTP ${res.status}).`, 'warn'); return; }
+    const s = await res.json();
+    const url = s.sandbox_url || '(no URL set)';
+    if (!s.enabled) {
+      _setBanner('⚠️', 'Docker features are <strong>OFF</strong>. Sandboxed code execution, vectors and search need a running <strong>Docker</strong> server — enable the toggle below, set the URL, save, then restart.', 'warn');
+    } else if (s.reachable) {
+      _setBanner('✅', `Connected to the Docker sandbox at <code>${url}</code>. Docker features are active.`, 'ok');
+    } else {
+      _setBanner('⛔', `Enabled, but <strong>can't reach</strong> <code>${url}</code> — is <strong>Docker</strong> running and the server up? Code execution fails closed until it's reachable.`, 'err');
+    }
+  } catch (e) {
+    _setBanner('⛔', "Couldn't reach the server to check sandbox status.", 'err');
+  }
+}
+
 async function _save() {
   const body = {
     CERBERUS_SANDBOX_ENABLED: !!(_el('settings-sandbox-enabled') || {}).checked,
@@ -79,6 +121,7 @@ async function _save() {
     }
     if (keyEl) keyEl.value = '';
     _setMsg('Saved — restart Cerberus to apply.', 'ok');
+    _refreshBanner();
   } catch (e) {
     _setMsg('Save failed: could not reach the server.', 'err');
   }
@@ -109,9 +152,11 @@ function _bind() {
   if (!nav && !saveBtn) return;  // panel not in this DOM yet
   _bound = true;
 
-  if (nav) nav.addEventListener('click', () => { if (!_loaded) _load(); });
+  // On each open: load fields once, and always refresh the status banner so the
+  // enabled/reachable state (and the Docker requirement) is immediately obvious.
+  if (nav) nav.addEventListener('click', () => { if (!_loaded) _load(); else _refreshBanner(); });
   if (saveBtn) saveBtn.addEventListener('click', _save);
-  if (testBtn) testBtn.addEventListener('click', _test);
+  if (testBtn) testBtn.addEventListener('click', () => { _test(); _refreshBanner(); });
 }
 
 if (document.readyState === 'loading') {
