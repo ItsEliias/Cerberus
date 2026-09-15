@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 ItsEliias — part of Cerberus (AGPL-3.0). See LICENSE and NOTICE.
 """
 Cerberus desktop launcher — a native Windows/macOS/Linux program, not a browser tab.
 

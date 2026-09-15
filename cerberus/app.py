@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 ItsEliias — part of Cerberus (a fork of odysseus,
+# © pewdiepie-archdaemon contributors, AGPL-3.0). See LICENSE and NOTICE.
 # app.py — slim orchestrator
 import mimetypes
 import os
