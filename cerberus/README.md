@@ -144,3 +144,14 @@ Cerberus is a hardened fork of odysseus. See:
 odysseus copyright © pewdiepie-archdaemon contributors, AGPL-3.0 License.
 OpenSandbox copyright © 2025 Alibaba Group Holding Ltd., Apache-2.0 License.
 hermes-agent copyright © NousResearch contributors, MIT License.
+
+## License & Copyright
+
+Cerberus — modifications and additions **copyright © 2026 ItsEliias** — is
+licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**; see
+[`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+
+Because Cerberus is a fork of [odysseus](https://github.com/pewdiepie-archdaemon/odysseus)
+(AGPL-3.0), the original odysseus copyright (© pewdiepie-archdaemon contributors)
+is retained and the AGPL applies to the combined work. Vendored components keep
+their own copyrights and licenses (see `THIRD_PARTY_LICENSES.md`).
