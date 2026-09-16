@@ -141,7 +141,7 @@ jobs:
       - name: Build installer (Inno Setup)
         shell: pwsh
         run: |
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${env:APP_VERSION}" installer/cerberus.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${env:APP_VERSION}" "/DProfile=${env:CERBERUS_DESKTOP_PROFILE}" installer/cerberus.iss
 
       - name: Upload onedir zip
         uses: actions/upload-artifact@v4

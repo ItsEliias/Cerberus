@@ -118,7 +118,7 @@ if ($SkipInstaller) {
     Write-Host "Skipping installer (-SkipInstaller)." -ForegroundColor Yellow
 } elseif ($iscc) {
     Step "Building installer (Inno Setup)"
-    Run $iscc @("/DAppVersion=$AppVersion", "installer\cerberus.iss")
+    Run $iscc @("/DAppVersion=$AppVersion", "/DProfile=$Profile", "installer\cerberus.iss")
 } else {
     Write-Host "Inno Setup not found - skipping installer. Install it to build Cerberus-Setup.exe." -ForegroundColor Yellow
 }
