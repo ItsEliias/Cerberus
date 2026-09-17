@@ -229,7 +229,7 @@ function _initScheduledTasksSection(root) {
   // on every tab rebuild so we never leak intervals.
   const prev = root[_SCHED_POLL_KEY];
   if (prev) clearInterval(prev);
-  root[_SCHED_POLL_KEY] = setInterval(() => _loadTasks(root), _SCHED_POLL_MS);
+  root[_SCHED_POLL_KEY] = setInterval(() => { if (!document.hidden) _loadTasks(root); }, _SCHED_POLL_MS);
 
   // Initial loads
   _loadTasks(root);
@@ -611,7 +611,7 @@ function _initWebhooksSection(root) {
 
   const prev = root[_WEBHOOK_POLL_KEY];
   if (prev) clearInterval(prev);
-  root[_WEBHOOK_POLL_KEY] = setInterval(() => _loadWebhooks(root), _WEBHOOK_POLL_MS);
+  root[_WEBHOOK_POLL_KEY] = setInterval(() => { if (!document.hidden) _loadWebhooks(root); }, _WEBHOOK_POLL_MS);
 
   _loadWebhooks(root);
 

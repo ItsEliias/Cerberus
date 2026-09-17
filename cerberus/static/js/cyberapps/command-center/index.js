@@ -30,8 +30,46 @@ import { t, setLocale, getLocale, AVAILABLE_LOCALES } from '/static/js/i18n.js';
   const link = document.createElement('link');
   link.id   = 'cc-styles-link';
   link.rel  = 'stylesheet';
-  link.href = '/static/js/cyberapps/command-center/styles.css?v=359';
+  link.href = '/static/js/cyberapps/command-center/styles.css?v=360';
   document.head.appendChild(link);
+})();
+
+// ---- Hidden-iframe throttling ----
+//
+// The Command Center runs in an iframe that the host page hides with
+// display:none when you leave it, but never unloads. Inside a hidden iframe
+// `document.hidden` stays false, so every poll (vitals, agents, tasks, model
+// status, gateway, webhooks...) and every infinite CSS animation (globe, dial
+// pulses, glitch) kept running for the rest of the session — on the Windows
+// build that background load stacked up until the app lagged/froze.
+// Treat "iframe not rendered" as hidden (the existing `document.hidden` guards
+// then do the right thing) and pause CSS animations while hidden.
+(function installFrameVisibility() {
+  if (window.parent === window) return;
+  const desc = Object.getOwnPropertyDescriptor(Document.prototype, 'hidden');
+  const frameHidden = () => {
+    try {
+      const fe = window.frameElement;
+      return !!fe && fe.getClientRects().length === 0;
+    } catch (_) { return false; }
+  };
+  if (desc && desc.get) {
+    try {
+      Object.defineProperty(document, 'hidden', {
+        configurable: true,
+        get() { return desc.get.call(document) || frameHidden(); },
+      });
+    } catch (_) { /* non-configurable in this engine — polls still skip via message */ }
+  }
+  const apply = (visible) => {
+    document.documentElement.classList.toggle('cc-paused', !visible);
+    document.dispatchEvent(new Event('visibilitychange'));
+  };
+  window.addEventListener('message', (e) => {
+    if (e.origin !== window.location.origin || !e.data || e.data.type !== 'cc-visibility') return;
+    apply(!!e.data.visible);
+  });
+  apply(!frameHidden());
 })();
 
 // ---- Tab config ----
@@ -216,7 +254,7 @@ function _startGatewayBadgePoll(shell) {
   const prev = shell[_GW_BADGE_TIMER_KEY];
   if (prev) clearInterval(prev);
   _refreshGatewayBadge(shell);
-  shell[_GW_BADGE_TIMER_KEY] = setInterval(() => _refreshGatewayBadge(shell), _GW_BADGE_POLL_MS);
+  shell[_GW_BADGE_TIMER_KEY] = setInterval(() => { if (!document.hidden) _refreshGatewayBadge(shell); }, _GW_BADGE_POLL_MS);
 }
 
 async function _refreshGatewayBadge(shell) {

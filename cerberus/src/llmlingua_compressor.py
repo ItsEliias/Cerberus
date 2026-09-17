@@ -36,8 +36,10 @@ the actual prompt-compression library this PR was meant to land.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import sys
 import threading
 from typing import Any, Dict, List, Optional
 
@@ -72,7 +74,12 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
-LLMLINGUA_ENABLED = _env_bool("LLMLINGUA_ENABLED", True)
+# Off by default in the packaged desktop app and on Windows: the first call
+# imports torch + transformers and loads a ~2 GB model on the CPU, which froze
+# the whole app (event loop + webview UI thread starved of the GIL) on the first
+# chat after onboarding. Server deployments keep the previous default (on).
+_DESKTOP_RUNTIME = bool(getattr(sys, "frozen", False)) or os.name == "nt"
+LLMLINGUA_ENABLED = _env_bool("LLMLINGUA_ENABLED", not _DESKTOP_RUNTIME)
 
 # Target token cap per compressed chunk. Compression aims for this many
 # tokens; the library may go slightly over or under depending on the
@@ -141,6 +148,7 @@ def _record_bypass() -> None:
 _COMPRESSOR = None            # type: Optional[Any]
 _COMPRESSOR_LOAD_TRIED = False
 _LOAD_LOCK = threading.Lock()
+_BG_LOAD_STARTED = False
 
 
 def _get_compressor():
@@ -192,11 +200,40 @@ def _get_compressor():
             return None
 
 
+def _on_event_loop_thread() -> bool:
+    try:
+        asyncio.get_running_loop()
+        return True
+    except RuntimeError:
+        return False
+
+
+def _get_compressor_nonblocking():
+    """Like `_get_compressor`, but never loads the model on an asyncio loop.
+
+    The agent loop calls the compressor synchronously from coroutines. Loading
+    the model there would stall every request for seconds-to-minutes, so on the
+    event-loop thread a cold compressor is loaded in a background thread and
+    this call passes the text through uncompressed until it is ready.
+    """
+    global _BG_LOAD_STARTED
+    if _COMPRESSOR is not None or _COMPRESSOR_LOAD_TRIED or not _on_event_loop_thread():
+        return _get_compressor()
+    if _BG_LOAD_STARTED:
+        return None
+    _BG_LOAD_STARTED = True
+    threading.Thread(
+        target=_get_compressor, name="llmlingua-load", daemon=True,
+    ).start()
+    return None
+
+
 def _reset_for_tests() -> None:
     """Test-only: clear the cached compressor + counters so a monkeypatch
     of `_get_compressor` takes effect on the next call."""
-    global _COMPRESSOR, _COMPRESSOR_LOAD_TRIED
+    global _COMPRESSOR, _COMPRESSOR_LOAD_TRIED, _BG_LOAD_STARTED
     with _LOAD_LOCK:
+        _BG_LOAD_STARTED = False
         _COMPRESSOR = None
         _COMPRESSOR_LOAD_TRIED = False
     with _STATS_LOCK:
@@ -223,7 +260,7 @@ def compress_tool_output(text: str, max_tokens: Optional[int] = None) -> str:
 
     target = _resolve_target_tokens(max_tokens)
     try:
-        compressor = _get_compressor()
+        compressor = _get_compressor_nonblocking()
     except Exception as exc:
         logger.warning("llmlingua_compressor: compressor load error: %s", exc)
         return text

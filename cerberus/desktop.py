@@ -118,6 +118,28 @@ def _free_port() -> int:
         s.close()
 
 
+# Preferred loopback port for the desktop window. The web origin includes the
+# port, so a random port per launch meant a brand-new origin every time: the
+# login cookie, localStorage (onboarding/tour flags, UI prefs) and the service
+# worker cache were all thrown away and rebuilt on each start. A stable port
+# keeps one origin; we fall back to a random port only if it is taken.
+_PREFERRED_PORT = 47821
+
+
+def _pick_port() -> int:
+    env_port = int(os.environ.get("CERBERUS_PORT", "0") or 0)
+    if env_port:
+        return env_port
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind(("127.0.0.1", _PREFERRED_PORT))
+        return _PREFERRED_PORT
+    except OSError:
+        return _free_port()
+    finally:
+        s.close()
+
+
 def _serve(port: int) -> None:
     import uvicorn
     # Import the app *object* (not the "app:app" import string). Two reasons:
@@ -179,7 +201,27 @@ def _ensure_console_streams(data_dir: Path) -> None:
         sys.stderr = log_file
 
 
+def _reject_interpreter_style_invocation() -> bool:
+    """Refuse to boot a second app when the frozen exe is used as "python".
+
+    Inside the bundle ``sys.executable`` is Cerberus.exe. Any code path that
+    runs ``sys.executable script.py`` / ``-c ...`` / ``-m ...`` would otherwise
+    start another full Cerberus (server, window, background loops) — stacking
+    instances until the machine freezes. Only ``--smoke`` is a valid argument.
+    """
+    if not _is_frozen():
+        return False
+    extra = [a for a in sys.argv[1:] if a != "--smoke"]
+    if not extra:
+        return False
+    print(f"[{APP_NAME}] refusing interpreter-style invocation: {extra[:3]}", file=sys.stderr)
+    return True
+
+
 def main() -> int:
+    if _reject_interpreter_style_invocation():
+        return 2
+
     # 0. A windowed launch (Windows console=False / double-clicked .app) has no
     #    stdout/stderr — wire them to a log file before anything prints or logs.
     _boot_dir = _user_data_dir()
@@ -211,7 +253,7 @@ def main() -> int:
     _apply_persisted_env(data_dir)
 
     # 4. Boot the server on a private loopback port.
-    port = int(os.environ.get("CERBERUS_PORT", "0")) or _free_port()
+    port = _pick_port()
     threading.Thread(target=_serve, args=(port,), daemon=True).start()
 
     if not _wait_ready(port):
@@ -255,16 +297,22 @@ def main() -> int:
             if p.exists():
                 icon = str(p)
                 break
-    window_kwargs = dict(width=1440, height=920, min_size=(1024, 680))
+    window_kwargs = dict(width=1440, height=920, min_size=(1024, 680),
+                         background_color="#16181d")
     webview.create_window(APP_NAME, f"http://127.0.0.1:{port}/", **window_kwargs)
+    # pywebview defaults to private_mode=True, which wipes cookies and
+    # localStorage on every launch: the login session, onboarding/tour flags and
+    # UI prefs were lost each time, re-running first-run flows on every start.
+    # Persist the WebView profile in the per-user data dir instead.
+    start_kwargs = dict(private_mode=False, storage_path=str(data_dir / "webview"))
     # gui is auto-detected (edgechromium on Windows). Blocks until window closes.
     # Never let an icon/backend quirk stop the window from opening.
     try:
-        webview.start(icon=icon)
+        webview.start(icon=icon, **start_kwargs)
     except Exception as exc:  # noqa: BLE001
         print(f"[{APP_NAME}] webview failed to start with icon ({exc}); retrying without",
               file=sys.stderr)
-        webview.start()
+        webview.start(**start_kwargs)
     return 0
 
 

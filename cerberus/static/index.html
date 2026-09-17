@@ -3225,11 +3225,18 @@
     panel.style.display = 'block';
     if (chat) chat.style.visibility = 'hidden';
     btn.classList.add('active');
+    _notifyCC(true);
+  }
+  // Tell the (kept-alive) Command Center iframe whether it is on screen so it
+  // can pause its polls and animations while hidden.
+  function _notifyCC(visible){
+    try { if (_loaded && iframe.contentWindow) iframe.contentWindow.postMessage({ type: 'cc-visibility', visible: visible }, location.origin); } catch (_) {}
   }
   function closeCC(){
     panel.style.display = 'none';
     if (chat) chat.style.visibility = '';
     btn.classList.remove('active');
+    _notifyCC(false);
   }
   btn.addEventListener('click', function(){
     panel.style.display === 'block' ? closeCC() : openCC();

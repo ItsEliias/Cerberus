@@ -275,6 +275,30 @@ def which_tool(name: str) -> Optional[str]:
     return None
 
 
+def is_frozen() -> bool:
+    """True inside a PyInstaller bundle (the packaged desktop app)."""
+    return bool(getattr(sys, "frozen", False))
+
+
+def python_interpreter() -> Optional[str]:
+    """Path to a real Python interpreter for running helper scripts.
+
+    In the packaged desktop app ``sys.executable`` is ``Cerberus.exe``, not
+    Python: spawning it with a script (or ``-c``/``-m``) launched a *second*
+    full Cerberus instance (server + window + startup work), which is what made
+    the Windows build freeze. When frozen, look for an installed Python on PATH
+    instead (skipping the Microsoft Store ``WindowsApps`` stub) and return None
+    when there is none, so callers can report a clear error.
+    """
+    if not is_frozen():
+        return sys.executable or which_tool("python3") or which_tool("python")
+    for name in ("python3", "python", "py"):
+        found = which_tool(name)
+        if found and "windowsapps" not in found.lower():
+            return found
+    return None
+
+
 def run_script_argv(script_path) -> List[str]:
     """argv to execute a shell *script file*.
 

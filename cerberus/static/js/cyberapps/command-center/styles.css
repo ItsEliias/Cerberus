@@ -543,9 +543,18 @@
   0%, 100% { filter: drop-shadow(0 0 2px var(--cc-warn)); }
   50%       { filter: drop-shadow(0 0 7px var(--cc-warn)); }
 }
+/* Pulse opacity over a fixed glow. Animating filter: drop-shadow repainted the
+   dial every frame, and it kicks in exactly when the machine is already at
+   high CPU (the "crit" state) — making a busy system busier. */
+.cc-arc-fill.crit { filter: drop-shadow(0 0 6px var(--cc-crit)); }
 @keyframes cc-dial-pulse-crit {
-  0%, 100% { filter: drop-shadow(0 0 2px var(--cc-crit)); }
-  50%       { filter: drop-shadow(0 0 10px var(--cc-crit)); }
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 1; }
+}
+
+/* Paused while the Command Center iframe is hidden (index.js). */
+html.cc-paused *, html.cc-paused *::before, html.cc-paused *::after {
+  animation-play-state: paused !important;
 }
 
 .cc-dial-num {

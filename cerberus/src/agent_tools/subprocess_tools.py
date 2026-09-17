@@ -213,8 +213,12 @@ class PythonTool:
         progress_cb = ctx.get("progress_cb")
         workspace = ctx.get("workspace")
         _subproc_env = ctx.get("subproc_env")
+        from core.platform_compat import python_interpreter
+        _py = python_interpreter()
+        if not _py:
+            return {"error": "python: no Python interpreter found on PATH (install Python to use this tool in the desktop app)", "exit_code": 127}
         proc = await asyncio.create_subprocess_exec(
-            (sys.executable or "python"), "-I", "-c", content,
+            _py, "-I", "-c", content,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=_subproc_env,

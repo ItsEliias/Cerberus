@@ -1477,7 +1477,7 @@ def setup_model_routes(model_discovery):
         now = _time.time()
         if not refresh and _providers_cache["data"] is not None and (now - _providers_cache["time"]) < _PROVIDERS_CACHE_TTL:
             return _providers_cache["data"]
-        result = model_discovery.get_providers()
+        result = model_discovery.get_providers(refresh=refresh)
         _providers_cache["data"] = result
         _providers_cache["time"] = now
         return result
@@ -1486,7 +1486,7 @@ def setup_model_routes(model_discovery):
     def discover_local(request: Request):
         """Scan local network for model servers on common ports."""
         require_admin(request)
-        return model_discovery.discover_models()
+        return model_discovery.discover_models(refresh=True)
 
     # ---- Admin: model endpoints CRUD ----
 
@@ -2228,6 +2228,9 @@ def setup_model_routes(model_discovery):
         finally:
             db.close()
 
+    _model_status_ctx_cache: Dict[Any, Any] = {}
+    _MODEL_STATUS_CTX_TTL = 60.0
+
     @router.get("/model/status")
     def get_model_status(request: Request):
         """Read-only: the owner's configured default model + context window.
@@ -2246,10 +2249,20 @@ def setup_model_routes(model_discovery):
         url, model, _headers = resolve_endpoint("default", owner=_user)
         ctx_limit = 0
         if url and model:
-            try:
-                ctx_limit = get_context_length(url, model)
-            except Exception:
-                ctx_limit = 0
+            # Polled every few seconds by the Command Center. For local
+            # endpoints get_context_length re-queries /slots + /models on every
+            # call (5s timeouts each); when the local server is down that kept
+            # a worker thread blocked continuously. Cache briefly, failures too.
+            _key = (url, model)
+            _hit = _model_status_ctx_cache.get(_key)
+            if _hit and (_time.time() - _hit[0]) < _MODEL_STATUS_CTX_TTL:
+                ctx_limit = _hit[1]
+            else:
+                try:
+                    ctx_limit = get_context_length(url, model)
+                except Exception:
+                    ctx_limit = 0
+                _model_status_ctx_cache[_key] = (_time.time(), ctx_limit)
         return {
             "model": model or "—",
             "ctx_used": 0,

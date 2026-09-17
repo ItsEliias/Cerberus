@@ -311,37 +311,33 @@ function _tickDatetime(panel) {
 // ── Background ambient animation (not the globe — canvas glow only) ────────
 
 function _startBgAnimation() {
+  // Static ambient glow. This used to be a full-screen requestAnimationFrame
+  // loop (3 radial gradients + getComputedStyle every frame, at up to 2x DPR)
+  // painted *underneath* ~30 backdrop-filter panels, so every frame forced the
+  // compositor to re-blur all of them. In the Windows WebView2 build that kept
+  // the main thread at ~40% and dropped the UI to ~20fps behind onboarding and
+  // the dashboard. The glow is 2-3% alpha, so a single static paint (redrawn on
+  // resize) looks the same at near-zero cost.
   const canvas = document.getElementById('dash-bg-canvas');
   if (!canvas || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
   const ctx = canvas.getContext('2d');
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  let W, H, t = 0;
-
-  function resize() {
-    W = window.innerWidth; H = window.innerHeight;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-  resize();
-  window.addEventListener('resize', resize);
 
   function hexToRgb(hex) {
     const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return r ? { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) } : { r:192, g:57, b:43 };
   }
-  function rgba(hex, a) { const c = hexToRgb(hex); return `rgba(${c.r},${c.g},${c.b},${a})`; }
-  function getAccent() { return getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b'; }
+  function rgba(c, a) { return `rgba(${c.r},${c.g},${c.b},${a})`; }
 
-  function frame() {
-    if (!document.getElementById(PANEL_ID)) { window.removeEventListener('resize', resize); return; }
-    if (document.hidden) { _rafId = requestAnimationFrame(frame); return; }
-    _rafId = requestAnimationFrame(frame);
-    t += 0.006;
+  let _resizeTimer = null;
+  function paint() {
+    if (!document.getElementById(PANEL_ID)) { window.removeEventListener('resize', onResize); return; }
+    const W = window.innerWidth, H = window.innerHeight;
+    canvas.width = W; canvas.height = H;
+    const c = hexToRgb(getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b');
     ctx.clearRect(0, 0, W, H);
-    const c = getAccent();
     for (let i = 0; i < 3; i++) {
       const phase = (i / 3) * Math.PI * 2;
-      const cy = H * 0.4 + Math.sin(t + phase) * H * 0.14;
+      const cy = H * 0.4 + Math.sin(phase) * H * 0.14;
       const grad = ctx.createRadialGradient(W * 0.5, cy, 0, W * 0.5, cy, W * 0.45);
       grad.addColorStop(0, rgba(c, 0.028));
       grad.addColorStop(0.5, rgba(c, 0.008));
@@ -350,7 +346,12 @@ function _startBgAnimation() {
       ctx.fillRect(0, 0, W, H);
     }
   }
-  frame();
+  function onResize() {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(paint, 150);
+  }
+  window.addEventListener('resize', onResize);
+  paint();
 }
 
 // ── Data loading ─────────────────────────────────────────────────────────────

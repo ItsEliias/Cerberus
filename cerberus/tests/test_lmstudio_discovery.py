@@ -69,7 +69,7 @@ class TestFingerprintProvider:
     def test_lmstudio_native_format_detected(self, monkeypatch):
         discovery = ModelDiscovery(default_host="localhost")
         monkeypatch.setattr(
-            "src.model_discovery.httpx.get",
+            discovery._http, "get",
             lambda url, timeout=None: _FakeResponse(self.LMSTUDIO_NATIVE),
         )
         assert discovery._fingerprint_provider("localhost", 1234) == "lmstudio"
@@ -77,7 +77,7 @@ class TestFingerprintProvider:
     def test_lmstudio_detected_on_nonstandard_port(self, monkeypatch):
         discovery = ModelDiscovery(default_host="localhost")
         monkeypatch.setattr(
-            "src.model_discovery.httpx.get",
+            discovery._http, "get",
             lambda url, timeout=None: _FakeResponse(self.LMSTUDIO_NATIVE),
         )
         assert discovery._fingerprint_provider("localhost", 8080) == "lmstudio"
@@ -85,7 +85,7 @@ class TestFingerprintProvider:
     def test_openai_compatible_server_not_lmstudio(self, monkeypatch):
         discovery = ModelDiscovery(default_host="localhost")
         monkeypatch.setattr(
-            "src.model_discovery.httpx.get",
+            discovery._http, "get",
             lambda url, timeout=None: _FakeResponse({"data": [{"id": "gpt-4o"}]}, ok=False),
         )
         assert discovery._fingerprint_provider("localhost", 8000) is None
@@ -94,7 +94,7 @@ class TestFingerprintProvider:
         discovery = ModelDiscovery(default_host="localhost")
         ollama_shape = {"models": [{"name": "llama3", "modified_at": "x", "size": 1}]}
         monkeypatch.setattr(
-            "src.model_discovery.httpx.get",
+            discovery._http, "get",
             lambda url, timeout=None: _FakeResponse(ollama_shape),
         )
         assert discovery._fingerprint_provider("localhost", 11434) is None
@@ -103,7 +103,7 @@ class TestFingerprintProvider:
         discovery = ModelDiscovery(default_host="localhost")
         def boom(url, timeout=None):
             raise OSError("connection refused")
-        monkeypatch.setattr("src.model_discovery.httpx.get", boom)
+        monkeypatch.setattr(discovery._http, "get", boom)
         assert discovery._fingerprint_provider("localhost", 1234) is None
 
     def test_check_port_attaches_provider(self, monkeypatch):
@@ -114,7 +114,7 @@ class TestFingerprintProvider:
                 return _FakeResponse(self.LMSTUDIO_NATIVE)
             return _FakeResponse({"data": [{"id": "qwen3.6-27b"}]})
 
-        monkeypatch.setattr("src.model_discovery.httpx.get", fake_get)
+        monkeypatch.setattr(discovery._http, "get", fake_get)
         result = discovery._check_port("localhost", 1234)
         assert result is not None
         assert result["provider"] == "lmstudio"
@@ -182,3 +182,32 @@ class TestGetHostsLmStudioUrl:
         hosts = discovery._get_hosts()
         # Only localhost + host.docker.internal expected
         assert "my-lm-box" not in hosts
+
+
+# ════════════════════════════════════════════════════════════
+# Desktop/Windows performance guards
+# ════════════════════════════════════════════════════════════
+
+class TestDiscoveryPerformanceGuards:
+    def test_scan_results_are_cached(self, monkeypatch):
+        monkeypatch.delenv("LLM_HOSTS", raising=False)
+        monkeypatch.setattr("src.model_discovery.discover_tailscale_hosts", lambda: [])
+        discovery = ModelDiscovery(default_host="localhost")
+        calls = []
+        monkeypatch.setattr(discovery, "_check_port", lambda h, p: calls.append((h, p)))
+        discovery.discover_models()
+        first = len(calls)
+        assert first > 0
+        discovery.discover_models()
+        assert len(calls) == first, "second scan within TTL must hit the cache"
+        discovery.discover_models(refresh=True)
+        assert len(calls) == 2 * first
+
+    def test_host_docker_internal_only_in_containers(self, monkeypatch):
+        import src.model_discovery as md
+        monkeypatch.delenv("LLM_HOSTS", raising=False)
+        monkeypatch.setattr(md, "discover_tailscale_hosts", lambda: [])
+        monkeypatch.setattr(md, "_running_in_container", lambda: False)
+        assert "host.docker.internal" not in ModelDiscovery(default_host="localhost")._get_hosts()
+        monkeypatch.setattr(md, "_running_in_container", lambda: True)
+        assert "host.docker.internal" in ModelDiscovery(default_host="localhost")._get_hosts()

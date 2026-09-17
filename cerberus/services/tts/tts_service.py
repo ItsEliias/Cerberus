@@ -274,6 +274,18 @@ class _KokoroPipeline:
         if os.environ.get("KOKORO_ENABLED", "").lower() in ("false", "0", "no"):
             logger.info("Kokoro TTS disabled via KOKORO_ENABLED=false")
             return
+        # Check for kokoro before importing torch: importing torch alone costs
+        # seconds of CPU at app start (holding the GIL while the desktop window
+        # opens) and was wasted whenever kokoro isn't installed.
+        import importlib.util
+        import sys as _sys
+        try:
+            _has_kokoro = "kokoro" in _sys.modules or importlib.util.find_spec("kokoro") is not None
+        except (ImportError, ValueError):
+            _has_kokoro = False
+        if not _has_kokoro:
+            logger.info("Kokoro TTS not installed (pip install kokoro soundfile to enable)")
+            return
         try:
             import torch
             from kokoro import KPipeline
