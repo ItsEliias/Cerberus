@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "Cerberus",
   "short_name": "Cerberus",
   "description": "Self-hosted AI chat with memory, documents, and tools",
