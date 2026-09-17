@@ -241,19 +241,30 @@ def main() -> int:
         except KeyboardInterrupt:
             return 0
 
-    # Window icon: the build step renders these from docs/cerberus.jpg into
-    # desktop_assets/. Fall back to None (default icon) if unavailable.
+    # Window icon. IMPORTANT: on Windows, pywebview's WinForms backend loads this
+    # via System.Drawing, which requires an .ico — handing it a .png throws
+    # System.ArgumentException and hard-crashes the CLR right after the server
+    # comes up. Windows already gets its taskbar/window icon from the .ico that
+    # PyInstaller embeds in the .exe, so we pass no icon there. macOS/Linux accept
+    # a png. (The build renders both from docs/cerberus.jpg into desktop_assets/.)
     bundle = _bundle_dir()
     icon = None
-    for candidate in ("desktop_assets/cerberus.png", "docs/cerberus.jpg"):
-        p = bundle / candidate
-        if p.exists():
-            icon = str(p)
-            break
+    if os.name != "nt":
+        for candidate in ("desktop_assets/cerberus.png", "docs/cerberus.jpg"):
+            p = bundle / candidate
+            if p.exists():
+                icon = str(p)
+                break
     window_kwargs = dict(width=1440, height=920, min_size=(1024, 680))
     webview.create_window(APP_NAME, f"http://127.0.0.1:{port}/", **window_kwargs)
     # gui is auto-detected (edgechromium on Windows). Blocks until window closes.
-    webview.start(icon=icon)
+    # Never let an icon/backend quirk stop the window from opening.
+    try:
+        webview.start(icon=icon)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[{APP_NAME}] webview failed to start with icon ({exc}); retrying without",
+              file=sys.stderr)
+        webview.start()
     return 0
 
 
