@@ -8,6 +8,7 @@ Connects to a ChromaDB instance running as a standalone service.
 import os
 import socket
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,13 @@ _client = None
 # blocking on the OS connection timeout (~30-60s, WinError 10060 on Windows),
 # which otherwise stalls app startup. Tunable via CHROMADB_CONNECT_TIMEOUT.
 _CONNECT_TIMEOUT = float(os.getenv("CHROMADB_CONNECT_TIMEOUT", "2.0"))
+
+# Remember a failed probe briefly. Several subsystems (memory vectors, RAG, the
+# tool index) ask for the client during startup and on requests; without this
+# each one paid the full connect timeout again. On Windows a refused loopback
+# connect alone takes ~2s per address.
+_UNREACHABLE_TTL = float(os.getenv("CHROMADB_UNREACHABLE_TTL", "30"))
+_unreachable_until = 0.0
 
 
 def _port_open(host: str, port: int, timeout: float = None) -> bool:
@@ -46,10 +54,17 @@ def get_chroma_client():
             "dependency with: pip install chromadb-client"
         ) from e
 
+    global _unreachable_until
     host = os.getenv("CHROMADB_HOST", "localhost")
     port = int(os.getenv("CHROMADB_PORT", "8100"))
+    if os.name == "nt" and host.lower() == "localhost":
+        # Avoid the ::1-first resolution + retry delay on Windows.
+        host = "127.0.0.1"
 
+    if time.monotonic() < _unreachable_until:
+        raise RuntimeError(f"ChromaDB is not reachable at {host}:{port} (recently probed)")
     if not _port_open(host, port):
+        _unreachable_until = time.monotonic() + _UNREACHABLE_TTL
         raise RuntimeError(
             f"ChromaDB is not reachable at {host}:{port}. Start the ChromaDB "
             f"service (e.g. `docker compose up chromadb`) or set CHROMADB_HOST / "
@@ -69,5 +84,6 @@ def get_chroma_client():
 
 def reset_client():
     """Reset the singleton (e.g. after config change)."""
-    global _client
+    global _client, _unreachable_until
     _client = None
+    _unreachable_until = 0.0

@@ -212,11 +212,18 @@ export function initAssistant(root) {
   document.addEventListener('keydown', _altKeyHandler);
 
   // Re-render profile when onboarding wizard saves
-  const _profileBus = () => _loadOpProfile(root);
+  // Self-unsubscribes once the tab is unmounted. (Previously a deprecated
+  // DOMNodeRemoved listener did this: registering mutation events slows every
+  // DOM change in the document, and with {once:true} it fired on the first
+  // removal of *any* child, dropping the subscription almost immediately.)
+  const _profileBus = () => {
+    if (!root.isConnected) {
+      document.removeEventListener('cerberus:onboarded', _profileBus);
+      return;
+    }
+    _loadOpProfile(root);
+  };
   document.addEventListener('cerberus:onboarded', _profileBus);
-  root.addEventListener('DOMNodeRemoved', () => {
-    document.removeEventListener('cerberus:onboarded', _profileBus);
-  }, { once: true });
 
   // SEND
   const send = () => {

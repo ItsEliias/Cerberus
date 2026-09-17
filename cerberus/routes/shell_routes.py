@@ -1265,6 +1265,9 @@ def setup_shell_routes() -> APIRouter:
         }
         if pip_name not in known:
             return {"ok": False, "error": f"Unknown package: {pip_name}"}
+        from core.platform_compat import is_frozen
+        if is_frozen():
+            return {"ok": False, "error": "Package installs are not supported in the packaged desktop app."}
         cmd = [_sys.executable, "-m", "pip", "install", pip_name]
         proc = await asyncio.create_subprocess_exec(
             *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE

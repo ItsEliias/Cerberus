@@ -1,5 +1,7 @@
 import subprocess
 import json
+import sys
+import threading
 import time
 import httpx
 import logging
@@ -14,6 +16,30 @@ logger = logging.getLogger(__name__)
 _hosts_cache: List[str] = []
 _hosts_cache_time: float = 0
 _HOSTS_CACHE_TTL = 60  # seconds
+
+# Full port-scan results are cached. A scan probes hosts x ~24 ports; on Windows
+# every refused loopback connect costs ~2s and every unresolvable hostname
+# (host.docker.internal without Docker) can cost several seconds of DNS, so an
+# uncached scan run every minute by the keepalive loop kept ~50 threads busy and
+# starved the desktop UI thread of the GIL. `refresh=True` forces a rescan.
+_SCAN_CACHE_TTL = float(os.getenv("MODEL_DISCOVERY_CACHE_TTL", "300"))
+
+# Windows: never flash a console window for helper subprocesses.
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
+
+
+def _running_in_container() -> bool:
+    """True when this process runs inside Docker/Podman.
+
+    ``host.docker.internal`` only resolves reliably inside a container. On a bare
+    Windows/macOS desktop the lookup falls through to LLMNR/NetBIOS and can hang
+    for seconds per request, so it must not be scanned there.
+    """
+    if os.getenv("CERBERUS_IN_DOCKER", "").strip().lower() in ("1", "true", "yes"):
+        return True
+    if getattr(sys, "frozen", False) or os.name == "nt":
+        return False
+    return os.path.exists("/.dockerenv") or os.path.exists("/run/.containerenv")
 
 
 def _parse_tailscale_status(raw: str) -> Dict[str, Any]:
@@ -38,13 +64,18 @@ def discover_tailscale_hosts() -> List[str]:
     global _hosts_cache, _hosts_cache_time
 
     now = time.time()
-    if _hosts_cache and (now - _hosts_cache_time) < _HOSTS_CACHE_TTL:
+    if (now - _hosts_cache_time) < _HOSTS_CACHE_TTL:
+        # Negative results are cached too, so a missing/stopped tailscale CLI
+        # is not re-spawned on every scan.
         return list(_hosts_cache)
+    _hosts_cache_time = now
+    _hosts_cache = []
 
     hosts = []
     try:
         result = subprocess.run(
-            ["tailscale", "status", "--json"], capture_output=True, text=True, timeout=5
+            ["tailscale", "status", "--json"], capture_output=True, text=True, timeout=5,
+            creationflags=_NO_WINDOW,
         )
         if result.returncode != 0:
             return hosts
@@ -77,7 +108,6 @@ def discover_tailscale_hosts() -> List[str]:
                 hosts.append(peer_ip)
 
         _hosts_cache = hosts
-        _hosts_cache_time = now
         logger.info(f"Tailscale discovery found {len(hosts)} hosts: {hosts}")
     except FileNotFoundError:
         logger.debug("tailscale command not found")
@@ -94,9 +124,29 @@ class ModelDiscovery:
         self.openai_compat_path = "/v1/chat/completions"
         # Custom ports from env vars, merged into the scan list by discover_models.
         self._extra_ports: set = set()
+        self._scan_cache: Optional[Dict[str, List[Dict[str, Any]]]] = None
+        self._scan_cache_time: float = 0.0
+        self._scan_lock = threading.Lock()
+        # One shared client: httpx.get() builds a fresh SSL context per call
+        # (certifi load, GIL-heavy) which multiplied across a 50-way scan.
+        self._http = httpx.Client(timeout=3, trust_env=False)
 
     def _get_hosts(self) -> List[str]:
         """Get all hosts to scan, using env override, Tailscale, or default."""
+        hosts = self._get_hosts_raw()
+        if os.name == "nt":
+            # Windows resolves "localhost" to ::1 first and each refused
+            # connect is retried for ~1-2s before falling back to 127.0.0.1.
+            # Local model servers (Ollama, LM Studio, llama.cpp) bind IPv4.
+            out: List[str] = []
+            for h in hosts:
+                h = "127.0.0.1" if h.lower() == "localhost" else h
+                if h not in out:
+                    out.append(h)
+            hosts = out
+        return hosts
+
+    def _get_hosts_raw(self) -> List[str]:
         self._extra_ports = set()
 
         def _append_host(out: List[str], host: str) -> None:
@@ -126,7 +176,8 @@ class ModelDiscovery:
             # Always include the default host too
             if self.default_host not in hosts:
                 hosts.insert(0, self.default_host)
-            _append_host(hosts, "host.docker.internal")
+            if _running_in_container():
+                _append_host(hosts, "host.docker.internal")
             _append_env_hosts(hosts)
             return hosts
 
@@ -136,21 +187,23 @@ class ModelDiscovery:
             # Ensure default_host is included
             if self.default_host not in ts_hosts:
                 ts_hosts.insert(0, self.default_host)
-            _append_host(ts_hosts, "host.docker.internal")
+            if _running_in_container():
+                _append_host(ts_hosts, "host.docker.internal")
             _append_env_hosts(ts_hosts)
             return ts_hosts
 
         hosts = [self.default_host]
         # Docker desktop/Linux compose maps this to the host machine. That is
         # the common "I started Ollama normally on this computer" case.
-        _append_host(hosts, "host.docker.internal")
+        if _running_in_container():
+            _append_host(hosts, "host.docker.internal")
         _append_env_hosts(hosts)
         return hosts
 
     def _fingerprint_provider(self, host: str, port: int) -> Optional[str]:
         """Identify the server software via its native API, independent of port."""
         try:
-            r = httpx.get(f"http://{host}:{port}/api/v1/models", timeout=1.5)
+            r = self._http.get(f"http://{host}:{port}/api/v1/models", timeout=1.5)
             if r.is_success:
                 models = (r.json() or {}).get("models")
                 if (
@@ -169,7 +222,7 @@ class ModelDiscovery:
         """Check a single host:port for models."""
         base = f"http://{host}:{port}/v1"
         try:
-            r = httpx.get(f"{base}/models", timeout=3)
+            r = self._http.get(f"{base}/models", timeout=3)
             if not r.is_success:
                 return None
             data = r.json() or {}
@@ -187,8 +240,18 @@ class ModelDiscovery:
             pass
         return None
 
-    def discover_models(self) -> Dict[str, List[Dict[str, Any]]]:
-        """Discover available models from all reachable hosts."""
+    def discover_models(self, refresh: bool = False) -> Dict[str, List[Dict[str, Any]]]:
+        """Discover available models from all reachable hosts (cached)."""
+        with self._scan_lock:
+            fresh = (time.time() - self._scan_cache_time) < _SCAN_CACHE_TTL
+            if not refresh and fresh and self._scan_cache is not None:
+                return self._scan_cache
+            result = self._discover_models_uncached()
+            self._scan_cache = result
+            self._scan_cache_time = time.time()
+            return result
+
+    def _discover_models_uncached(self) -> Dict[str, List[Dict[str, Any]]]:
         hosts = self._get_hosts()
         items = []
 
@@ -205,7 +268,7 @@ class ModelDiscovery:
             set()
         )  # dedupe by (port, model_ids) to avoid same machine via different IPs
 
-        with ThreadPoolExecutor(max_workers=50) as pool:
+        with ThreadPoolExecutor(max_workers=16) as pool:
             futures = {pool.submit(self._check_port, h, p): (h, p) for h, p in targets}
             for future in as_completed(futures):
                 result = future.result()
@@ -242,9 +305,9 @@ class ModelDiscovery:
                 urls.append(url)
         return urls
 
-    def get_providers(self) -> Dict[str, Any]:
+    def get_providers(self, refresh: bool = False) -> Dict[str, Any]:
         """Get all available providers"""
-        discovery = self.discover_models()
+        discovery = self.discover_models(refresh=refresh)
         items = discovery["items"]
         providers = [{"provider": "vllm", "hosts": discovery["hosts"], "items": items}]
 

@@ -94,6 +94,13 @@ async def register_builtin_servers(mcp_manager):
         return
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    from core.platform_compat import is_frozen
+    if is_frozen():
+        # The packaged desktop app has no standalone Python (sys.executable is
+        # Cerberus.exe) and does not ship the mcp_servers/*.py scripts, and npx
+        # servers pop console windows + spawn headless Chromium at launch.
+        logger.info("Built-in MCP servers skipped in the packaged desktop app")
+        return
     python = sys.executable
 
     async def _connect_python_server(server_id: str, script_path: str, name: str):

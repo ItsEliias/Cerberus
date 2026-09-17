@@ -1374,9 +1374,9 @@ class TaskScheduler:
         relevant_tools = None
         try:
             from src.tool_index import get_tool_index, ASSISTANT_ALWAYS_AVAILABLE
-            tool_idx = get_tool_index()
+            tool_idx = await asyncio.to_thread(get_tool_index)
             if tool_idx:
-                rag_tools = tool_idx.get_tools_for_query(task.prompt or "", k=8)
+                rag_tools = await asyncio.to_thread(tool_idx.get_tools_for_query, task.prompt or "", 8)
                 relevant_tools = (rag_tools | ASSISTANT_ALWAYS_AVAILABLE)
                 if disabled_tools:
                     relevant_tools -= disabled_tools

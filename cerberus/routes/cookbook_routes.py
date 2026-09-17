@@ -775,10 +775,10 @@ def setup_cookbook_routes() -> APIRouter:
             # "Python was not found; run without arguments to install from the
             # Microsoft Store" and exits 9009, producing empty stdout and a
             # JSON parse error. sys.executable bypasses PATH entirely.
-            local_py = sys.executable or (
-                which_tool("python3") or which_tool("python")
-                or which_tool("py") or "python"
-            )
+            from core.platform_compat import python_interpreter
+            local_py = python_interpreter()
+            if not local_py:
+                return {"models": [], "host": "local", "error": "No Python interpreter found on PATH for the local model scan."}
             proc = await asyncio.create_subprocess_exec(
                 local_py, str(scan_py),
                 stdout=asyncio.subprocess.PIPE,

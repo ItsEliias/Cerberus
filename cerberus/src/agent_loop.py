@@ -1827,7 +1827,8 @@ async def stream_agent_loop(
     if not guide_only and not _relevant_tools:
         try:
             from src.tool_index import get_tool_index, ALWAYS_AVAILABLE
-            tool_idx = get_tool_index()
+            # Off the event loop: a cold index loads fastembed + probes ChromaDB.
+            tool_idx = await asyncio.to_thread(get_tool_index)
             if tool_idx:
                 if mcp_mgr:
                     try:

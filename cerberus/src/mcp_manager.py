@@ -511,6 +511,11 @@ class McpManager:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         script_path = os.path.join(base_dir, script_rel)
 
+        from core.platform_compat import is_frozen
+        if is_frozen() or not os.path.exists(script_path):
+            logger.warning(f"Built-in MCP server {name} unavailable in this build")
+            return False
+
         # Clean up old connection
         await self.disconnect_server(server_id)
 

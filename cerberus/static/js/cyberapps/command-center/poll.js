@@ -19,9 +19,11 @@ export function start(callbacks) {
   _fetchVitals(callbacks);
   _fetchAgents(callbacks);
   _fetchStatus(callbacks);
-  _vt = setInterval(() => _fetchVitals(callbacks), VITALS_INTERVAL_MS);
-  _at = setInterval(() => _fetchAgents(callbacks), AGENTS_INTERVAL_MS);
-  _st = setInterval(() => _fetchStatus(callbacks), STATUS_INTERVAL_MS);
+  // Skip ticks while the Command Center is not visible (see index.js
+  // installFrameVisibility) — no point polling telemetry nobody can see.
+  _vt = setInterval(() => { if (!document.hidden) _fetchVitals(callbacks); }, VITALS_INTERVAL_MS);
+  _at = setInterval(() => { if (!document.hidden) _fetchAgents(callbacks); }, AGENTS_INTERVAL_MS);
+  _st = setInterval(() => { if (!document.hidden) _fetchStatus(callbacks); }, STATUS_INTERVAL_MS);
 }
 
 export function destroy() {

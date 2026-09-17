@@ -156,6 +156,7 @@ export function loadGateway(root) {
   if (prev) clearInterval(prev);
   if (root) {
     root[_STATUS_POLL_KEY] = setInterval(() => {
+      if (document.hidden) return;
       _loadGatewayStatus(root);
       _loadApprovals(root);
       _loadMessageLog(root);

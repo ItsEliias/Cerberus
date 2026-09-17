@@ -37,7 +37,7 @@ python-dateutil
 caldav
 cryptography
 bcrypt
-mcp
+mcp>=1.2,<2  # 2.x removed Server.list_tools(); built-in MCP servers crash on import
 pyotp
 qrcode[pil]
 croniter
