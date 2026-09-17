@@ -41,7 +41,11 @@ def _run(cmd):
                 text=True,
             )
         else:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            # CREATE_NO_WINDOW: on Windows a bare subprocess.run flashes a console
+            # window per probe (nvidia-smi, etc.) and can steal focus; suppress it.
+            _flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10,
+                               creationflags=_flags)
         if r.returncode == 0:
             return r.stdout.strip()
     except Exception:

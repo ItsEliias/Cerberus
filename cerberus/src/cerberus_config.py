@@ -13,8 +13,13 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_DEFAULTS_DIR = _REPO_ROOT / "config" / "atlas"
-_DATA_DIR = _REPO_ROOT / "data" / "atlas"
+_DEFAULTS_DIR = _REPO_ROOT / "config" / "atlas"   # bundled read-only defaults
+# Writable state MUST live in the per-user data dir (CERBERUS_DATA_DIR), never in
+# the install bundle. A Program Files install is read-only, so writing to
+# _internal/data threw PermissionError (WinError 5) and hung desktop-status
+# polling → the whole app froze. Mirrors src/constants.py DATA_DIR resolution.
+_DATA_ROOT = Path(os.environ.get("CERBERUS_DATA_DIR") or (_REPO_ROOT / "data"))
+_DATA_DIR = _DATA_ROOT / "atlas"
 
 _CORRUPT_CONFIG_MARKERS = (
     "exploring the codebase",
