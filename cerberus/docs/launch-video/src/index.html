@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face{font-family:'Cmd';src:url('assets/fonts/FiraCode-SemiBold.woff2') format('woff2');font-weight:600;font-display:block}
+      @font-face{font-family:'Body';src:url('assets/fonts/Inter-Regular.woff2') format('woff2');font-weight:400;font-display:block}
+      *{margin:0;padding:0;box-sizing:border-box}
+      html,body{width:1920px;height:1080px;overflow:hidden;background:#09090a}
+      #root{width:100%;height:100%;position:relative;font-family:'Body',sans-serif;
+        background:radial-gradient(120% 70% at 50% 8%, rgba(224,69,53,.16), transparent 60%), #09090a;overflow:hidden}
+      /* faint grid */
+      #grid{position:absolute;inset:0;opacity:0;
+        background-image:linear-gradient(rgba(244,242,240,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(244,242,240,.04) 1px,transparent 1px);
+        background-size:64px 64px}
+      /* HUD frame brackets */
+      .hud-br{position:absolute;width:120px;height:120px;opacity:0}
+      .hud-br.tl{top:70px;left:70px;border-top:4px solid #e04535;border-left:4px solid #e04535}
+      .hud-br.tr{top:70px;right:70px;border-top:4px solid #e04535;border-right:4px solid #e04535}
+      .hud-br.bl{bottom:70px;left:70px;border-bottom:4px solid #e04535;border-left:4px solid #e04535}
+      .hud-br.br{bottom:70px;right:70px;border-bottom:4px solid #e04535;border-right:4px solid #e04535}
+      /* scan line */
+      #scan{position:absolute;left:0;right:0;height:2px;top:0;
+        background:linear-gradient(90deg,transparent,rgba(224,69,53,.9),transparent);opacity:0;filter:blur(1px)}
+      .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+      .eyebrow{font-family:'Cmd',monospace;font-size:26px;letter-spacing:.34em;text-transform:uppercase;color:#e04535;opacity:0}
+      #logo{width:360px;filter:drop-shadow(0 0 60px rgba(224,69,53,.5));opacity:0}
+      #wordmark{font-family:'Cmd',monospace;font-size:104px;letter-spacing:.14em;color:#f4f2f0;text-transform:uppercase;opacity:0;margin-top:8px}
+      #tagline{font-family:'Cmd',monospace;font-size:24px;letter-spacing:.3em;text-transform:uppercase;color:#a8a09c;opacity:0;margin-top:18px}
+      /* feature beats */
+      .beat{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0}
+      .beat .n{font-family:'Cmd',monospace;font-size:22px;letter-spacing:.3em;color:#e04535;text-transform:uppercase;margin-bottom:20px}
+      .beat .big{font-family:'Cmd',monospace;font-size:92px;letter-spacing:-.01em;color:#f4f2f0;text-transform:uppercase;line-height:1.02}
+      .beat .big em{color:#f06b5a;font-style:normal}
+      .beat .rule{height:4px;width:0;background:#e04535;margin-top:34px;box-shadow:0 0 20px rgba(224,69,53,.7)}
+      /* console strip */
+      #console{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:1080px;
+        border:1px solid rgba(224,69,53,.28);border-radius:10px;background:#141317;opacity:0;overflow:hidden}
+      #console .bar{display:flex;align-items:center;gap:10px;padding:16px 22px;border-bottom:1px solid rgba(244,242,240,.09);
+        font-family:'Cmd',monospace;font-size:16px;letter-spacing:.1em;color:#8f8783;text-transform:uppercase}
+      #console .bar i{width:12px;height:12px;border-radius:50%;background:#7a1a1a;display:inline-block}
+      #console .bar i.y{background:#d29922}#console .bar i.g{background:#3fb950}
+      #console .body{padding:26px 30px;font-family:'Cmd',monospace;font-size:26px;line-height:2}
+      #console .body .ln{color:#a8a09c;opacity:0}
+      #console .body .ln b{color:#f06b5a}#console .body .ln .ok{color:#3fb950}
+      /* lockup */
+      #lockup{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0}
+      #lockup img{width:150px;filter:drop-shadow(0 0 40px rgba(224,69,53,.5))}
+      #lockup .wm{font-family:'Cmd',monospace;font-size:70px;letter-spacing:.16em;color:#f4f2f0;text-transform:uppercase;margin-top:20px}
+      #lockup .url{font-family:'Cmd',monospace;font-size:26px;letter-spacing:.14em;color:#e04535;margin-top:20px}
+      #lockup .meta{font-family:'Cmd',monospace;font-size:20px;letter-spacing:.22em;color:#8f8783;text-transform:uppercase;margin-top:14px}
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="14.5" data-width="1920" data-height="1080">
+      <div id="grid" class="clip" data-start="0" data-duration="14.5" data-track-index="0"></div>
+      <div id="scan" class="clip" data-start="0" data-duration="3" data-track-index="1"></div>
+      <div id="hud-tl" class="hud-br tl clip" data-start="0" data-duration="14.5" data-track-index="2"></div>
+      <div id="hud-tr" class="hud-br tr clip" data-start="0" data-duration="14.5" data-track-index="2"></div>
+      <div id="hud-bl" class="hud-br bl clip" data-start="0" data-duration="14.5" data-track-index="2"></div>
+      <div id="hud-br2" class="hud-br br clip" data-start="0" data-duration="14.5" data-track-index="2"></div>
+
+      <!-- Beat 1: boot eyebrow -->
+      <div class="center clip" id="s-boot" data-start="0" data-duration="3" data-track-index="3">
+        <div class="eyebrow" id="boot-eyebrow">// Guardian of the Gate</div>
+      </div>
+
+      <!-- Beat 2: logo reveal -->
+      <div class="center clip" id="s-logo" data-start="2.4" data-duration="3.2" data-track-index="4">
+        <img id="logo" src="assets/cerberus.jpg" alt="Cerberus" />
+        <div id="wordmark">Cerberus</div>
+        <div id="tagline">Self-hosted AI, behind a guarded gate</div>
+      </div>
+
+      <!-- Beat 3: feature hits -->
+      <div class="beat clip" id="b1" data-start="5.6" data-duration="1.4" data-track-index="5">
+        <div class="n">// The roster</div><div class="big"><em>16</em> sandboxed agents</div><div class="rule"></div>
+      </div>
+      <div class="beat clip" id="b2" data-start="7.0" data-duration="1.4" data-track-index="5">
+        <div class="n">// The cage</div><div class="big">Fails <em>closed</em></div><div class="rule"></div>
+      </div>
+      <div class="beat clip" id="b3" data-start="8.4" data-duration="1.4" data-track-index="5">
+        <div class="n">// The cockpit</div><div class="big">One command<br>center</div><div class="rule"></div>
+      </div>
+
+      <!-- Beat 4: console -->
+      <div id="console" class="clip" data-start="9.8" data-duration="2.4" data-track-index="6">
+        <div class="bar"><i></i><i class="y"></i><i class="g"></i>&nbsp;&nbsp;cerberus@localhost — boot</div>
+        <div class="body">
+          <div class="ln" id="c1">› sandbox <span class="ok">armed · fails closed</span></div>
+          <div class="ln" id="c2">› agents <b>16</b> <span class="ok">online</span></div>
+          <div class="ln" id="c3">› command center <span class="ok">SYS ONLINE</span></div>
+        </div>
+      </div>
+
+      <!-- Beat 5: lockup -->
+      <div id="lockup" class="clip" data-start="12.1" data-duration="2.4" data-track-index="7">
+        <img src="assets/cerberus.jpg" alt="Cerberus" />
+        <div class="wm">Cerberus</div>
+        <div class="url">github.com/ItsEliias/Cerberus</div>
+        <div class="meta">Self-hosted · Sandboxed · AGPL-3.0</div>
+      </div>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const E = "power3.out";
+
+      // grid persistent fade-in
+      tl.to("#grid", { opacity: 1, duration: 1.2, ease: "sine.out" }, 0.2);
+
+      // HUD brackets draw in, hold, out at end
+      tl.to(".hud-br", { opacity: 1, duration: .5, stagger: .08, ease: E }, 0.15);
+      tl.to(".hud-br", { opacity: 0, duration: .5, ease: "sine.in" }, 13.7);
+
+      // scan line sweep top→bottom during boot (transform y — sub-pixel safe)
+      tl.fromTo("#scan", { opacity: 0, y: 70 }, { opacity: .9, duration: .3 }, 0.2)
+        .to("#scan", { y: 1010, duration: 1.9, ease: "sine.inOut" }, 0.5)
+        .to("#scan", { opacity: 0, duration: .4 }, 2.3);
+
+      // Beat 1 — boot eyebrow (opacity+y only; letter-spacing held static in CSS)
+      tl.fromTo("#boot-eyebrow", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .8, ease: E }, 0.6);
+      tl.to("#boot-eyebrow", { opacity: 0, duration: .4 }, 2.4);
+
+      // Beat 2 — logo reveal
+      tl.fromTo("#logo", { opacity: 0, scale: .7, filter: "blur(14px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: .9, ease: "back.out(1.5)" }, 2.6);
+      tl.fromTo("#wordmark", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: .7, ease: E }, 3.1);
+      tl.fromTo("#tagline", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: .6, ease: E }, 3.4);
+      tl.to("#s-logo", { opacity: 0, duration: .5, ease: "sine.in" }, 5.1);
+
+      // Beat 3 — feature hits (each: fade+rise in, rule swipe, fade out)
+      [["#b1",5.7],["#b2",7.1],["#b3",8.5]].forEach(([id,t])=>{
+        tl.fromTo(id, { opacity: 0 }, { opacity: 1, duration: .3, ease: "sine.out" }, t);
+        tl.fromTo(id+" .big", { opacity: 0, y: 34 }, { opacity: 1, y: 0, duration: .55, ease: E }, t);
+        tl.fromTo(id+" .n", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .4, ease: E }, t);
+        tl.fromTo(id+" .rule", { width: 0 }, { width: 260, duration: .5, ease: E }, t+.25);
+        tl.to(id, { opacity: 0, duration: .3, ease: "sine.in" }, t+1.1);
+      });
+
+      // Beat 4 — console
+      tl.fromTo("#console", { opacity: 0, y: 30, scale: .96 }, { opacity: 1, y: 0, scale: 1, duration: .5, ease: E }, 9.9);
+      tl.fromTo("#c1", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: .35 }, 10.2);
+      tl.fromTo("#c2", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: .35 }, 10.7);
+      tl.fromTo("#c3", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: .35 }, 11.2);
+      tl.to("#console", { opacity: 0, duration: .4, ease: "sine.in" }, 11.9);
+
+      // Beat 5 — lockup
+      tl.fromTo("#lockup", { opacity: 0 }, { opacity: 1, duration: .5, ease: "sine.out" }, 12.2);
+      tl.fromTo("#lockup img", { opacity: 0, scale: .8 }, { opacity: 1, scale: 1, duration: .7, ease: "back.out(1.4)" }, 12.3);
+      tl.fromTo("#lockup .wm", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: .6, ease: E }, 12.6);
+      tl.fromTo("#lockup .url", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .5, ease: E }, 12.9);
+      tl.fromTo("#lockup .meta", { opacity: 0 }, { opacity: 1, duration: .5, ease: E }, 13.2);
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
