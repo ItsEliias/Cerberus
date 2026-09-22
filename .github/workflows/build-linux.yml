@@ -1,0 +1,207 @@
+name: Build Linux App
+
+# Builds Cerberus as a standalone Linux program (PyInstaller onedir) and packages
+# a portable tarball. Runs on ubuntu-latest because PyInstaller produces per-OS
+# binaries. On a v* tag it uploads the tarball(s) to the same GitHub Release the
+# Windows workflow publishes (idempotent create-or-upload).
+#
+# Native window vs browser: pywebview's Linux backend (GTK/WebKit) is enabled
+# best-effort. If it isn't available at runtime, desktop.py falls back to opening
+# the default browser — so the Linux build is useful either way, and this
+# workflow never fails over GTK packaging.
+#
+# Lives at the REPOSITORY ROOT (.github/workflows/); the app is in cerberus/, so
+# build steps set working-directory: cerberus.
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Bundle profile"
+        type: choice
+        default: full
+        options: [full, lean]
+      python-version:
+        description: "Python version"
+        type: string
+        default: "3.12"
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: build-linux-${{ github.ref }}-${{ github.event.inputs.profile || 'release' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      profiles: ${{ steps.pick.outputs.profiles }}
+    steps:
+      - id: pick
+        shell: bash
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo 'profiles=["lean","full"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'profiles=["${{ github.event.inputs.profile || 'full' }}"]' >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJSON(needs.setup.outputs.profiles) }}
+    defaults:
+      run:
+        working-directory: cerberus
+    env:
+      CERBERUS_DESKTOP_PROFILE: ${{ matrix.profile }}
+      APP_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '0.1.0-dev' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ github.event.inputs.python-version || '3.12' }}
+
+      # GTK/WebKit runtime for the native window — best-effort; the app opens the
+      # default browser if these or PyGObject are unavailable, so never fatal.
+      - name: Install GTK/WebKit runtime (best-effort)
+        run: |
+          sudo apt-get update || true
+          sudo apt-get install -y libgtk-3-0 libwebkit2gtk-4.1-0 gir1.2-gtk-3.0 gir1.2-webkit2-4.1 || true
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip wheel
+
+      # Full profile ships torch — CPU-only wheel so we don't pull multi-GB CUDA.
+      - name: Install CPU-only torch (full profile)
+        if: matrix.profile == 'full'
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-desktop.txt
+
+      # PyGObject enables the native GTK window. Non-fatal: on failure the app
+      # falls back to the default browser (desktop.py handles the missing backend).
+      - name: Install PyGObject for native window (non-fatal)
+        run: pip install pygobject pycairo || echo "PyGObject unavailable — Cerberus will open in the default browser on Linux."
+
+      - name: Render window icons from docs/cerberus.jpg
+        shell: python
+        working-directory: cerberus
+        run: |
+          import os
+          from PIL import Image
+          os.makedirs("desktop_assets", exist_ok=True)
+          img = Image.open("docs/cerberus.jpg").convert("RGBA")
+          side = min(img.size)
+          left = (img.width - side) // 2
+          top = (img.height - side) // 2
+          sq = img.crop((left, top, left + side, top + side))
+          sq.resize((512, 512)).save("desktop_assets/cerberus.png")
+          sq.save(
+              "desktop_assets/cerberus.ico",
+              sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+          )
+          print("icons written to desktop_assets/")
+
+      - name: Build (PyInstaller)
+        run: pyinstaller --noconfirm --clean cerberus.spec
+
+      - name: Smoke test the frozen bundle
+        env:
+          CERBERUS_DESKTOP_SMOKE: "1"
+        run: |
+          set +e
+          timeout 180 ./dist/Cerberus/Cerberus --smoke
+          code=$?
+          if [ "$code" -ne 0 ]; then
+            echo "---- desktop.log ----"
+            tail -n 60 "$HOME/.local/share/Cerberus/desktop.log" 2>/dev/null || true
+            echo "smoke test failed (exit $code)"
+            exit 1
+          fi
+          echo "smoke OK (exit 0)"
+
+      - name: Add launcher + run notes, package tarball
+        run: |
+          # A .desktop entry + README so double-click / menu launch works after
+          # the user extracts the tarball anywhere.
+          cat > dist/Cerberus/cerberus.desktop <<'DESK'
+          [Desktop Entry]
+          Type=Application
+          Name=Cerberus
+          Comment=Security-hardened, self-hosted AI workspace
+          Exec=Cerberus
+          Icon=cerberus
+          Terminal=false
+          Categories=Development;Utility;
+          DESK
+          cp desktop_assets/cerberus.png dist/Cerberus/cerberus.png || true
+          cat > dist/Cerberus/README.txt <<'DOC'
+          Cerberus — Linux portable build
+
+          Run:
+            ./Cerberus            (opens a native window, or your default browser)
+
+          First launch creates your admin account and stores data in
+          ~/.local/share/Cerberus. Docker-backed features (sandbox, vectors,
+          search) are off by default — enable them in Settings -> Sandbox once you
+          have a Docker/OpenSandbox server. See docs/DOCKER_AND_PWA_SETUP.md.
+          DOC
+          tar -czf "dist/Cerberus-${APP_VERSION}-${CERBERUS_DESKTOP_PROFILE}-linux-x64.tar.gz" -C dist Cerberus
+          ls -lh dist/*.tar.gz
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cerberus-linux-${{ matrix.profile }}
+          path: cerberus/dist/Cerberus-*-linux-x64.tar.gz
+          if-no-files-found: error
+
+  # On a v* tag: attach the Linux tarball(s) to the release (create-or-upload,
+  # race-safe with the Windows workflow's release job for the same tag).
+  release:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-artifacts
+
+      - name: Publish to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find dist-artifacts -type f -name '*.tar.gz' | sort)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No Linux release assets found under dist-artifacts/"; exit 1
+          fi
+          echo "Assets:"; printf '  %s\n' "${files[@]}"
+          pre=""
+          case "$TAG" in *-*) pre="--prerelease";; esac
+          # Create only if absent (the Windows workflow may have created it first);
+          # || true swallows the race where it appears between view and create.
+          if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$REPO" \
+              --title "Cerberus $TAG" --generate-notes $pre || true
+          fi
+          gh release upload "$TAG" --repo "$REPO" --clobber "${files[@]}"
