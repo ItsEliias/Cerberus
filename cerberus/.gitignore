@@ -98,3 +98,6 @@ _scratch/
 
 # Ruflo MCP noise
 .claude-flow/
+
+# Linux packaging icons (needed by packaging/linux/install.sh)
+!packaging/linux/*.png

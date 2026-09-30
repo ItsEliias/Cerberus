@@ -12,6 +12,9 @@ let ptyLoadError = null;
 try { pty = require('node-pty'); } catch (err) { ptyLoadError = err; }
 
 const CONFIG_DIR = path.join(app.getPath('userData'), 'cerberus-recon');
+// Window icon (Linux/X11 & XWayland; on native Wayland the icon comes from the
+// .desktop file matched via StartupWMClass). PNG only — Electron ignores SVG here.
+const APP_ICON = path.join(__dirname, 'build', 'icon.png');
 const SCOPE_FILE = path.join(CONFIG_DIR, 'scope.json');
 const SESSIONS_FILE = path.join(CONFIG_DIR, 'sessions.json');
 const IMG_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
@@ -184,6 +187,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1320, height: 860, minWidth: 980, minHeight: 620,
     backgroundColor: '#060708',
+    ...(process.platform === 'linux' && fs.existsSync(APP_ICON) ? { icon: APP_ICON } : {}),
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
