@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Cerberus Recon
+GenericName=Recon Orchestration Shell
+Comment=Branded terminal + dashboard that launches Claude Code for authorized recon
+Exec=__EXEC__
+Icon=cerberus-recon
+Terminal=false
+Categories=Utility;Security;
+Keywords=recon;pentest;security;bugbounty;terminal;claude;
+StartupNotify=true
+StartupWMClass=Cerberus Recon

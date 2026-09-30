@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Cerberus
+GenericName=AI Workspace
+Comment=Security-hardened self-hosted AI workspace (native desktop window)
+Exec=__EXEC__
+Icon=cerberus
+Terminal=false
+Categories=Network;Security;
+Keywords=ai;agents;workspace;llm;claude;cerberus;
+StartupNotify=true
+StartupWMClass=cerberus

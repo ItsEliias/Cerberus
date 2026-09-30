@@ -218,6 +218,23 @@ def _reject_interpreter_style_invocation() -> bool:
     return True
 
 
+def _set_linux_app_identity() -> None:
+    """Give the GTK/Wayland window a stable app-id ("cerberus") so the compositor
+    matches it to the ``cerberus.desktop`` launcher — icon in the dock/switcher and
+    correct grouping. GTK3 on Wayland derives the app-id from the program name, so
+    this must run before GTK initialises (i.e. before ``webview.start``). No-op off
+    Linux and when PyGObject isn't importable.
+    """
+    if sys.platform not in ("linux", "linux2"):
+        return
+    try:
+        from gi.repository import GLib
+        GLib.set_prgname("cerberus")
+        GLib.set_application_name(APP_NAME)
+    except Exception:
+        pass
+
+
 def main() -> int:
     if _reject_interpreter_style_invocation():
         return 2
@@ -268,6 +285,7 @@ def main() -> int:
 
     # 5. Open the native window. Imported late so headless CI (which only builds
     #    the bundle) never needs a display or the webview runtime present.
+    _set_linux_app_identity()
     try:
         import webview
     except ImportError:
