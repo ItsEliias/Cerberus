@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-visual">
 <title>Cerberus — Login</title>
 <script nonce="{{CSP_NONCE}}">
+// The desktop app opens "/login?shell=desktop". Remember it for this window
+// before any redirect drops the query (see the matching block in index.html).
+(function(){
+  try {
+    if (new URLSearchParams(location.search).get('shell') === 'desktop') {
+      sessionStorage.setItem('cerberus-shell', 'desktop');
+    }
+  } catch (e) {}
+})();
+</script>
+<script nonce="{{CSP_NONCE}}">
 (function(){
   // Per-theme bg-effect defaults — mirrors THEME_DEFAULT_* maps in
   // static/js/theme.js so login picks the same default pattern as the
