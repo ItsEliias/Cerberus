@@ -253,6 +253,7 @@ def setup_mobile_routes() -> APIRouter:
                 "threads": [
                     {
                         "id": t.id,
+                        "agent_id": t.agent_id,
                         "title": names.get(t.agent_id) or "(unknown agent)",
                         "message_count": t.message_count or 0,
                         "last_message_at": (

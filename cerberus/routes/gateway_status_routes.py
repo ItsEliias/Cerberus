@@ -85,6 +85,7 @@ def _serialize_pending(entries: List[dict]) -> List[Dict[str, Any]]:
     """Convert pending agent_approval entries into the card-list shape.
 
     Returns request_id + tool + preview + created_at (ISO UTC, no offset)
+    + agent_id/origin (so a client knows which approve endpoint to call)
     per entry. The preview is truncated to 2000 chars at store time; we
     cap again here at 400 so even a runaway preview can't blow up the
     SSE/HTTP body. Malformed entries are silently skipped — never let a
@@ -105,6 +106,10 @@ def _serialize_pending(entries: List[dict]) -> List[Dict[str, Any]]:
                 "tool": e.get("tool_name") or "",
                 "preview": preview,
                 "created_at": iso,
+                # Agent-thread approvals carry their agent; gateway-origin
+                # ones have agent_id "" and go through /api/gateway/approve.
+                "agent_id": e.get("agent_id") or "",
+                "origin": "agent" if e.get("agent_id") else "gateway",
             })
         except Exception:
             continue

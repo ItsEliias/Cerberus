@@ -163,6 +163,8 @@ def test_approvals_endpoint_returns_pending_list(approvals_client, gateway_sessi
 
     rids = {p["request_id"] for p in body["pending"]}
     assert rids == {rid_a, rid_b}
+    # Gateway-origin entries say so, so clients pick /api/gateway/approve.
+    assert {(p["origin"], p["agent_id"]) for p in body["pending"]} == {("gateway", "")}
 
 
 # ---------------------------------------------------------------------------
