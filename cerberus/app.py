@@ -187,6 +187,7 @@ if AUTH_ENABLED:
         "/api/health",
         "/api/version",
         "/login",
+        "/sw.js",  # PWA service worker: static JS, no data (see serve_service_worker)
     }
     AUTH_EXEMPT_PREFIXES = [
         "/static",
@@ -266,6 +267,9 @@ if AUTH_ENABLED:
     _PROXY_FWD_HEADERS = (
         "cf-connecting-ip", "cf-ray", "cf-visitor",
         "x-forwarded-for", "x-forwarded-host", "x-real-ip", "forwarded",
+        # `tailscale serve` also proxies from loopback; its identity headers
+        # mark a tailnet request even if a proxy version omits X-Forwarded-For.
+        "tailscale-user-login",
     )
 
     def _is_trusted_loopback(request: Request) -> bool:
@@ -875,6 +879,18 @@ async def serve_index(request: Request):
     if os.path.exists(root_path):
         return _serve_html_with_nonce(request, root_path)
     raise HTTPException(404, "index.html not found")
+
+@app.get("/sw.js")
+async def serve_service_worker():
+    """PWA service worker, served from the root so its scope covers the whole
+    app. Under /static/ the browser caps the scope at /static/, so the worker
+    never controlled the installed app's pages. Public: it is static JS that
+    holds no data and never caches /api/*."""
+    return FileResponse(
+        abs_join(BASE_DIR, "static/sw.js"),
+        media_type="text/javascript",
+        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
+    )
 
 @app.get("/notes")
 async def serve_notes(request: Request):

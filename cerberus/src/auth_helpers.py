@@ -52,6 +52,27 @@ def require_authenticated_request(request: Request) -> str:
     return require_user(request)
 
 
+# Headers that prove a request came through a proxy or tunnel (cloudflared,
+# nginx, Caddy, `tailscale serve`, ...). Those connect FROM loopback, so a
+# bare client.host check would hand a remote caller local trust. Keep in sync
+# with _PROXY_FWD_HEADERS in app.py.
+PROXY_FORWARD_HEADERS = (
+    "cf-connecting-ip", "cf-ray", "cf-visitor",
+    "x-forwarded-for", "x-forwarded-host", "x-real-ip", "forwarded",
+    "tailscale-user-login",
+)
+
+
+def is_direct_loopback(request: Request) -> bool:
+    """True only for a direct loopback connection with no proxy headers."""
+    client = getattr(request, "client", None)
+    host = (client.host if client else "") or ""
+    if host not in ("127.0.0.1", "::1", "localhost"):
+        return False
+    headers = getattr(request, "headers", None) or {}
+    return not any(headers.get(h) for h in PROXY_FORWARD_HEADERS)
+
+
 def _auth_disabled() -> bool:
     """True when the operator has explicitly turned off auth via .env.
     Mirrors the AUTH_ENABLED parse in app.py / core/middleware.py so the
@@ -93,9 +114,7 @@ def require_user(request: Request) -> str:
     if _auth_disabled():
         return ""
     auth_mgr = getattr(request.app.state, "auth_manager", None)
-    client = getattr(request, "client", None)
-    host = (client.host if client else "") or ""
-    is_loopback = host in ("127.0.0.1", "::1", "localhost")
+    is_loopback = is_direct_loopback(request)
     # LOCALHOST_BYPASS=true is the dev-only "I'm on loopback, skip auth"
     # switch. Mirror the middleware so routes don't 401 the same caller
     # the middleware just let through.

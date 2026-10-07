@@ -66,6 +66,8 @@ output.txt.txt
 *.tiff
 *.pdf
 
+# …except the shipped PWA app icons.
+!static/icon-*.png
 # …except shipped demo assets in docs/ that the README links to.
 !docs/*.jpg
 !docs/*.jpeg

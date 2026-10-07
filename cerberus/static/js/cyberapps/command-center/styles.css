@@ -158,6 +158,9 @@
   color: var(--cc-fg); cursor: pointer; font-family: 'Orbitron', monospace;
   font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
   white-space: nowrap; opacity: 0.5; transition: all 0.15s;
+  /* Keep full width so a narrow screen scrolls the nav instead of
+     squeezing the pills until their labels overlap. */
+  flex-shrink: 0;
 }
 
 /* GATEWAY tab pending-approval badge — crimson dot with count.

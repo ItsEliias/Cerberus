@@ -3274,7 +3274,7 @@
   var backBtn = document.getElementById('cerberus-home-back-btn');
   if (backBtn) backBtn.addEventListener('click', function() { window.location.href = '/dashboard'; });
 })();</script>
-<script nonce="{{CSP_NONCE}}">if('serviceWorker' in navigator){navigator.serviceWorker.register('/static/sw.js').catch(()=>{});}</script>
+<script nonce="{{CSP_NONCE}}">if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{});navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>{if(new URL(r.scope).pathname==='/static/')r.unregister();})).catch(()=>{});}</script>
 <!-- jarvis-v2 init — activates body.jx2-active and wires bracket corner signature interaction -->
 <script nonce="{{CSP_NONCE}}">
   (function() {
