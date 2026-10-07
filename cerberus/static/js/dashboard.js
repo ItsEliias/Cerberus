@@ -311,16 +311,23 @@ function _tickDatetime(panel) {
 // ── Background ambient animation (not the globe — canvas glow only) ────────
 
 function _startBgAnimation() {
-  // Static ambient glow. This used to be a full-screen requestAnimationFrame
-  // loop (3 radial gradients + getComputedStyle every frame, at up to 2x DPR)
-  // painted *underneath* ~30 backdrop-filter panels, so every frame forced the
-  // compositor to re-blur all of them. In the Windows WebView2 build that kept
-  // the main thread at ~40% and dropped the UI to ~20fps behind onboarding and
-  // the dashboard. The glow is 2-3% alpha, so a single static paint (redrawn on
-  // resize) looks the same at near-zero cost.
+  // Ambient glow: three soft accent blobs drifting behind the dashboard.
+  //
+  // Browsers and the installed phone app (PWA) get the full animation.
+  // The packaged desktop window (<html class="shell-desktop">, see index.html)
+  // gets a single static paint instead: there the glow sits under ~30
+  // backdrop-filter panels and WebView2 re-blurred all of them every frame,
+  // which held the main thread at ~40% and dropped the UI to ~20fps. The glow
+  // is 2-3% alpha, so the static frame looks almost identical.
+  //
+  // The animated loop is kept cheap without changing how it looks: it renders
+  // at 1x (the glow has no edges for extra pixels to sharpen), reads the theme
+  // accent at most once a second instead of every frame, and skips drawing
+  // while the tab is hidden.
   const canvas = document.getElementById('dash-bg-canvas');
   if (!canvas || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
   const ctx = canvas.getContext('2d');
+  const animate = !document.documentElement.classList.contains('shell-desktop');
 
   function hexToRgb(hex) {
     const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -328,16 +335,24 @@ function _startBgAnimation() {
   }
   function rgba(c, a) { return `rgba(${c.r},${c.g},${c.b},${a})`; }
 
-  let _resizeTimer = null;
-  function paint() {
-    if (!document.getElementById(PANEL_ID)) { window.removeEventListener('resize', onResize); return; }
-    const W = window.innerWidth, H = window.innerHeight;
+  let W = 0, H = 0, t = 0, accent = null, accentAt = -Infinity;
+  function size() {
+    W = window.innerWidth; H = window.innerHeight;
     canvas.width = W; canvas.height = H;
-    const c = hexToRgb(getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b');
+  }
+  function readAccent(now) {
+    if (!accent || now - accentAt > 1000) {
+      accent = hexToRgb(getComputedStyle(document.documentElement).getPropertyValue('--red').trim() || '#c0392b');
+      accentAt = now;
+    }
+    return accent;
+  }
+  function draw(now) {
+    const c = readAccent(now);
     ctx.clearRect(0, 0, W, H);
     for (let i = 0; i < 3; i++) {
       const phase = (i / 3) * Math.PI * 2;
-      const cy = H * 0.4 + Math.sin(phase) * H * 0.14;
+      const cy = H * 0.4 + Math.sin(t + phase) * H * 0.14;
       const grad = ctx.createRadialGradient(W * 0.5, cy, 0, W * 0.5, cy, W * 0.45);
       grad.addColorStop(0, rgba(c, 0.028));
       grad.addColorStop(0.5, rgba(c, 0.008));
@@ -346,12 +361,29 @@ function _startBgAnimation() {
       ctx.fillRect(0, 0, W, H);
     }
   }
+
+  let _resizeTimer = null;
   function onResize() {
     clearTimeout(_resizeTimer);
-    _resizeTimer = setTimeout(paint, 150);
+    _resizeTimer = setTimeout(() => {
+      if (!document.getElementById(PANEL_ID)) { window.removeEventListener('resize', onResize); return; }
+      size();
+      if (!animate) draw(performance.now());
+    }, 150);
   }
   window.addEventListener('resize', onResize);
-  paint();
+  size();
+
+  if (!animate) { draw(performance.now()); return; }
+
+  function frame(now) {
+    if (!document.getElementById(PANEL_ID)) { window.removeEventListener('resize', onResize); _rafId = null; return; }
+    _rafId = requestAnimationFrame(frame);
+    if (document.hidden) return;
+    t += 0.006;
+    draw(now);
+  }
+  _rafId = requestAnimationFrame(frame);
 }
 
 // ── Data loading ─────────────────────────────────────────────────────────────

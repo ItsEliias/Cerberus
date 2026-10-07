@@ -32,7 +32,7 @@ from fastapi import Query, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List
 
-from src.auth_helpers import _auth_disabled, get_current_user
+from src.auth_helpers import _auth_disabled, get_current_user, is_direct_loopback
 from src.secret_storage import decrypt as _decrypt
 
 logger = logging.getLogger(__name__)
@@ -186,9 +186,7 @@ def _require_auth(request: Request) -> str:
         raise HTTPException(401, "Not authenticated")
     # Unconfigured / first-run mode: only allow loopback callers. Public
     # network traffic must authenticate even before auth is set up.
-    client = getattr(request, "client", None)
-    host = (client.host if client else "") or ""
-    if host in ("127.0.0.1", "::1", "localhost"):
+    if is_direct_loopback(request):
         return ""
     raise HTTPException(401, "Not authenticated")
 

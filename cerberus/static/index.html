@@ -14,6 +14,25 @@
   <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
   <link rel="apple-touch-icon" href="/static/icon-192.png">
   <script nonce="{{CSP_NONCE}}">
+  // Desktop-shell detection. The packaged Windows/macOS/Linux app (desktop.py)
+  // opens "/?shell=desktop"; remember that for this window (sessionStorage is
+  // shared with the same-origin Command Center iframe) and tag <html> so the
+  // heavy effects drop to their lightweight forms there. Browsers and the
+  // installed phone app (PWA) never get the tag and run full animations.
+  (function(){
+    try {
+      var q = new URLSearchParams(location.search);
+      if (q.get('shell') === 'desktop') {
+        sessionStorage.setItem('cerberus-shell', 'desktop');
+        q.delete('shell');
+        var qs = q.toString();
+        history.replaceState(history.state, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+      }
+      if (sessionStorage.getItem('cerberus-shell') === 'desktop') {
+        document.documentElement.classList.add('shell-desktop');
+      }
+    } catch (e) {}
+  })();
   window._cerberusLoadTime = Date.now();
   (function(){
     try {
@@ -3274,7 +3293,7 @@
   var backBtn = document.getElementById('cerberus-home-back-btn');
   if (backBtn) backBtn.addEventListener('click', function() { window.location.href = '/dashboard'; });
 })();</script>
-<script nonce="{{CSP_NONCE}}">if('serviceWorker' in navigator){navigator.serviceWorker.register('/static/sw.js').catch(()=>{});}</script>
+<script nonce="{{CSP_NONCE}}">if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{});navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>{if(new URL(r.scope).pathname==='/static/')r.unregister();})).catch(()=>{});}</script>
 <!-- jarvis-v2 init — activates body.jx2-active and wires bracket corner signature interaction -->
 <script nonce="{{CSP_NONCE}}">
   (function() {

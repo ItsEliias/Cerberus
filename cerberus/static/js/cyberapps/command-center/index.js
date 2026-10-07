@@ -30,8 +30,23 @@ import { t, setLocale, getLocale, AVAILABLE_LOCALES } from '/static/js/i18n.js';
   const link = document.createElement('link');
   link.id   = 'cc-styles-link';
   link.rel  = 'stylesheet';
-  link.href = '/static/js/cyberapps/command-center/styles.css?v=360';
+  link.href = '/static/js/cyberapps/command-center/styles.css?v=361';
   document.head.appendChild(link);
+})();
+
+// ---- Desktop shell ----
+//
+// Mirror the host page's desktop-shell tag (index.html) onto this iframe's
+// <html>: classes don't cross the iframe boundary, but sessionStorage is shared
+// with the same-origin parent. styles.css swaps heavy effects for their
+// lightweight forms under html.shell-desktop; everywhere else (browsers, the
+// phone app) runs the full animations.
+(function tagDesktopShell() {
+  try {
+    if (sessionStorage.getItem('cerberus-shell') === 'desktop') {
+      document.documentElement.classList.add('shell-desktop');
+    }
+  } catch (_) { /* storage blocked: default to full animations */ }
 })();
 
 // ---- Hidden-iframe throttling ----

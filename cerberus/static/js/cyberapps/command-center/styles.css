@@ -158,6 +158,9 @@
   color: var(--cc-fg); cursor: pointer; font-family: 'Orbitron', monospace;
   font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
   white-space: nowrap; opacity: 0.5; transition: all 0.15s;
+  /* Keep full width so a narrow screen scrolls the nav instead of
+     squeezing the pills until their labels overlap. */
+  flex-shrink: 0;
 }
 
 /* GATEWAY tab pending-approval badge — crimson dot with count.
@@ -543,11 +546,20 @@
   0%, 100% { filter: drop-shadow(0 0 2px var(--cc-warn)); }
   50%       { filter: drop-shadow(0 0 7px var(--cc-warn)); }
 }
-/* Pulse opacity over a fixed glow. Animating filter: drop-shadow repainted the
-   dial every frame, and it kicks in exactly when the machine is already at
-   high CPU (the "crit" state) — making a busy system busier. */
-.cc-arc-fill.crit { filter: drop-shadow(0 0 6px var(--cc-crit)); }
 @keyframes cc-dial-pulse-crit {
+  0%, 100% { filter: drop-shadow(0 0 2px var(--cc-crit)); }
+  50%       { filter: drop-shadow(0 0 10px var(--cc-crit)); }
+}
+/* Desktop window (html.shell-desktop, see index.js): pulse opacity over a
+   fixed glow instead. Animating filter: drop-shadow repaints the dial every
+   frame, and it kicks in exactly when the machine is already at high CPU (the
+   "crit" state); on the Windows WebView2 build that made a busy system busier.
+   Browsers and the phone app keep the full glow pulse above. */
+html.shell-desktop .cc-arc-fill.crit {
+  filter: drop-shadow(0 0 6px var(--cc-crit));
+  animation-name: cc-dial-pulse-crit-lite;
+}
+@keyframes cc-dial-pulse-crit-lite {
   0%, 100% { opacity: 0.7; }
   50%       { opacity: 1; }
 }

@@ -299,7 +299,11 @@ def main() -> int:
                 break
     window_kwargs = dict(width=1440, height=920, min_size=(1024, 680),
                          background_color="#16181d")
-    webview.create_window(APP_NAME, f"http://127.0.0.1:{port}/", **window_kwargs)
+    # "?shell=desktop" tells the UI it is in the packaged window, where the
+    # heavy effects use their lightweight forms (static dashboard glow, etc.).
+    # Browsers and the phone app (PWA) keep full animations. /login records it
+    # and forwards to the app whether or not the session is already signed in.
+    webview.create_window(APP_NAME, f"http://127.0.0.1:{port}/login?shell=desktop", **window_kwargs)
     # pywebview defaults to private_mode=True, which wipes cookies and
     # localStorage on every launch: the login session, onboarding/tour flags and
     # UI prefs were lost each time, re-running first-run flows on every start.

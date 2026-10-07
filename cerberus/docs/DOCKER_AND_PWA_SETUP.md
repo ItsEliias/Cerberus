@@ -178,20 +178,50 @@ the Chromebook's Docker.
 ---
 
 <a name="tailscale"></a>
-## Secure remote access with Tailscale (optional)
+## Secure remote access with Tailscale (phone app)
 
-To reach your server from anywhere (not just the LAN) without exposing ports to
-the internet:
+This is the way to use Cerberus as an app on your phone, from anywhere,
+without opening a single port. `tailscale serve` gives the server a private
+HTTPS address on your tailnet. HTTPS matters: without it the phone can't
+install Cerberus properly (no service worker), voice input is blocked, and
+session cookies can't be marked secure.
 
-1. Install Tailscale on the **server** and the **client device**
-   (`https://tailscale.com/download`), sign both into the same tailnet.
-2. Find the server's Tailscale address: `tailscale ip -4` (e.g. `100.x.y.z`),
-   or use its MagicDNS name (e.g. `myserver.tailnet-name.ts.net`).
-3. On the client, open `http://<tailscale-name>:7000`, install the PWA, and in
-   **Settings → Sandbox** use the same `<tailscale-name>` for the service URLs.
+1. Install Tailscale on the **server** and your **phone**
+   (`https://tailscale.com/download`), signed in to the same tailnet.
+2. On the server, keep Cerberus on loopback (the default `APP_BIND=127.0.0.1`)
+   and turn on secure cookies in `.env`:
 
-Everything stays inside your private tailnet — no port-forwarding, no public
-exposure.
+   ```bash
+   SECURE_COOKIES=true
+   ```
+
+   Restart: `docker compose up -d`.
+3. Share it on the tailnet:
+
+   ```bash
+   sudo tailscale serve --bg --https=443 7000
+   ```
+
+   If another app on the same machine already uses 443 (for example Cipher),
+   pick one of Tailscale's other HTTPS ports instead:
+
+   ```bash
+   sudo tailscale serve --bg --https=8443 7000
+   ```
+
+   `tailscale serve status` prints the address, e.g.
+   `https://homelab.your-tailnet.ts.net` (add `:8443` if you used that port).
+4. On the phone, open that address and log in, then:
+   - **Android (Chrome):** menu > *Install app* (or *Add to Home screen*).
+   - **iPhone (Safari):** Share > *Add to Home Screen*.
+
+Requests that arrive through `tailscale serve` are always treated as remote:
+they must log in, and they never get the loopback trust a direct local
+connection has. Everything stays inside your tailnet: no port-forwarding, no
+public exposure. Do not use `tailscale funnel`, which publishes to the
+internet.
+
+To stop sharing: `sudo tailscale serve --https=443 off` (or `=8443`).
 
 ---
 
