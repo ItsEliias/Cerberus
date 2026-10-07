@@ -230,9 +230,10 @@ def test_threads_shape_and_newest_first():
 
     new_row = next(t for t in threads if t["id"] == "t-new")
     assert set(new_row.keys()) == {
-        "id", "title", "message_count", "last_message_at", "last_message_preview"
+        "id", "agent_id", "title", "message_count", "last_message_at", "last_message_preview"
     }
     assert new_row["title"] == "Borealis"                    # agent's name
+    assert new_row["agent_id"]                               # lets the app open the chat
     assert new_row["message_count"] == 5
     assert new_row["last_message_at"].endswith("Z")
     assert new_row["last_message_preview"] == "general kenobi"
